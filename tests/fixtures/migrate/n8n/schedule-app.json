@@ -1,0 +1,145 @@
+{
+  "name": "Weekday order digest",
+  "nodes": [
+    {
+      "id": "node-001",
+      "name": "Every weekday",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "triggerAtHour": 9,
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-002",
+      "name": "Get orders",
+      "type": "n8n-nodes-base.shopify",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ],
+      "parameters": {
+        "resource": "order",
+        "operation": "getAll"
+      },
+      "credentials": {
+        "shopifyApi": {
+          "id": "cred-id-0001",
+          "name": "Example shop"
+        }
+      }
+    },
+    {
+      "id": "node-003",
+      "name": "Summarise orders",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        600,
+        300
+      ],
+      "parameters": {
+        "text": "=Summarise {{ $json.title }} for {{ $('Get orders').item.json.shop }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You write short order digests."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-004",
+      "name": "Post digest",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        800,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "post"
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "cred-id-0001",
+          "name": "Example workspace"
+        }
+      }
+    },
+    {
+      "id": "node-005",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "parameters": {
+        "content": "Runs each weekday morning. Synthetic example."
+      }
+    }
+  ],
+  "connections": {
+    "Every weekday": {
+      "main": [
+        [
+          {
+            "node": "Get orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get orders": {
+      "main": [
+        [
+          {
+            "node": "Summarise orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarise orders": {
+      "main": [
+        [
+          {
+            "node": "Post digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "Europe/Berlin",
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,10 @@
+[routine]
+name = "demo"
+type = "watch"
+schedule = "0 22 * * 1-5"
+first_run = "live"
+
+[[setting]]
+name = "markets"
+type = "list"
+default = ["AU", "NZ"]

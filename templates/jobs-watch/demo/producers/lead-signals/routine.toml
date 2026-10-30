@@ -1,0 +1,29 @@
+# Demo producer for the synthetic Desk seed. Not a real routine.
+[routine]
+name = "lead-signals"
+type = "watch"
+schedule = "0 20 * * 2"  # UTC, Tuesday
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+
+[[setting]]
+name = "regions"
+type = "list"
+role = "include"
+label = "Regions"
+default = ["AU", "NZ"]
+cost_note = "each region adds a tender board search"
+
+[[setting]]
+name = "min_value"
+type = "number"
+label = "Minimum tender value"
+default = 50000
+min = 0
+max = 10000000
+cost_note = "no extra cost; a higher floor keeps fewer tenders"

@@ -1,0 +1,195 @@
+{
+  "name": "Approve then post",
+  "nodes": [
+    {
+      "id": "node-031",
+      "name": "Daily at noon",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        6200,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-032",
+      "name": "Read sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        6400,
+        300
+      ],
+      "parameters": {
+        "operation": "read"
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cred-id-0001",
+          "name": "Example sheet account"
+        }
+      }
+    },
+    {
+      "id": "node-033",
+      "name": "Wait for approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        6600,
+        300
+      ],
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "webhookId": "wait-0001"
+    },
+    {
+      "id": "node-034",
+      "name": "Post to channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        6800,
+        300
+      ],
+      "parameters": {
+        "operation": "post",
+        "text": "=Approved: {{ $json.name }} {{ $execution.resumeUrl }}"
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "cred-id-0001",
+          "name": "Example workspace"
+        }
+      }
+    },
+    {
+      "id": "node-035",
+      "name": "Send summary",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        7000,
+        300
+      ],
+      "parameters": {
+        "operation": "send",
+        "subject": "=Done at {{ $now }}"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cred-id-0001",
+          "name": "Example mailbox"
+        }
+      }
+    },
+    {
+      "id": "node-036",
+      "name": "Pause a day",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        7200,
+        300
+      ],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 1,
+        "unit": "days"
+      }
+    },
+    {
+      "id": "node-037",
+      "name": "Remove row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        7400,
+        300
+      ],
+      "parameters": {
+        "operation": "delete"
+      }
+    }
+  ],
+  "connections": {
+    "Daily at noon": {
+      "main": [
+        [
+          {
+            "node": "Read sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read sheet": {
+      "main": [
+        [
+          {
+            "node": "Wait for approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for approval": {
+      "main": [
+        [
+          {
+            "node": "Post to channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to channel": {
+      "main": [
+        [
+          {
+            "node": "Send summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send summary": {
+      "main": [
+        [
+          {
+            "node": "Pause a day",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause a day": {
+      "main": [
+        [
+          {
+            "node": "Remove row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

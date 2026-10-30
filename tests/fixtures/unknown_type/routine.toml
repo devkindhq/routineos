@@ -1,0 +1,4 @@
+[routine]
+name = "demo"
+type = "sprocket"
+schedule = "0 22 * * *"

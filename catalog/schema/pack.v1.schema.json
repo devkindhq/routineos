@@ -1,0 +1,742 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RoutineOS routine pack, format routineos.pack.v1",
+  "description": "One JSON file that replicates a routine. The CLI (routineos.py pack validate) applies further rules this schema cannot express: routine lint, definition compile, stage and connector cross-references, people collections, file paths and the content scan.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "version",
+    "title",
+    "summary",
+    "category",
+    "maturity",
+    "routine",
+    "prompt",
+    "readme",
+    "stages",
+    "connectors"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "format": {
+      "const": "routineos.pack.v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280
+    },
+    "category": {
+      "enum": [
+        "sales",
+        "marketing",
+        "ops",
+        "support",
+        "finance",
+        "recruiting",
+        "content",
+        "dev",
+        "general"
+      ]
+    },
+    "maturity": {
+      "enum": [
+        "piloted",
+        "unpiloted"
+      ]
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "inspiration": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/inspiration"
+      }
+    },
+    "routine": {
+      "$ref": "#/$defs/routine"
+    },
+    "prompt": {
+      "type": "string"
+    },
+    "readme": {
+      "type": "string"
+    },
+    "definition": {
+      "$ref": "#/$defs/definition"
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/stage"
+      }
+    },
+    "connectors": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/connector"
+      }
+    },
+    "files": {
+      "type": "object",
+      "maxProperties": 40,
+      "propertyNames": {
+        "pattern": "^(lib|skills)/[a-z0-9_-]+(/(?!\\.\\.?/)[A-Za-z0-9_.-]+)*\\.(py|md|json|txt)$"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "routine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "routine"
+      ],
+      "properties": {
+        "routine": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "type",
+            "schedule"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+            },
+            "type": {
+              "enum": [
+                "serverless",
+                "watch",
+                "approval-gated",
+                "interactive"
+              ]
+            },
+            "schedule": {
+              "type": "string",
+              "minLength": 1
+            },
+            "first_run": {
+              "const": "report-only"
+            }
+          }
+        },
+        "store": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "adapter": {
+              "type": "string"
+            }
+          }
+        },
+        "workspace": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+            },
+            "template": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+            },
+            "template_version": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "setting": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/setting"
+          }
+        },
+        "gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "timeout_hours": {
+              "type": "number"
+            }
+          }
+        },
+        "action": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "kind"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "setting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "default"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "toggle",
+            "number",
+            "choice",
+            "list"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "example": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "include",
+            "exclude"
+          ]
+        },
+        "default": {},
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "choices": {
+          "type": "array"
+        },
+        "cost_note": {
+          "type": "string"
+        }
+      }
+    },
+    "definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "types"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "label": {
+          "type": "string"
+        },
+        "inbox": {
+          "type": "boolean"
+        },
+        "types": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/type"
+          }
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/view"
+          }
+        },
+        "learning": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "signals": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "override",
+                  "uncaptured_term",
+                  "dead_item",
+                  "source_health",
+                  "limit_pressure",
+                  "connections",
+                  "edit_drift",
+                  "manual_repetition"
+                ]
+              },
+              "additionalProperties": {
+                "type": "boolean"
+              }
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "max_inbox_per_run"
+                ]
+              }
+            },
+            "minSample": {
+              "type": "integer"
+            },
+            "minEffect": {
+              "type": "number"
+            },
+            "cooldownDays": {
+              "type": "integer"
+            },
+            "maxPerRun": {
+              "type": "integer"
+            },
+            "deadAfterRuns": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "type": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "fields"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "plural": {
+          "type": "string"
+        },
+        "icon": {
+          "enum": [
+            "house",
+            "inbox",
+            "badge-check",
+            "history",
+            "settings",
+            "list",
+            "dot",
+            "building-2",
+            "briefcase",
+            "user",
+            "users",
+            "video",
+            "file-text",
+            "mail",
+            "message-square",
+            "calendar",
+            "receipt",
+            "tag",
+            "folder",
+            "newspaper",
+            "git-pull-request",
+            "chart-line",
+            "circle-help",
+            "rss",
+            "file-search",
+            "package",
+            "globe",
+            "link"
+          ]
+        },
+        "identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "merge": {
+          "enum": [
+            "merge",
+            "separate"
+          ]
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "settingFilters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "setting",
+              "field"
+            ],
+            "properties": {
+              "setting": {
+                "type": "string"
+              },
+              "field": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "text",
+            "number",
+            "date",
+            "url",
+            "choice",
+            "list",
+            "bool"
+          ]
+        },
+        "summary": {
+          "type": "boolean"
+        },
+        "choices": {
+          "type": "array"
+        }
+      }
+    },
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "type": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "icon": {
+          "enum": [
+            "house",
+            "inbox",
+            "badge-check",
+            "history",
+            "settings",
+            "list",
+            "dot",
+            "building-2",
+            "briefcase",
+            "user",
+            "users",
+            "video",
+            "file-text",
+            "mail",
+            "message-square",
+            "calendar",
+            "receipt",
+            "tag",
+            "folder",
+            "newspaper",
+            "git-pull-request",
+            "chart-line",
+            "circle-help",
+            "rss",
+            "file-search",
+            "package",
+            "globe",
+            "link"
+          ]
+        },
+        "filters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "q": {},
+            "status": {},
+            "starred": {},
+            "tag": {},
+            "source": {},
+            "reason": {},
+            "fields": {
+              "type": "object"
+            }
+          }
+        },
+        "sort": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "dir": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "window": {
+          "enum": [
+            "all",
+            "week",
+            "month",
+            "last-month"
+          ]
+        },
+        "group": {
+          "type": "string"
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "does"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "kind": {
+          "enum": [
+            "code",
+            "model",
+            "skill",
+            "gate"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "does": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "connectors": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          }
+        },
+        "reads": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(/[a-z0-9_-]+)*$"
+          }
+        },
+        "writes": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(/[a-z0-9_-]+)*$"
+          }
+        },
+        "command": {
+          "type": "string",
+          "pattern": "^python3 [^\\n]+$"
+        },
+        "skill": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        }
+      }
+    },
+    "connector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "purpose",
+        "required",
+        "access",
+        "stages",
+        "connect"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "kind": {
+          "enum": [
+            "connector",
+            "mcp",
+            "builtin",
+            "http"
+          ]
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "access": {
+          "enum": [
+            "read",
+            "write"
+          ]
+        },
+        "stages": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          }
+        },
+        "alternatives": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "connect": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        }
+      }
+    },
+    "inspiration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "title",
+        "url"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://",
+          "maxLength": 300
+        }
+      }
+    }
+  }
+}

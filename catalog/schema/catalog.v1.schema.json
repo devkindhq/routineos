@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RoutineOS template catalog, format routineos.catalog.v1",
+  "description": "The index of routine packs. Each entry's path is relative to this index; sha256 and bytes describe the pack file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "templates"
+  ],
+  "properties": {
+    "format": {
+      "const": "routineos.catalog.v1"
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "title",
+        "summary",
+        "category",
+        "maturity",
+        "type",
+        "schedule",
+        "path",
+        "bytes",
+        "sha256",
+        "connectors",
+        "inspiration"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 280
+        },
+        "category": {
+          "enum": [
+            "sales",
+            "marketing",
+            "ops",
+            "support",
+            "finance",
+            "recruiting",
+            "content",
+            "dev",
+            "general"
+          ]
+        },
+        "maturity": {
+          "enum": [
+            "piloted",
+            "unpiloted"
+          ]
+        },
+        "type": {
+          "enum": [
+            "serverless",
+            "watch",
+            "approval-gated",
+            "interactive"
+          ]
+        },
+        "schedule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}\\.json$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "connectors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "required"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "required": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "inspiration": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^https://"
+          }
+        }
+      }
+    }
+  }
+}

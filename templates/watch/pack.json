@@ -1,0 +1,55 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "watch",
+  "version": "1.0.0",
+  "title": "Watch",
+  "summary": "Watches a list of sources for new and changed items and writes one report per run, even in a quiet week.",
+  "category": "general",
+  "maturity": "piloted",
+  "license": "MIT",
+  "stages": [
+    {
+      "id": "read",
+      "kind": "model",
+      "title": "Read sources",
+      "does": "Opens each source and lists items dated inside the lookback window, up to max_items.",
+      "connectors": [
+        "web"
+      ],
+      "reads": [
+        "state"
+      ]
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "model",
+      "title": "Write the report",
+      "does": "Writes the report, then updates the seen list last.",
+      "writes": [
+        "reports",
+        "state"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "web",
+      "label": "Web fetch",
+      "kind": "builtin",
+      "purpose": "Open each source page.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "read"
+      ],
+      "connect": "Nothing to connect when the run can already open web pages."
+    }
+  ]
+}

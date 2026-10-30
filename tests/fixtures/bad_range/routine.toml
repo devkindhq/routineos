@@ -1,0 +1,11 @@
+[routine]
+name = "demo"
+type = "watch"
+schedule = "0 22 * * 1-5"
+
+[[setting]]
+name = "limit"
+type = "number"
+default = 50
+min = 1
+max = 10

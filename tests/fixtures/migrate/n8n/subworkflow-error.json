@@ -1,0 +1,147 @@
+{
+  "name": "Parent with error handling",
+  "nodes": [
+    {
+      "id": "node-038",
+      "name": "Run each hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        7600,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2,
+              "triggerAtMinute": 10
+            },
+            {
+              "field": "days"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-039",
+      "name": "Call helper",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        7800,
+        300
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf-9",
+          "cachedResultName": "Helper flow"
+        }
+      }
+    },
+    {
+      "id": "node-040",
+      "name": "Fragile call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8000,
+        300
+      ],
+      "parameters": {
+        "url": "https://flaky.example.invalid/x"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "node-041",
+      "name": "Stop here",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        8200,
+        300
+      ],
+      "parameters": {
+        "errorMessage": "Something went wrong"
+      }
+    },
+    {
+      "id": "node-042",
+      "name": "On failure",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        8400,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "node-043",
+      "name": "Tell someone",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        8600,
+        300
+      ],
+      "parameters": {
+        "operation": "post"
+      }
+    }
+  ],
+  "connections": {
+    "Run each hour": {
+      "main": [
+        [
+          {
+            "node": "Call helper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call helper": {
+      "main": [
+        [
+          {
+            "node": "Fragile call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fragile call": {
+      "main": [
+        [
+          {
+            "node": "Stop here",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On failure": {
+      "main": [
+        [
+          {
+            "node": "Tell someone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "errorWorkflow": "wf-77"
+  }
+}

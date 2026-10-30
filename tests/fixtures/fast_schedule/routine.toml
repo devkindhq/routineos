@@ -1,0 +1,9 @@
+[routine]
+name = "demo"
+type = "watch"
+schedule = "*/30 * * * *"
+
+[[setting]]
+name = "markets"
+type = "list"
+default = ["AU", "NZ"]

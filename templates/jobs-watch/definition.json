@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "label": "Jobs watch",
+  "inbox": true,
+  "types": {
+    "company": {
+      "label": "Company",
+      "plural": "Companies",
+      "icon": "building-2",
+      "identity": "domain",
+      "merge": "merge",
+      "fields": {
+        "name": {"label": "Name", "type": "text", "summary": true},
+        "domain": {"label": "Domain", "type": "url", "summary": true},
+        "industry": {"label": "Industry", "type": "text", "summary": true},
+        "size": {"label": "Size", "type": "number"},
+        "country": {"label": "Country", "type": "text"}
+      },
+      "settingFilters": [
+        {"setting": "excluded_companies", "field": "domain"}
+      ]
+    },
+    "role": {
+      "label": "Role",
+      "plural": "Roles",
+      "icon": "briefcase",
+      "identity": "field:url",
+      "merge": "merge",
+      "links": ["company"],
+      "fields": {
+        "title": {"label": "Title", "type": "text", "summary": true},
+        "company": {"label": "Company", "type": "text", "summary": true},
+        "company_domain": {"label": "Company domain", "type": "url"},
+        "market": {"label": "Market", "type": "choice", "choices": ["AU", "US", "CA", "NZ", "PH", "GB", "DE"], "summary": true},
+        "location": {"label": "Location", "type": "text"},
+        "remote": {"label": "Remote", "type": "bool"},
+        "salary_max": {"label": "Max salary", "type": "number"},
+        "posted": {"label": "Posted", "type": "date", "summary": true},
+        "url": {"label": "URL", "type": "url"},
+        "seniority": {"label": "Seniority", "type": "choice", "choices": ["junior", "mid", "senior", "lead"]},
+        "summary": {"label": "Summary", "type": "text"}
+      },
+      "settingFilters": [
+        {"setting": "markets", "field": "market"},
+        {"setting": "title_keywords", "field": "title"},
+        {"setting": "excluded_title_words", "field": "title"},
+        {"setting": "excluded_companies", "field": "company_domain"}
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": "new-roles",
+      "type": "role",
+      "name": "New roles",
+      "filters": {"status": "active"},
+      "sort": {"field": "firstSeen", "dir": "desc"},
+      "columns": ["title", "company", "market", "posted"]
+    },
+    {
+      "id": "dropped-roles",
+      "type": "role",
+      "name": "Dropped by settings",
+      "filters": {"status": "dropped"},
+      "sort": {"field": "lastSeen", "dir": "desc"},
+      "columns": ["title", "company", "market", "dropReason"]
+    },
+    {
+      "id": "hiring-companies",
+      "type": "company",
+      "name": "Hiring companies",
+      "filters": {"status": "active"},
+      "sort": {"field": "seenCount", "dir": "desc"},
+      "columns": ["name", "industry", "country", "size"]
+    }
+  ],
+  "learning": {"enabled": true}
+}

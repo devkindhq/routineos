@@ -1,0 +1,143 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "inbox-triage",
+  "version": "1.0.0",
+  "title": "Inbox triage",
+  "summary": "Labels new mail threads, drafts replies in your style, and sends a reply only after a person approves it.",
+  "category": "support",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "inspiration": [
+    {
+      "source": "n8n",
+      "title": "Gmail AI auto-responder: draft replies",
+      "url": "https://n8n.io/workflows/2271"
+    },
+    {
+      "source": "n8n",
+      "title": "Auto-categorise Outlook emails with AI",
+      "url": "https://n8n.io/workflows/2454"
+    },
+    {
+      "source": "n8n",
+      "title": "Suggest meeting slots using AI",
+      "url": "https://n8n.io/workflows/1953"
+    },
+    {
+      "source": "n8n",
+      "title": "Email summary agent",
+      "url": "https://n8n.io/workflows/2722"
+    }
+  ],
+  "stages": [
+    {
+      "id": "read",
+      "kind": "model",
+      "title": "Read new threads",
+      "does": "Lists and reads threads received inside the look-back window.",
+      "connectors": [
+        "mail"
+      ]
+    },
+    {
+      "id": "label",
+      "kind": "model",
+      "title": "Label and summarise",
+      "does": "Gives each thread one label and a short factual summary."
+    },
+    {
+      "id": "draft",
+      "kind": "skill",
+      "title": "Draft replies",
+      "does": "Drafts a reply for each thread that needs one, in the house reply style.",
+      "skill": "reply-style"
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox",
+        "pending"
+      ]
+    },
+    {
+      "id": "approve",
+      "kind": "gate",
+      "title": "Approve each reply",
+      "does": "A person approves, edits or declines each draft; the gate times out after 24 hours.",
+      "connectors": [
+        "gate-mail"
+      ]
+    },
+    {
+      "id": "send",
+      "kind": "model",
+      "title": "Send approved replies",
+      "does": "On a later run, sends only the drafts whose decision is approved, exactly as approved.",
+      "connectors": [
+        "mail-send"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "mail",
+      "label": "Mail (read)",
+      "kind": "connector",
+      "purpose": "Read new threads in the mailbox.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "read"
+      ],
+      "alternatives": [
+        "Gmail",
+        "Outlook"
+      ],
+      "connect": "Add a mail connector with read access to the routine's environment."
+    },
+    {
+      "id": "gate-mail",
+      "label": "Mail for approvals",
+      "kind": "connector",
+      "purpose": "Carry each approval request for a draft reply.",
+      "required": false,
+      "access": "write",
+      "stages": [
+        "approve"
+      ],
+      "alternatives": [
+        "Slack"
+      ],
+      "connect": "Add a mail connector to the routine's environment before you turn gated messages on."
+    },
+    {
+      "id": "mail-send",
+      "label": "Mail (send)",
+      "kind": "connector",
+      "purpose": "Send a reply a person approved.",
+      "required": false,
+      "access": "write",
+      "stages": [
+        "send"
+      ],
+      "alternatives": [
+        "Gmail",
+        "Outlook"
+      ],
+      "connect": "Give the mail connector send access only when you are ready for approved replies to go out."
+    }
+  ]
+}

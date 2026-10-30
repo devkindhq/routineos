@@ -1,0 +1,109 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "meeting-brief",
+  "version": "1.0.0",
+  "title": "Meeting brief",
+  "summary": "Before each outside meeting, researches the other company and writes a short, cited brief to the Desk.",
+  "category": "sales",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "inspiration": [
+    {
+      "source": "n8n",
+      "title": "AI web researcher for sales",
+      "url": "https://n8n.io/workflows/2324"
+    },
+    {
+      "source": "n8n",
+      "title": "Company enrichment from website content",
+      "url": "https://n8n.io/workflows/1862"
+    },
+    {
+      "source": "n8n",
+      "title": "Website chatbot with lead capture and Outlook calendar",
+      "url": "https://n8n.io/workflows/2786"
+    }
+  ],
+  "stages": [
+    {
+      "id": "calendar",
+      "kind": "model",
+      "title": "Find outside meetings",
+      "does": "Lists meetings inside the look-ahead window that include an outside domain.",
+      "connectors": [
+        "calendar"
+      ]
+    },
+    {
+      "id": "research",
+      "kind": "model",
+      "title": "Research each company",
+      "does": "Searches for each outside company and reads a few pages, keeping each source URL.",
+      "connectors": [
+        "web-search",
+        "web"
+      ]
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "calendar",
+      "label": "Calendar",
+      "kind": "connector",
+      "purpose": "List upcoming meetings and their attendee domains.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "calendar"
+      ],
+      "alternatives": [
+        "Google Calendar",
+        "Outlook calendar"
+      ],
+      "connect": "Add a calendar connector with read access to the routine's environment."
+    },
+    {
+      "id": "web-search",
+      "label": "Web search",
+      "kind": "builtin",
+      "purpose": "Find each outside company.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "research"
+      ],
+      "connect": "Nothing to connect when the run already has web search; check it does before the first run."
+    },
+    {
+      "id": "web",
+      "label": "Web fetch",
+      "kind": "builtin",
+      "purpose": "Open the company's pages.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "research"
+      ],
+      "connect": "Nothing to connect when the run can already open web pages."
+    }
+  ]
+}

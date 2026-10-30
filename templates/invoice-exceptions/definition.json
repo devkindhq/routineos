@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "label": "Invoice exceptions",
+  "inbox": true,
+  "types": {
+    "vendor": {
+      "label": "Vendor",
+      "plural": "Vendors",
+      "icon": "building-2",
+      "identity": "domain",
+      "merge": "merge",
+      "fields": {
+        "name": {
+          "label": "Name",
+          "type": "text",
+          "summary": true
+        },
+        "domain": {
+          "label": "Domain",
+          "type": "url",
+          "summary": true
+        }
+      }
+    },
+    "invoice": {
+      "label": "Invoice",
+      "plural": "Invoices",
+      "icon": "receipt",
+      "identity": "field:ref",
+      "merge": "merge",
+      "links": [
+        "vendor"
+      ],
+      "fields": {
+        "ref": {
+          "label": "Reference",
+          "type": "text"
+        },
+        "vendor_domain": {
+          "label": "Vendor",
+          "type": "url",
+          "summary": true
+        },
+        "number": {
+          "label": "Number",
+          "type": "text",
+          "summary": true
+        },
+        "amount": {
+          "label": "Amount",
+          "type": "number",
+          "summary": true
+        },
+        "currency": {
+          "label": "Currency",
+          "type": "text"
+        },
+        "issued": {
+          "label": "Issued",
+          "type": "date"
+        },
+        "due": {
+          "label": "Due",
+          "type": "date",
+          "summary": true
+        },
+        "flags": {
+          "label": "Flags",
+          "type": "list",
+          "summary": true
+        }
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "recent",
+      "type": "invoice",
+      "name": "Recent invoices",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "firstSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "vendor_domain",
+        "number",
+        "amount",
+        "flags"
+      ]
+    },
+    {
+      "id": "vendors",
+      "type": "vendor",
+      "name": "Vendors",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "seenCount",
+        "dir": "desc"
+      },
+      "columns": [
+        "name",
+        "domain"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

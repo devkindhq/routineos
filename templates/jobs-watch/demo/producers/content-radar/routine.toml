@@ -1,0 +1,29 @@
+# Demo producer for the synthetic Desk seed. Not a real routine.
+[routine]
+name = "content-radar"
+type = "watch"
+schedule = "0 21 * * 3"  # UTC, Wednesday
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+
+[[setting]]
+name = "topics"
+type = "list"
+role = "include"
+label = "Topics"
+default = ["commerce", "automation", "headless"]
+cost_note = "each topic adds a search"
+
+[[setting]]
+name = "min_views"
+type = "number"
+label = "Minimum views"
+default = 1000
+min = 0
+max = 1000000
+cost_note = "no extra cost; a higher floor keeps fewer videos"

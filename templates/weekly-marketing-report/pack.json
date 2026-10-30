@@ -1,0 +1,97 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "weekly-marketing-report",
+  "version": "1.0.0",
+  "title": "Weekly marketing report",
+  "summary": "Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves.",
+  "category": "marketing",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "inspiration": [
+    {
+      "source": "n8n",
+      "title": "AI marketing report (GA, Google Ads, Meta Ads)",
+      "url": "https://n8n.io/workflows/2783"
+    },
+    {
+      "source": "n8n",
+      "title": "On-page SEO audit of any website",
+      "url": "https://n8n.io/workflows/3224"
+    }
+  ],
+  "stages": [
+    {
+      "id": "collect",
+      "kind": "model",
+      "title": "Read both weeks",
+      "does": "Reads this week's and last week's totals per source and metric.",
+      "connectors": [
+        "analytics"
+      ]
+    },
+    {
+      "id": "compare",
+      "kind": "code",
+      "title": "Compare weeks",
+      "does": "Computes the change per source and metric, so no figure is the model's arithmetic.",
+      "command": "python3 lib/week_over_week.py --this this-week.json --last last-week.json"
+    },
+    {
+      "id": "audit",
+      "kind": "model",
+      "title": "Audit key pages",
+      "does": "Opens each page to audit and notes visible issues.",
+      "connectors": [
+        "web"
+      ]
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "analytics",
+      "label": "Analytics and ad platforms",
+      "kind": "mcp",
+      "purpose": "Read weekly totals per source and metric.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "collect"
+      ],
+      "alternatives": [
+        "Two JSON exports placed in the run folder"
+      ],
+      "connect": "Add an MCP server or connector that reads your analytics and ad platforms. RoutineOS does not supply one."
+    },
+    {
+      "id": "web",
+      "label": "Web fetch",
+      "kind": "builtin",
+      "purpose": "Open each page to audit.",
+      "required": false,
+      "access": "read",
+      "stages": [
+        "audit"
+      ],
+      "connect": "Nothing to connect when the run can already open web pages."
+    }
+  ]
+}

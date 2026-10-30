@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "label": "Lead signals",
+  "inbox": false,
+  "types": {
+    "company": {
+      "label": "Company",
+      "plural": "Companies",
+      "icon": "building-2",
+      "identity": "domain",
+      "merge": "merge",
+      "fields": {
+        "name": {"label": "Name", "type": "text", "summary": true},
+        "domain": {"label": "Domain", "type": "url", "summary": true},
+        "industry": {"label": "Industry", "type": "text", "summary": true},
+        "size": {"label": "Size", "type": "number"},
+        "country": {"label": "Country", "type": "text"}
+      }
+    },
+    "tender": {
+      "label": "Tender",
+      "plural": "Tenders",
+      "icon": "file-text",
+      "identity": "field:url",
+      "merge": "merge",
+      "links": ["company"],
+      "fields": {
+        "title": {"label": "Title", "type": "text", "summary": true},
+        "buyer": {"label": "Buyer", "type": "text", "summary": true},
+        "buyer_domain": {"label": "Buyer domain", "type": "url"},
+        "region": {"label": "Region", "type": "text"},
+        "value": {"label": "Value", "type": "number", "summary": true},
+        "closes": {"label": "Closes", "type": "date"},
+        "url": {"label": "URL", "type": "url"}
+      },
+      "settingFilters": [
+        {"setting": "regions", "field": "region"}
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": "open-tenders",
+      "type": "tender",
+      "name": "Open tenders",
+      "filters": {"status": "active"},
+      "sort": {"field": "closes", "dir": "asc"},
+      "columns": ["title", "buyer", "value", "closes"]
+    }
+  ]
+}

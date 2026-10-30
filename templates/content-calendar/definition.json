@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "label": "Content calendar",
+  "inbox": true,
+  "types": {
+    "source": {
+      "label": "Source",
+      "plural": "Sources",
+      "icon": "rss",
+      "identity": "field:url",
+      "merge": "merge",
+      "fields": {
+        "url": {
+          "label": "URL",
+          "type": "url"
+        },
+        "title": {
+          "label": "Title",
+          "type": "text",
+          "summary": true
+        },
+        "published": {
+          "label": "Published",
+          "type": "date",
+          "summary": true
+        }
+      }
+    },
+    "draft": {
+      "label": "Draft",
+      "plural": "Drafts",
+      "icon": "file-text",
+      "identity": "field:slug",
+      "merge": "merge",
+      "links": [
+        "source"
+      ],
+      "fields": {
+        "slug": {
+          "label": "Slug",
+          "type": "text"
+        },
+        "title": {
+          "label": "Title",
+          "type": "text",
+          "summary": true
+        },
+        "format": {
+          "label": "Format",
+          "type": "text",
+          "summary": true
+        },
+        "topic": {
+          "label": "Topic",
+          "type": "text"
+        },
+        "publish_on": {
+          "label": "Publish on",
+          "type": "date",
+          "summary": true
+        },
+        "status": {
+          "label": "Status",
+          "type": "choice",
+          "choices": [
+            "drafted",
+            "approved",
+            "published",
+            "declined"
+          ],
+          "summary": true
+        },
+        "sources": {
+          "label": "Sources",
+          "type": "list"
+        },
+        "citation_check": {
+          "label": "Citation check",
+          "type": "text"
+        }
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "calendar",
+      "type": "draft",
+      "name": "Calendar",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "publish_on",
+        "dir": "asc"
+      },
+      "columns": [
+        "publish_on",
+        "title",
+        "format",
+        "status"
+      ]
+    },
+    {
+      "id": "sources",
+      "type": "source",
+      "name": "Sources",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "title",
+        "published"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,57 @@
+[routine]
+name = "candidate-shortlist"
+type = "watch"
+schedule = "0 21 * * 1-5"  # UTC, weekdays; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "candidate-shortlist"
+template_version = 1
+
+[[setting]]
+name = "roles"
+type = "list"
+role = "include"
+label = "Open roles"
+example = "senior-backend-2026"
+default = []
+cost_note = "each role adds its new applicants to the run"
+
+[[setting]]
+name = "must_have"
+type = "list"
+label = "Must have (weight 2)"
+default = ["the core skill named in the role"]
+cost_note = "each criterion adds one mark per applicant"
+
+[[setting]]
+name = "nice_to_have"
+type = "list"
+label = "Nice to have (weight 1)"
+default = []
+cost_note = "each criterion adds one mark per applicant"
+
+[[setting]]
+name = "shortlist_size"
+type = "number"
+label = "Shortlist size"
+default = 5
+min = 1
+max = 20
+cost_note = "no extra cost"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 5
+min = 0
+max = 20
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = false

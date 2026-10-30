@@ -1,0 +1,73 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "invoice-exceptions",
+  "version": "1.0.0",
+  "title": "Invoice exceptions",
+  "summary": "Reads incoming invoices and flags duplicates, large amounts and new vendors for a person to check. It never pays.",
+  "category": "finance",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "inspiration": [
+    {
+      "source": "n8n",
+      "title": "Invoice data extraction with LlamaParse and OpenAI",
+      "url": "https://n8n.io/workflows/2320"
+    }
+  ],
+  "stages": [
+    {
+      "id": "collect",
+      "kind": "model",
+      "title": "Read invoices",
+      "does": "Lists recent invoices and reads each into structured fields, leaving out anything unclear.",
+      "connectors": [
+        "invoices"
+      ]
+    },
+    {
+      "id": "check",
+      "kind": "code",
+      "title": "Check for exceptions",
+      "does": "Flags duplicates, amounts over the threshold and new vendors; AMOUNT is the amount_threshold setting.",
+      "command": "python3 lib/invoice_checks.py --invoices invoices.json --vendors vendors.json --threshold AMOUNT"
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "invoices",
+      "label": "Invoice mailbox or folder",
+      "kind": "connector",
+      "purpose": "Read incoming invoices.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "collect"
+      ],
+      "alternatives": [
+        "Gmail",
+        "Outlook",
+        "Google Drive"
+      ],
+      "connect": "Add a connector with read access to where invoices arrive."
+    }
+  ]
+}

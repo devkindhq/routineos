@@ -1,0 +1,414 @@
+{
+  "summary": "Example all modules flow",
+  "description": "Synthetic flow that uses every module type.",
+  "value": {
+    "modules": [
+      {
+        "id": "a",
+        "value": {
+          "type": "rawscript",
+          "language": "python3",
+          "content": "def main(gmail, token):\n    return {'total': 120, 'title': 'Example order'}\n",
+          "input_transforms": {
+            "gmail": {
+              "type": "static",
+              "value": "$res:u/demo/gmail_main"
+            },
+            "token": {
+              "type": "static",
+              "value": "$var:f/demo/example_token"
+            },
+            "limit": {
+              "type": "javascript",
+              "expr": "flow_input.limit"
+            }
+          }
+        },
+        "summary": "Fetch example orders"
+      },
+      {
+        "id": "b",
+        "summary": "Call helper script",
+        "value": {
+          "type": "script",
+          "path": "f/demo/helper",
+          "input_transforms": {
+            "rows": {
+              "type": "javascript",
+              "expr": "results.a.rows"
+            }
+          }
+        }
+      },
+      {
+        "id": "b2",
+        "summary": "Hub notifier",
+        "value": {
+          "type": "script",
+          "path": "hub/9999/example/notify",
+          "input_transforms": {}
+        }
+      },
+      {
+        "id": "c",
+        "summary": "Call child flow",
+        "value": {
+          "type": "flow",
+          "path": "f/demo/child_flow",
+          "input_transforms": {}
+        }
+      },
+      {
+        "id": "d",
+        "summary": "Each order",
+        "value": {
+          "type": "forloopflow",
+          "iterator": {
+            "type": "javascript",
+            "expr": "results.a.orders"
+          },
+          "skip_failures": true,
+          "parallel": true,
+          "modules": [
+            {
+              "id": "d1",
+              "value": {
+                "type": "rawscript",
+                "language": "bun",
+                "content": "export async function main(x) { return x }",
+                "input_transforms": {
+                  "x": {
+                    "type": "javascript",
+                    "expr": "flow_input.iter.value"
+                  }
+                }
+              },
+              "summary": "Handle one order"
+            }
+          ]
+        }
+      },
+      {
+        "id": "e",
+        "summary": "Poll until done",
+        "value": {
+          "type": "whileloopflow",
+          "modules": [
+            {
+              "id": "e1",
+              "value": {
+                "type": "rawscript",
+                "language": "deno",
+                "content": "export async function main() { return 1 }",
+                "input_transforms": {}
+              },
+              "summary": "Poll once",
+              "stop_after_if": {
+                "expr": "result == 1",
+                "skip_if_stopped": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "f",
+        "summary": "Route by size",
+        "value": {
+          "type": "branchone",
+          "branches": [
+            {
+              "summary": "Large order",
+              "expr": "results.a.total > 100",
+              "modules": [
+                {
+                  "id": "f1",
+                  "value": {
+                    "type": "rawscript",
+                    "language": "python3",
+                    "content": "def main():\n    return 1\n",
+                    "input_transforms": {}
+                  },
+                  "summary": "Large path"
+                }
+              ]
+            },
+            {
+              "summary": "Limit check",
+              "expr": "flow_input.limit",
+              "modules": []
+            }
+          ],
+          "default": [
+            {
+              "id": "f2",
+              "summary": "Fallback",
+              "value": {
+                "type": "identity"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "g",
+        "summary": "Run all checks",
+        "value": {
+          "type": "branchall",
+          "parallel": true,
+          "branches": [
+            {
+              "summary": "Check one",
+              "skip_failure": true,
+              "modules": [
+                {
+                  "id": "g1",
+                  "value": {
+                    "type": "rawscript",
+                    "language": "python3",
+                    "content": "def main():\n    return 2\n",
+                    "input_transforms": {}
+                  },
+                  "summary": "Check one step"
+                }
+              ]
+            },
+            {
+              "modules": [
+                {
+                  "id": "g2",
+                  "value": {
+                    "type": "rawscript",
+                    "language": "python3",
+                    "content": "def main():\n    return 3\n",
+                    "input_transforms": {}
+                  },
+                  "summary": "Unnamed branch step"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "h",
+        "summary": "Pause",
+        "value": {
+          "type": "identity"
+        },
+        "sleep": {
+          "type": "static",
+          "value": 30
+        }
+      },
+      {
+        "id": "i",
+        "summary": "Research agent",
+        "value": {
+          "type": "aiagent",
+          "tools": [
+            {
+              "id": "lookup",
+              "summary": "lookup_docs",
+              "value": {
+                "tool_type": "flowmodule",
+                "type": "rawscript",
+                "input_transforms": {
+                  "db": {
+                    "type": "static",
+                    "value": "$res:u/demo/postgres_main"
+                  }
+                }
+              }
+            }
+          ],
+          "input_transforms": {
+            "provider": {
+              "type": "static",
+              "value": {
+                "kind": "openai",
+                "model": "gpt-example",
+                "resource": "$res:u/demo/openai_main"
+              }
+            },
+            "system_prompt": {
+              "type": "static",
+              "value": "You are a careful research assistant."
+            },
+            "user_message": {
+              "type": "static",
+              "value": "Summarise the latest example orders."
+            }
+          }
+        }
+      },
+      {
+        "id": "j",
+        "summary": "Dynamic agent",
+        "value": {
+          "type": "aiagent",
+          "input_transforms": {
+            "system_prompt": {
+              "type": "javascript",
+              "expr": "'Be brief about ' + flow_input.tone"
+            },
+            "user_message": {
+              "type": "javascript",
+              "expr": "results.a.title"
+            }
+          }
+        }
+      },
+      {
+        "id": "k",
+        "summary": "Classify order",
+        "value": {
+          "type": "aidecision",
+          "input_transforms": {
+            "state": {
+              "type": "javascript",
+              "expr": "results.a"
+            },
+            "questions": {
+              "type": "static",
+              "value": {
+                "urgency": {
+                  "type": "choice",
+                  "instructions": "How urgent is it?",
+                  "criteria": {
+                    "high": "Now",
+                    "low": "Later"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "m",
+        "value": {
+          "type": "rawscript",
+          "language": "python3",
+          "content": "def main(crm, who):\n    return who\n",
+          "input_transforms": {
+            "crm": {
+              "type": "static",
+              "value": "$res:u/demo/unknown_system"
+            },
+            "who": {
+              "type": "javascript",
+              "expr": "flow_input.recipient_email"
+            },
+            "n": {
+              "type": "javascript",
+              "expr": "flow_input.limit * 2"
+            }
+          }
+        },
+        "summary": "Notify the team",
+        "suspend": {
+          "required_events": 2,
+          "timeout": 3600,
+          "self_approval_disabled": true,
+          "resume_form": {
+            "schema": {
+              "properties": {
+                "comment": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "skip_if": {
+          "expr": "results.a.total < 1"
+        },
+        "retry": {
+          "constant": {
+            "attempts": 3,
+            "seconds": 10
+          },
+          "retry_if": {
+            "expr": "error != null"
+          }
+        },
+        "continue_on_error": true,
+        "stop_after_if": {
+          "expr": "result.done",
+          "error_message": "Stopped early"
+        }
+      }
+    ],
+    "failure_module": {
+      "id": "failure",
+      "summary": "Alert on failure",
+      "value": {
+        "type": "rawscript",
+        "language": "python3",
+        "content": "def main(error):\n    return error\n",
+        "input_transforms": {}
+      }
+    },
+    "same_worker": true,
+    "cache_ttl": 60,
+    "notes": [
+      {
+        "text": "Synthetic flow for tests only."
+      }
+    ]
+  },
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "dry_run": {
+        "type": "boolean",
+        "default": true
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 10
+      },
+      "ratio": {
+        "type": "number"
+      },
+      "tone": {
+        "type": "string",
+        "enum": [
+          "formal",
+          "casual"
+        ],
+        "default": "casual"
+      },
+      "recipient_list": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "x"
+        ]
+      },
+      "keywords": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "alpha",
+          "beta"
+        ]
+      },
+      "note": {
+        "type": "string",
+        "default": "hello"
+      },
+      "config": {
+        "type": "object"
+      }
+    }
+  }
+}

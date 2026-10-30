@@ -1,0 +1,18 @@
+[routine]
+name = "demo"
+type = "watch"
+schedule = "0 22 * * 1-5"
+
+[[setting]]
+name = "markets"
+type = "list"
+default = ["AU", "NZ"]
+
+[[action]]
+name = "notify"
+kind = "send"
+
+[gate]
+enabled = true
+transport = "email"
+timeout_hours = 48

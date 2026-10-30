@@ -1,0 +1,51 @@
+[routine]
+name = "invoice-exceptions"
+type = "watch"
+schedule = "0 22 * * 1-5"  # UTC, weekdays; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "invoice-exceptions"
+template_version = 1
+
+[[setting]]
+name = "amount_threshold"
+type = "number"
+label = "Flag amounts over"
+default = 1000
+min = 0
+max = 1000000
+cost_note = "no extra cost; a lower value means more flags"
+
+[[setting]]
+name = "known_vendors"
+type = "list"
+label = "Known vendor domains"
+example = "acme.example"
+default = []
+cost_note = "no extra cost; vendors not listed are flagged as new"
+
+[[setting]]
+name = "lookback_days"
+type = "number"
+label = "Look back (days)"
+default = 7
+min = 1
+max = 31
+cost_note = "a longer window means more invoices to read"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 10
+min = 0
+max = 30
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = false

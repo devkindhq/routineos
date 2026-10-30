@@ -1,0 +1,297 @@
+{
+  "format": "routineos.catalog.v1",
+  "templates": [
+    {
+      "id": "candidate-shortlist",
+      "version": "1.0.0",
+      "title": "Candidate shortlist",
+      "summary": "Scores new applicants against your rubric with evidence per criterion and suggests a shortlist. It never rejects anyone.",
+      "category": "recruiting",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 21 * * 1-5",
+      "path": "candidate-shortlist.json",
+      "bytes": 14543,
+      "sha256": "521e851abd273011b4fdf0b3ee08575e5ed1360f01d8abbdcec227dd5a39b423",
+      "connectors": [
+        {
+          "id": "ats",
+          "label": "Applicant tracking system",
+          "required": true
+        }
+      ],
+      "inspiration": [
+        "https://n8n.io/workflows/2860"
+      ]
+    },
+    {
+      "id": "content-calendar",
+      "version": "1.0.0",
+      "title": "Content calendar",
+      "summary": "Drafts cited posts from your topics and sources in your house style, and publishes only what a person approves.",
+      "category": "content",
+      "maturity": "unpiloted",
+      "type": "approval-gated",
+      "schedule": "0 21 * * 1,3",
+      "path": "content-calendar.json",
+      "bytes": 19251,
+      "sha256": "50ce158446f6b6d92471027b3ffcc3db53123a9edcf84b7c6eecf2631f4c7407",
+      "connectors": [
+        {
+          "id": "web-search",
+          "label": "Web search",
+          "required": true
+        },
+        {
+          "id": "web",
+          "label": "Web fetch",
+          "required": true
+        },
+        {
+          "id": "gate-mail",
+          "label": "Mail for approvals",
+          "required": false
+        },
+        {
+          "id": "cms",
+          "label": "Publishing platform",
+          "required": false
+        }
+      ],
+      "inspiration": [
+        "https://n8n.io/workflows/3066",
+        "https://n8n.io/workflows/3986",
+        "https://n8n.io/workflows/2187",
+        "https://n8n.io/workflows/3291"
+      ]
+    },
+    {
+      "id": "engineering-digest",
+      "version": "1.0.0",
+      "title": "Engineering digest",
+      "summary": "A daily digest of open pull requests, issues and failing builds, with the stale ones flagged.",
+      "category": "dev",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 21 * * 0-4",
+      "path": "engineering-digest.json",
+      "bytes": 13741,
+      "sha256": "02d1fcaf9875d7610fdd19955c2634eb853dc4b5c9baf1f38d6df2b1e0dc2e6f",
+      "connectors": [
+        {
+          "id": "code-host",
+          "label": "Code host",
+          "required": true
+        }
+      ],
+      "inspiration": [
+        "https://n8n.io/workflows/1534"
+      ]
+    },
+    {
+      "id": "inbox-triage",
+      "version": "1.0.0",
+      "title": "Inbox triage",
+      "summary": "Labels new mail threads, drafts replies in your style, and sends a reply only after a person approves it.",
+      "category": "support",
+      "maturity": "unpiloted",
+      "type": "approval-gated",
+      "schedule": "0 22,4 * * 0-4",
+      "path": "inbox-triage.json",
+      "bytes": 15596,
+      "sha256": "5da954370fc9d9957cca28ba3cf1a7ec0d3d39fedd72450caf8b7e29df9f5e8c",
+      "connectors": [
+        {
+          "id": "mail",
+          "label": "Mail (read)",
+          "required": true
+        },
+        {
+          "id": "gate-mail",
+          "label": "Mail for approvals",
+          "required": false
+        },
+        {
+          "id": "mail-send",
+          "label": "Mail (send)",
+          "required": false
+        }
+      ],
+      "inspiration": [
+        "https://n8n.io/workflows/2271",
+        "https://n8n.io/workflows/2454",
+        "https://n8n.io/workflows/1953",
+        "https://n8n.io/workflows/2722"
+      ]
+    },
+    {
+      "id": "invoice-exceptions",
+      "version": "1.0.0",
+      "title": "Invoice exceptions",
+      "summary": "Reads incoming invoices and flags duplicates, large amounts and new vendors for a person to check. It never pays.",
+      "category": "finance",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 22 * * 1-5",
+      "path": "invoice-exceptions.json",
+      "bytes": 15728,
+      "sha256": "839889cd3d3ce1fabc6fc1195a1f730e21dcf4a5651a1866830644698a2fc829",
+      "connectors": [
+        {
+          "id": "invoices",
+          "label": "Invoice mailbox or folder",
+          "required": true
+        }
+      ],
+      "inspiration": [
+        "https://n8n.io/workflows/2320"
+      ]
+    },
+    {
+      "id": "jobs-watch",
+      "version": "1.0.0",
+      "title": "Jobs watch",
+      "summary": "Tracks public job postings for commerce and automation roles, links each role to its company, and puts the few that need a person in the Inbox.",
+      "category": "sales",
+      "maturity": "piloted",
+      "type": "watch",
+      "schedule": "0 22 * * 1,4",
+      "path": "jobs-watch.json",
+      "bytes": 16535,
+      "sha256": "e7188185288d5be30befcacfd8f5c6db14692094aa623417e31f49f4a29bb3d0",
+      "connectors": [
+        {
+          "id": "web-search",
+          "label": "Web search",
+          "required": true
+        },
+        {
+          "id": "web",
+          "label": "Web fetch",
+          "required": true
+        },
+        {
+          "id": "mail",
+          "label": "Mail",
+          "required": false
+        }
+      ],
+      "inspiration": []
+    },
+    {
+      "id": "meeting-brief",
+      "version": "1.0.0",
+      "title": "Meeting brief",
+      "summary": "Before each outside meeting, researches the other company and writes a short, cited brief to the Desk.",
+      "category": "sales",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 20 * * 0-4",
+      "path": "meeting-brief.json",
+      "bytes": 13227,
+      "sha256": "4ed745ccf1a822f6fec75f8a5efb7cb2b01ae4ed178fec0214b242415443b01a",
+      "connectors": [
+        {
+          "id": "calendar",
+          "label": "Calendar",
+          "required": true
+        },
+        {
+          "id": "web-search",
+          "label": "Web search",
+          "required": true
+        },
+        {
+          "id": "web",
+          "label": "Web fetch",
+          "required": true
+        }
+      ],
+      "inspiration": [
+        "https://n8n.io/workflows/2324",
+        "https://n8n.io/workflows/1862",
+        "https://n8n.io/workflows/2786"
+      ]
+    },
+    {
+      "id": "support-gap-digest",
+      "version": "1.0.0",
+      "title": "Support gap digest",
+      "summary": "Each week, groups repeated support questions and flags the ones your help pages do not answer yet.",
+      "category": "support",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 21 * * 4",
+      "path": "support-gap-digest.json",
+      "bytes": 13790,
+      "sha256": "4d22d8c53972655b1266858b58317842edbf5a32829d5e45351262d5d4d27e54",
+      "connectors": [
+        {
+          "id": "helpdesk",
+          "label": "Help desk",
+          "required": true
+        },
+        {
+          "id": "web",
+          "label": "Web fetch",
+          "required": true
+        }
+      ],
+      "inspiration": [
+        "https://n8n.io/workflows/2753",
+        "https://n8n.io/workflows/2752",
+        "https://n8n.io/workflows/2465"
+      ]
+    },
+    {
+      "id": "watch",
+      "version": "1.0.0",
+      "title": "Watch",
+      "summary": "Watches a list of sources for new and changed items and writes one report per run, even in a quiet week.",
+      "category": "general",
+      "maturity": "piloted",
+      "type": "watch",
+      "schedule": "0 22 * * 1-5",
+      "path": "watch.json",
+      "bytes": 8799,
+      "sha256": "8aa349393cbd195ae55a269b0d10a9b36e84af61c34da73282416a3b3570f527",
+      "connectors": [
+        {
+          "id": "web",
+          "label": "Web fetch",
+          "required": true
+        }
+      ],
+      "inspiration": []
+    },
+    {
+      "id": "weekly-marketing-report",
+      "version": "1.0.0",
+      "title": "Weekly marketing report",
+      "summary": "Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves.",
+      "category": "marketing",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 21 * * 0",
+      "path": "weekly-marketing-report.json",
+      "bytes": 15425,
+      "sha256": "d6f753a2d98db8109cdcca3523c3998ad28afb230d130bdfbaab72f0fad3073c",
+      "connectors": [
+        {
+          "id": "analytics",
+          "label": "Analytics and ad platforms",
+          "required": true
+        },
+        {
+          "id": "web",
+          "label": "Web fetch",
+          "required": false
+        }
+      ],
+      "inspiration": [
+        "https://n8n.io/workflows/2783",
+        "https://n8n.io/workflows/3224"
+      ]
+    }
+  ]
+}

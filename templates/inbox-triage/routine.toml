@@ -1,0 +1,63 @@
+[routine]
+name = "inbox-triage"
+type = "approval-gated"
+schedule = "0 22,4 * * 0-4"  # UTC, twice a day Sunday to Thursday; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "inbox-triage"
+template_version = 1
+
+[[setting]]
+name = "labels"
+type = "list"
+label = "Labels"
+default = ["needs-reply", "fyi", "billing", "sales", "suspect"]
+cost_note = "no extra cost; every thread gets exactly one label"
+
+[[setting]]
+name = "lookback_hours"
+type = "number"
+label = "Look back (hours)"
+default = 12
+min = 1
+max = 72
+cost_note = "a longer window means more threads to read"
+
+[[setting]]
+name = "skip_from_domains"
+type = "list"
+role = "exclude"
+label = "Skip mail from these domains"
+example = "newsletter.example"
+default = []
+cost_note = "no extra cost; threads from these domains are kept but marked dropped"
+
+[[setting]]
+name = "draft_replies"
+type = "toggle"
+label = "Draft replies"
+default = true
+cost_note = "drafting adds a model step per thread labelled needs-reply"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 10
+min = 0
+max = 30
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = true
+transport = "email"
+timeout_hours = 24
+
+[[action]]
+name = "send-reply"
+kind = "send"

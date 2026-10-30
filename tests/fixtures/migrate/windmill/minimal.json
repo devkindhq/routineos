@@ -1,0 +1,17 @@
+{
+  "summary": "Minimal example flow",
+  "value": {
+    "modules": [
+      {
+        "id": "a",
+        "value": {
+          "type": "rawscript",
+          "language": "python3",
+          "content": "def main():\n    return 'ok'\n",
+          "input_transforms": {}
+        },
+        "summary": "Say ok"
+      }
+    ]
+  }
+}

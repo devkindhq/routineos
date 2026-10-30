@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.pyc
+.superpowers/
+tests/visual/out/
+tests/visual/node_modules/
+docs/
+docs-site/
+docs-content/
+site/

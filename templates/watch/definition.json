@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "label": "Watch",
+  "inbox": false,
+  "types": {
+    "item": {
+      "label": "Item",
+      "plural": "Items",
+      "identity": "field:url",
+      "merge": "merge",
+      "fields": {
+        "title": {"type": "text", "summary": true},
+        "source": {"type": "text", "summary": true},
+        "published": {"type": "date", "summary": true},
+        "url": {"type": "url"},
+        "why": {"type": "text"}
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "latest",
+      "type": "item",
+      "name": "Latest",
+      "filters": {"status": "active"},
+      "sort": {"field": "lastSeen", "dir": "desc"},
+      "columns": ["title", "source", "published"]
+    }
+  ],
+  "learning": {"enabled": true}
+}

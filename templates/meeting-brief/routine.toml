@@ -1,0 +1,52 @@
+[routine]
+name = "meeting-brief"
+type = "watch"
+schedule = "0 20 * * 0-4"  # UTC, Sunday to Thursday; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "meeting-brief"
+template_version = 1
+
+[[setting]]
+name = "lookahead_hours"
+type = "number"
+label = "Look ahead (hours)"
+default = 24
+min = 4
+max = 72
+cost_note = "a longer window means more meetings to research per run"
+
+[[setting]]
+name = "internal_domains"
+type = "list"
+role = "exclude"
+label = "Internal domains"
+example = "yourcompany.example"
+default = []
+cost_note = "no extra cost; meetings with only these domains are skipped"
+
+[[setting]]
+name = "max_research_pages"
+type = "number"
+label = "Pages per company"
+default = 5
+min = 1
+max = 15
+cost_note = "each page is one more page open"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 5
+min = 0
+max = 20
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = false

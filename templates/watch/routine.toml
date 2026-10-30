@@ -1,0 +1,42 @@
+[routine]
+name = "watch"
+type = "watch"
+schedule = "0 22 * * 1-5"  # UTC, weekdays; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+
+[[setting]]
+name = "sources"
+type = "list"
+default = ["https://example.org/changelog", "https://example.org/news"]
+cost_note = "each source adds at least one page open per run"
+
+[[setting]]
+name = "lookback_days"
+type = "number"
+default = 7
+min = 1
+max = 30
+cost_note = "a longer window means more items to compare"
+
+[[setting]]
+name = "max_items"
+type = "number"
+default = 25
+min = 5
+max = 100
+cost_note = "more items means more page opens"
+
+[[setting]]
+name = "report_when_empty"
+type = "toggle"
+default = true
+cost_note = "writes a short report even when nothing changed, so a quiet week is visible"
+
+[gate]
+enabled = false

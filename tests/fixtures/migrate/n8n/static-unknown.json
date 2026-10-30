@@ -1,0 +1,86 @@
+{
+  "name": "Odd nodes",
+  "staticData": {
+    "global": {
+      "lastSeen": 42
+    }
+  },
+  "nodes": [
+    {
+      "id": "node-044",
+      "name": "Hourly poll",
+      "type": "n8n-nodes-base.exampleAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        8800,
+        300
+      ],
+      "parameters": {
+        "event": "created"
+      }
+    },
+    {
+      "id": "node-045",
+      "name": "Community step",
+      "type": "@acme/n8n-nodes-thing.thing",
+      "typeVersion": 1,
+      "position": [
+        9000,
+        300
+      ],
+      "parameters": {
+        "mode": "x"
+      }
+    },
+    {
+      "id": "node-046",
+      "name": "Old step",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        9200,
+        300
+      ],
+      "parameters": {},
+      "disabled": true
+    },
+    {
+      "id": "node-047",
+      "name": "Lonely code",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        9400,
+        300
+      ],
+      "parameters": {
+        "functionCode": "return items;"
+      }
+    }
+  ],
+  "connections": {
+    "Hourly poll": {
+      "main": [
+        [
+          {
+            "node": "Community step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Community step": {
+      "main": [
+        [
+          {
+            "node": "Old step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

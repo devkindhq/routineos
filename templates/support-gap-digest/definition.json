@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "label": "Support gap digest",
+  "inbox": true,
+  "types": {
+    "question": {
+      "label": "Question",
+      "plural": "Questions",
+      "icon": "circle-help",
+      "identity": "field:key",
+      "merge": "merge",
+      "fields": {
+        "key": {
+          "label": "Key",
+          "type": "text"
+        },
+        "example": {
+          "label": "Example",
+          "type": "text",
+          "summary": true
+        },
+        "count": {
+          "label": "Tickets",
+          "type": "number",
+          "summary": true
+        },
+        "answered": {
+          "label": "Answered",
+          "type": "bool",
+          "summary": true
+        },
+        "help_page": {
+          "label": "Help page",
+          "type": "url"
+        },
+        "week": {
+          "label": "Week",
+          "type": "date"
+        }
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "gaps",
+      "type": "question",
+      "name": "Repeated questions",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "count",
+        "dir": "desc"
+      },
+      "columns": [
+        "example",
+        "count",
+        "answered"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

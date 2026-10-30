@@ -1,0 +1,50 @@
+[routine]
+name = "support-gap-digest"
+type = "watch"
+schedule = "0 21 * * 4"  # UTC, Thursday; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "support-gap-digest"
+template_version = 1
+
+[[setting]]
+name = "lookback_days"
+type = "number"
+label = "Look back (days)"
+default = 7
+min = 1
+max = 30
+cost_note = "a longer window means more tickets to read"
+
+[[setting]]
+name = "min_repeats"
+type = "number"
+label = "Minimum repeats"
+default = 3
+min = 2
+max = 20
+cost_note = "no extra cost; a lower value means more groups to check"
+
+[[setting]]
+name = "help_center_urls"
+type = "list"
+label = "Help pages"
+default = ["https://example.org/help"]
+cost_note = "each page adds at least one page open per run"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 5
+min = 0
+max = 20
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = false

@@ -1,0 +1,77 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "candidate-shortlist",
+  "version": "1.0.0",
+  "title": "Candidate shortlist",
+  "summary": "Scores new applicants against your rubric with evidence per criterion and suggests a shortlist. It never rejects anyone.",
+  "category": "recruiting",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "inspiration": [
+    {
+      "source": "n8n",
+      "title": "AI HR workflow for CV analysis and candidate evaluation",
+      "url": "https://n8n.io/workflows/2860"
+    }
+  ],
+  "stages": [
+    {
+      "id": "collect",
+      "kind": "model",
+      "title": "Read new applicants",
+      "does": "Lists new applicants per role and reads each CV.",
+      "connectors": [
+        "ats"
+      ]
+    },
+    {
+      "id": "mark",
+      "kind": "model",
+      "title": "Mark the rubric",
+      "does": "Marks each criterion met, partly or not, with a short quote as evidence."
+    },
+    {
+      "id": "score",
+      "kind": "code",
+      "title": "Score",
+      "does": "Turns the marks into a weighted 0 to 100 score.",
+      "command": "python3 lib/score_rubric.py --criteria criteria.json --marks marks.json"
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "ats",
+      "label": "Applicant tracking system",
+      "kind": "mcp",
+      "purpose": "Read new applicants and their CVs.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "collect"
+      ],
+      "alternatives": [
+        "CVs placed in the run folder with an applicant reference each"
+      ],
+      "connect": "Add an MCP server or connector for your applicant tracking system with read access only."
+    }
+  ]
+}

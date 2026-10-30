@@ -1,0 +1,152 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "content-calendar",
+  "version": "1.0.0",
+  "title": "Content calendar",
+  "summary": "Drafts cited posts from your topics and sources in your house style, and publishes only what a person approves.",
+  "category": "content",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "inspiration": [
+    {
+      "source": "n8n",
+      "title": "Multi-platform social content creation with AI",
+      "url": "https://n8n.io/workflows/3066"
+    },
+    {
+      "source": "n8n",
+      "title": "Personalized AI tech newsletter (RSS, OpenAI, Gmail)",
+      "url": "https://n8n.io/workflows/3986"
+    },
+    {
+      "source": "n8n",
+      "title": "Write a WordPress post with AI from keywords",
+      "url": "https://n8n.io/workflows/2187"
+    },
+    {
+      "source": "n8n",
+      "title": "SEO WordPress content with Perplexity research",
+      "url": "https://n8n.io/workflows/3291"
+    }
+  ],
+  "stages": [
+    {
+      "id": "research",
+      "kind": "model",
+      "title": "Research topics",
+      "does": "Reads the feeds and searches each topic, keeping every source URL.",
+      "connectors": [
+        "web-search",
+        "web"
+      ]
+    },
+    {
+      "id": "draft",
+      "kind": "skill",
+      "title": "Draft posts",
+      "does": "Drafts each post in each format in the house style, with a marker per claim.",
+      "skill": "house-style"
+    },
+    {
+      "id": "cite",
+      "kind": "code",
+      "title": "Check citations",
+      "does": "Checks every citation marker has a source and every source is cited.",
+      "command": "python3 lib/check_citations.py --draft draft.md --sources sources.json"
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox",
+        "pending"
+      ]
+    },
+    {
+      "id": "approve",
+      "kind": "gate",
+      "title": "Approve each post",
+      "does": "A person approves, edits or declines each draft; the gate times out after 72 hours.",
+      "connectors": [
+        "gate-mail"
+      ]
+    },
+    {
+      "id": "publish",
+      "kind": "model",
+      "title": "Publish approved posts",
+      "does": "On a later run, publishes only the drafts whose decision is approved, exactly as approved.",
+      "connectors": [
+        "cms"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "web-search",
+      "label": "Web search",
+      "kind": "builtin",
+      "purpose": "Find recent material on each topic.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "research"
+      ],
+      "connect": "Nothing to connect when the run already has web search; check it does before the first run."
+    },
+    {
+      "id": "web",
+      "label": "Web fetch",
+      "kind": "builtin",
+      "purpose": "Open each feed and source.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "research"
+      ],
+      "connect": "Nothing to connect when the run can already open web pages."
+    },
+    {
+      "id": "gate-mail",
+      "label": "Mail for approvals",
+      "kind": "connector",
+      "purpose": "Carry each approval request for a draft post.",
+      "required": false,
+      "access": "write",
+      "stages": [
+        "approve"
+      ],
+      "alternatives": [
+        "Slack"
+      ],
+      "connect": "Add a mail connector to the routine's environment before you turn gated messages on."
+    },
+    {
+      "id": "cms",
+      "label": "Publishing platform",
+      "kind": "mcp",
+      "purpose": "Publish a post a person approved.",
+      "required": false,
+      "access": "write",
+      "stages": [
+        "publish"
+      ],
+      "alternatives": [
+        "Copy the approved draft by hand from the Desk"
+      ],
+      "connect": "Add an MCP server or connector for your blog or social platform with publish access, only when you are ready for approved posts to go out."
+    }
+  ]
+}

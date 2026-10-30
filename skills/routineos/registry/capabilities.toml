@@ -1,0 +1,535 @@
+# RoutineOS capability registry. Cached layer only: live documentation search is the
+# first-class source; refresh these records against it. Core, current caveats only.
+
+[[capability]]
+id = "run-writes-artifact-db"
+claim = "A routine run can write to the artifact database of a page that declares capabilities {db:{}} (25,000 docs, 256 KiB each)."
+status = "pilot-verified"
+tested = "2026-10-28, jobs-watch pilot, run wrote documents through the page db capability"
+docs = "silent"
+source = ["pilot:jobs-watch-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "dashboard cannot persist; fall back to repo files or a connector"
+test = "Run a report-only routine that sets and gets one document"
+
+[[capability]]
+id = "remotetrigger-manage-tasks"
+claim = "/schedule and RemoteTrigger (list, get, create, update, run, list_runs, get_run_log) manage scheduled tasks, need a claude.ai login and list no delete action."
+status = "docs-stated"
+docs = "Routines docs list these actions"
+source = ["https://code.claude.com/docs/en/routines"]
+checked = "2026-10-29"
+risk_if_wrong = "deploy and operate cannot create or update tasks, or cannot remove them"
+test = "Call list then get on a throwaway task"
+
+[[capability]]
+id = "remotetrigger-create-fields"
+claim = "RemoteTrigger create and update accept inline prompt vs repo prompt, environment, connector subset and enabled flag, and list returns these fields."
+status = "unverified"
+lead = "owner-reported, not re-tested in this project"
+checked = "2026-10-29"
+risk_if_wrong = "deploy cannot set environment or connectors in one call"
+test = "Create then get a task and compare fields"
+
+[[capability]]
+id = "repo-script-runs"
+claim = "A repo-hosted script runs inside a routine run when called by path."
+status = "pilot-verified"
+tested = "2026-10-31, owner-verified"
+docs = "silent"
+source = ["owner:2026-10-31"]
+checked = "2026-10-31"
+risk_if_wrong = "templates that call skill scripts fail in the cloud"
+test = "Run a report-only routine that calls a repo script by path and prints its output"
+
+[[capability]]
+id = "script-writes-store"
+claim = "A repo-hosted Python script run inside a routine can write to the artifact db or a connector."
+status = "unverified"
+lead = "owner-reported, not re-tested in this project"
+checked = "2026-10-29"
+risk_if_wrong = "scripts must only compute; the model does every write"
+test = "Run a repo script in a report-only run and attempt one store write"
+
+[[capability]]
+id = "run-cannot-fire-routines"
+claim = "A run cannot fire or edit other routines because the remote trigger tool is absent in a run."
+status = "pilot-verified"
+tested = "2026-10-28, jobs-watch pilot, tool absent from the run tool list"
+docs = "silent"
+source = ["pilot:jobs-watch-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "chaining by direct fire would be possible; chain through the db instead"
+test = "List tools inside a run"
+
+[[capability]]
+id = "api-trigger-fire"
+claim = "The API trigger fires a routine from outside Claude with POST /v1/claude_code/routines/{id}/fire and a per-task bearer token made in the web UI."
+status = "pilot-verified"
+tested = "2026-10-31, owner-verified: a routine fired through the API trigger; fire text delivery not checked"
+docs = "Routines docs describe the fire endpoint and token"
+source = ["https://code.claude.com/docs/en/routines"]
+checked = "2026-10-31"
+risk_if_wrong = "external triggers need manual token setup"
+test = "Fire a throwaway task once from curl"
+
+[[capability]]
+id = "api-trigger-limits"
+claim = "API trigger fire text is optional, up to 65,536 chars, delivered as untrusted data, with no idempotency key."
+status = "docs-stated"
+docs = "Routines docs describe the fire payload"
+source = ["https://code.claude.com/docs/en/routines"]
+checked = "2026-10-29"
+risk_if_wrong = "external triggers may double-fire or truncate"
+test = "Fire twice with the same text and check both runs and the text"
+
+[[capability]]
+id = "approval-email-slack"
+claim = "Email and Slack approval gates with exact-keyword replies work in unattended runs; Slack send needs the connector tool policy Ask for approval."
+status = "pilot-verified"
+tested = "2026-10-28, jobs-watch pilot, both transports checked, including ignoring a quoted subject"
+docs = "silent"
+source = ["pilot:jobs-watch-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "gates stall or never fire"
+test = "Send a gate message and reply with and without the keyword"
+
+[[capability]]
+id = "push-one-way"
+claim = "Push from a run is a one-way notice; tapping it opens a chat window, not the artifact."
+status = "pilot-verified"
+tested = "2026-10-28, one device, owner confirmed receipt"
+docs = "silent"
+source = ["pilot:jobs-watch-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "push promised as a gate or a link"
+test = "Send a probe push and tap it"
+
+[[capability]]
+id = "push-reply-path"
+claim = "A reply made from a push notification reaches the routine."
+status = "unverified"
+lead = "not checked"
+checked = "2026-10-29"
+risk_if_wrong = "gates built on push replies never resolve"
+test = "Send a push asking for a keyword and reply from the phone"
+
+[[capability]]
+id = "in-app-approval-button"
+claim = "An approval button inside the artifact page can resolve a gate for a run."
+status = "unverified"
+lead = "not checked"
+checked = "2026-10-29"
+risk_if_wrong = "gates rely on Slack or email only"
+test = "Page writes a decision doc to the db and a run reads it"
+
+[[capability]]
+id = "teams-approval"
+claim = "Microsoft Teams works as an approval transport."
+status = "unverified"
+lead = "not checked"
+checked = "2026-10-29"
+risk_if_wrong = "Teams users need Slack or email for gates"
+test = "Connect Teams and send then read one gate message"
+
+[[capability]]
+id = "network-secrets"
+claim = "Network secrets (Pro, Max, Team, Enterprise) attach the key through Anthropic's proxy outside the VM, never as env vars or files."
+status = "docs-stated"
+docs = "Environments docs describe network secrets"
+source = ["https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "API keys must be held another way"
+test = "Add a secret for a host and call it from a run"
+
+[[capability]]
+id = "env-vars-readable"
+claim = "Plain environment variables are readable by anyone who uses the environment."
+status = "docs-stated"
+docs = "Environments docs"
+source = ["https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "a secret placed in an env var is exposed"
+test = "Read the docs passage again at refresh"
+
+[[capability]]
+id = "environments-ui-only"
+claim = "Several environments per person are allowed, created in the web UI only and archived rather than deleted; the maximum is not stated."
+status = "docs-stated"
+docs = "Environments docs; maximum not stated"
+source = ["https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "deploy cannot create an environment per app"
+test = "Create environments until refused"
+
+[[capability]]
+id = "connectors-account-level"
+claim = "Connectors are account-level and a task can drop connectors it does not need; no per-tool subset was found."
+status = "docs-stated"
+docs = "Connector docs; per-tool restriction not found"
+source = ["https://code.claude.com/docs/en/cloud-environments", "https://support.claude.com/en/articles/11176164-use-connectors-to-extend-claude-s-capabilities"]
+checked = "2026-10-29"
+risk_if_wrong = "least-privilege per tool is not possible"
+test = "Create a task with one connector and list its tools"
+
+[[capability]]
+id = "sandbox-allowlist"
+claim = "Run network access behaves like an allowlist: api.cloudflare.com, gateway.ai.cloudflare.com, developers.cloudflare.com and huggingface.co were blocked with proxy 403, some package hosts answered."
+status = "pilot-verified"
+tested = "2026-10-28, jobs-watch pilot, host probes from a run"
+docs = "silent"
+source = ["pilot:jobs-watch-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "an app depends on a host the run cannot reach"
+test = "Probe each new host from a run before design"
+
+[[capability]]
+id = "max-run-time"
+claim = "The maximum run time of a routine is known."
+status = "unverified"
+lead = "not stated in docs"
+checked = "2026-10-29"
+risk_if_wrong = "long jobs are cut off mid-write"
+test = "Run a timed sleep loop in a report-only run"
+
+[[capability]]
+id = "schedule-limits"
+claim = "Minimum schedule interval is 1 hour, 100 scheduled runs per hour per account, and 30 per hour per task for run-now plus API fires."
+status = "docs-stated"
+docs = "Routines docs limits; research preview, may change"
+source = ["https://code.claude.com/docs/en/routines", "https://code.claude.com/docs/en/scheduled-tasks"]
+checked = "2026-10-29"
+risk_if_wrong = "schedules rejected or throttled"
+test = "Create a task below the minimum interval"
+
+[[capability]]
+id = "run-vm-spec"
+claim = "Each run gets a fresh VM with 4 vCPU, 16 GB RAM and 30 GB disk, Python 3.x, and the repo cloned each run."
+status = "docs-stated"
+docs = "Routines docs; pilot saw 4 CPU and 16 GB, disk not measured"
+source = ["https://code.claude.com/docs/en/routines", "pilot:jobs-watch-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "heavy jobs run out of memory or disk"
+test = "Print nproc, free and df in a run"
+
+[[capability]]
+id = "auto-pause-on-cost"
+claim = "A routine pauses automatically on cost overrun."
+status = "unverified"
+lead = "not checked; the framework uses a deterministic counter in the store"
+checked = "2026-10-29"
+risk_if_wrong = "a runaway app keeps spending"
+test = "Check the usage settings and run a capped task"
+
+[[capability]]
+id = "republish-from-run-asks"
+claim = "A run republishing a Desk artifact triggers an update prompt, which may stall an unattended run."
+status = "docs-stated"
+docs = "Artifact docs say the platform asks before updating"
+source = ["https://code.claude.com/docs/en/artifacts"]
+checked = "2026-10-29"
+risk_if_wrong = "unattended page updates hang"
+test = "Republish an artifact from an API-triggered run"
+
+[[capability]]
+id = "artifact-db-limits-vs-no-backend"
+claim = "Artifact db storage limits (25,000 docs, 256 KiB each) and the official 'no backend' wording are both on record and unreconciled."
+status = "conflict"
+tested = "2026-10-28, jobs-watch pilot, run wrote and read db documents"
+docs = "official artifact docs say artifacts have no backend"
+source = ["pilot:jobs-watch-2026-10-28", "https://code.claude.com/docs/en/artifacts"]
+checked = "2026-10-29"
+risk_if_wrong = "the db may be withdrawn or limited, breaking persistence"
+test = "Re-run the db write and re-read the artifacts docs passage at refresh"
+
+[[capability]]
+id = "cloudflare-supabase-modal-daytona-reach"
+claim = "Cloudflare, Supabase, Modal or Daytona are reachable or usable from a run."
+status = "unverified"
+lead = "not checked; Cloudflare API was blocked in the pilot, so Workers via the person's own domain is the path to test"
+checked = "2026-10-29"
+risk_if_wrong = "external storage or compute choices fail at run time"
+test = "Probe each host and MCP from a run"
+
+[[capability]]
+id = "connector-credentials-in-transcript"
+claim = "Connector credentials can appear in a run transcript."
+status = "unverified"
+lead = "not checked"
+checked = "2026-10-29"
+risk_if_wrong = "secrets leak into logs"
+test = "Run a connector call and search the transcript for the token"
+
+[[capability]]
+id = "repo-skills-carry-over"
+claim = "Skills committed to a repository's .claude/skills/ load in cloud runs; skills only in ~/.claude/skills/ on a machine do not, because each run starts as a fresh cloud session."
+status = "docs-stated"
+docs = "Skills docs state cloud sessions do not read ~/.claude/skills/ and that a repo's .claude/skills/ can carry the skill; project threads are the exception"
+source = ["https://code.claude.com/docs/en/skills", "https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "a skill kept only in the home folder is reported as not found when the routine invokes it"
+test = "Run a report-only routine whose prompt starts with the skill name and read the transcript"
+
+[[capability]]
+id = "account-skills-sync"
+claim = "Skills enabled on the person's claude.ai account load in cloud sessions, including cloud scheduled tasks, synced at session start."
+status = "docs-stated"
+docs = "Skills docs say cloud sessions load the skills enabled for the claude.ai account, synced at session start"
+source = ["https://code.claude.com/docs/en/skills", "https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "an account skill is absent in a run; fall back to the repo skills folder"
+test = "Enable a trivial skill on the account, run a report-only routine that invokes it, read the transcript"
+
+[[capability]]
+id = "skill-upload-frontmatter-allowlist"
+claim = "An uploaded skill accepts only the frontmatter keys name, description, license, compatibility, metadata and allowed-tools; any other key makes packaging or upload fail with a hard error."
+status = "docs-stated"
+docs = "Skills docs list the allowed frontmatter fields and state that an extra field fails the upload"
+source = ["https://code.claude.com/docs/en/skills"]
+checked = "2026-10-29"
+risk_if_wrong = "an account skill cannot be uploaded until the extra keys are removed"
+test = "Upload a skill with one extra key and read the error"
+
+[[capability]]
+id = "repo-plugins-not-installed-in-cloud"
+claim = "Plugins a repository turns on under enabledPlugins in its settings are not installed in a cloud session, so a routine cannot rely on a repo-declared plugin."
+status = "docs-stated"
+docs = "Cloud environments docs state a cloud session does not install plugins a repository turns on"
+source = ["https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "a repo-declared plugin is assumed missing when it would load; the safe direction, since repo skills carry the logic"
+test = "Declare a plugin in repo settings, run report-only, list the available skills in the transcript"
+
+[[capability]]
+id = "repo-less-routine"
+claim = "A routine with no repository (an inline prompt or an account skill only) is accepted by the platform."
+status = "pilot-verified"
+tested = "2026-10-28, pilot deploy, a repo-less routine was created via http_api and ran"
+docs = "silent: the routines page says a task needs a repository or a GitHub or API trigger, and does not state that a repo-less task is refused"
+source = ["pilot:deploy-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "creation is refused or a chat scheduled task is made instead; fall back to the repo delivery mode"
+test = "Create one repo-less routine in report-only mode and read it back"
+
+[[capability]]
+id = "thin-prompt-plus-skill"
+claim = "A routine prompt whose message starts with /skill-name can invoke a skill for its core logic."
+status = "unverified"
+lead = "docs are silent for cloud tasks; the skills page says a /skill-name at the start of a message runs the skill"
+checked = "2026-10-29"
+risk_if_wrong = "the skill is not run and the prompt must carry the logic itself"
+test = "Create a report-only routine whose prompt is only /skill-name and read the transcript"
+
+[[capability]]
+id = "fire-payload-untrusted"
+claim = "Text passed to an API trigger fire is delivered inside a routine-fire-payload tag as untrusted data; the saved prompt must opt in to act on it and it is never approval or consent."
+status = "docs-stated"
+docs = "Routines docs describe the fire text as freeform, untrusted data that cannot act as approval"
+source = ["https://code.claude.com/docs/en/routines"]
+checked = "2026-10-29"
+risk_if_wrong = "fire text could be treated as approval for a gated action"
+test = "Fire a report-only routine with text that asks for a send and confirm nothing is sent"
+
+[[capability]]
+id = "environment-settings-not-readable-via-api"
+claim = "RemoteTrigger returns only environment_id and an empty environment_variables object for a routine, so the environment's network access, allowed domains, network secrets, setup script and variables cannot be read by RoutineOS; the person must confirm them from the claude.ai environment dialog."
+status = "pilot-verified"
+tested = "2026-10-29, pilot deploy, RemoteTrigger read compared with the claude.ai Edit cloud environment dialog (four controls: network access, network secrets, setup script, environment variables)"
+docs = "silent"
+source = ["pilot:deploy-2026-10-29"]
+checked = "2026-10-29"
+risk_if_wrong = "RoutineOS could read the settings itself; asking the person is then only extra work"
+test = "Get a routine with RemoteTrigger and compare with the environment dialog"
+
+[[capability]]
+id = "default-environment-shared"
+claim = "The Default environment cannot be renamed or archived and is shared by every routine that uses it, so a change to it affects all of them."
+status = "pilot-verified"
+tested = "2026-10-29, pilot deploy, claude.ai Edit cloud environment dialog offered no rename or archive for Default"
+docs = "Environments docs say environments are archived rather than deleted; the Default exception is not stated"
+source = ["pilot:deploy-2026-10-29", "https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "a per-app change to Default is assumed to be safe when it is not, or the reverse"
+test = "Open the Default environment dialog and look for rename and archive"
+
+[[capability]]
+id = "default-environment-network"
+claim = "The network access level of the Default environment is known."
+status = "conflict"
+tested = "2026-10-29, pilot deploy, the dialog showed Default as Limited, no domains, package managers on"
+docs = "Environments docs say the Default environment has Trusted network access"
+source = ["pilot:deploy-2026-10-29", "https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "a host assumed reachable from Default is blocked, or the reverse"
+test = "Ask the person to read the level from the dialog and probe one host from a run"
+
+[[capability]]
+id = "connector-traffic-bypasses-sandbox-network"
+claim = "Connector (MCP) traffic from a run is routed through Anthropic's servers, so connector reads and writes do not depend on the environment's network level or allowed domains."
+status = "docs-stated"
+docs = "Routines and environments docs: connector traffic is routed through Anthropic's servers, so the connectors added to the task work without adding their hosts to Allowed domains (summary: https://docs.routineos.org/infrastructure/connectors-and-mcp)"
+source = ["https://code.claude.com/docs/en/routines", "https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "a connector-based design fails in a None or Limited environment"
+test = "Run a report-only routine with one connector read in an environment with network none"
+
+[[capability]]
+id = "webfetch-limited-network"
+claim = "WebFetch from a run in a Limited environment with no allowed domains can reach public job boards."
+status = "unverified"
+lead = "not probed; a pilot prompt claims WebFetch is blocked there; that pilot used WebSearch instead, which returned US-only, undated aggregator pages and 0 usable roles"
+checked = "2026-10-29"
+risk_if_wrong = "a design reads pages that the run cannot fetch, or avoids WebFetch for no reason"
+test = "Probe: WebFetch one job board URL from a report-only run in that environment and record the result"
+
+[[capability]]
+id = "setup-script-rules"
+claim = "A setup script is a Bash script run when a new cloud session starts, before Claude Code launches; up to 64 KB, must exit zero, cached only if it ends in about 5 minutes; the environment's variables are not set yet; the cache keeps files only, rebuilds when the script or allowed hosts change, expires after roughly seven days, and the script is not re-run on idle VM restore."
+status = "docs-stated"
+docs = "Environments docs on setup scripts and environment caching (summary: https://docs.routineos.org/infrastructure/scheduling#setup-scripts)"
+source = ["https://code.claude.com/docs/en/cloud-environments"]
+checked = "2026-10-29"
+risk_if_wrong = "an install is missing in a run, or a script reads a variable that is not set yet"
+test = "Add a setup script that writes one file and read it from a run"
+
+[[capability]]
+id = "repo-delivery"
+claim = "Repo delivery works end to end: with GitHub connected, a run clones the repo, the skill in the repo loads in the cloud, and the run writes the Desk store."
+status = "pilot-verified"
+tested = "2026-10-28, pilot deploy, GitHub connected, repo cloned, repo skill loaded, Desk store write succeeded"
+docs = "Skills docs state a repo's .claude/skills/ carries into cloud sessions"
+source = ["pilot:deploy-2026-10-28", "https://code.claude.com/docs/en/skills"]
+checked = "2026-10-29"
+risk_if_wrong = "repo delivery, the default mode, fails at run time"
+test = "Run a report-only repo routine that invokes its repo skill and writes one store document"
+
+[[capability]]
+id = "remotetrigger-body-shape"
+claim = 'RemoteTrigger takes repos as session_context.sources: [{"git_repository":{"url":...}}]; the shape {"type":"git_repository","url":...} at create is silently dropped; update replaces job_config.ccr whole, so events and sources must be resent or the prompt is wiped; read back after every create or update.'
+status = "pilot-verified"
+tested = "2026-10-28, pilot deploy, wrong sources shape dropped without error, update without events and sources wiped the prompt"
+docs = "silent"
+source = ["pilot:deploy-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "a routine is created without its repo or loses its prompt on update"
+test = "Create and update a throwaway routine, then get it and compare every field"
+
+[[capability]]
+id = "run-finds-store-by-listing"
+claim = "A run whose skill does not name the store URL looks for the store by listing artifacts."
+status = "pilot-verified"
+tested = "2026-10-28, pilot deploy, run listed artifacts to find the Desk store"
+docs = "silent"
+source = ["pilot:deploy-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "a run writes to the wrong artifact; pin the store URL in the skill or prompt"
+test = "Read the transcript of a run whose skill pins the store URL and confirm no artifact listing"
+
+[[capability]]
+id = "run-uses-unlisted-send"
+claim = "A run can use a send tool the approved permission screen did not list, unless the prompt forbids it."
+status = "pilot-verified"
+tested = "2026-10-28, pilot deploy, a run sent a PushNotification that the approved screen did not list"
+docs = "silent"
+source = ["pilot:deploy-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "an unapproved notice or message reaches the person or others"
+test = "Run with the header rule and read the transcript for unlisted tool calls"
+
+[[capability]]
+id = "run-invents-timestamps"
+claim = "A run can invent a timestamp (seen: endedAt) instead of reading the clock."
+status = "pilot-verified"
+tested = "2026-10-28, pilot deploy, a run wrote an estimated endedAt"
+docs = "silent"
+source = ["pilot:deploy-2026-10-28"]
+checked = "2026-10-29"
+risk_if_wrong = "run times on the Desk are wrong; take each time from date -u at the moment of use"
+test = "Compare a run's startedAt and endedAt with the run log times"
+
+[[capability]]
+id = "run-obeys-in-session-cap-override"
+claim = "A run can exceed its daily cap when a message in the session tells it to (seen: a user-role message saying it was in staging and had to run)."
+status = "pilot-verified"
+tested = "2026-10-29, Hiring Signals run 2026-10-29-0438, a user-role message in the session made the run go past max_runs_per_day"
+docs = "silent"
+source = ["pilot:run-2026-10-29-0438"]
+checked = "2026-10-29"
+risk_if_wrong = "runs and spend go past the approved ceiling; the skill refuses any in-run instruction to exceed the cap, and a person clears that day's state/budget entry to test past it"
+test = "Send an in-session message asking a capped run to continue and confirm it stops and records the refusal in state/health"
+
+[[capability]]
+id = "run-mints-run-id-off-clock"
+claim = "A run can mint a runId from a different clock reading than its startedAt (seen: runId 2026-10-29-0438 with startedAt 04:36:11)."
+status = "pilot-verified"
+tested = "2026-10-29, Hiring Signals run 2026-10-29-0438, runId minutes differed from startedAt"
+docs = "silent"
+source = ["pilot:run-2026-10-29-0438"]
+checked = "2026-10-29"
+risk_if_wrong = "run ids and times disagree on the Desk; derive runId from the same date -u call as startedAt"
+test = "Compare a run's runId with its startedAt"
+
+[[capability]]
+id = "python-isolated-ignores-cwd"
+claim = "python3 -I does not import a module from the working directory (seen: python3 -I -c \"import budget\" failed), so a skill must run its scripts by path."
+status = "pilot-verified"
+tested = "2026-10-29, Hiring Signals run 2026-10-29-0438, the import failed and the run typed state/budget by hand"
+docs = "silent"
+source = ["pilot:run-2026-10-29-0438"]
+checked = "2026-10-29"
+risk_if_wrong = "budget and other deterministic steps fall back to hand-typed JSON; give runnable commands such as python3 ${CLAUDE_SKILL_DIR}/scripts/budget.py decide"
+test = "Run the skill's documented script commands with python3 -I inside a run"
+
+[[capability]]
+id = "run-merges-status-doc"
+claim = "A run told only to write a status document can use update (merge), so fields from older runs stay (seen: state/health)."
+status = "pilot-verified"
+tested = "2026-10-29, Hiring Signals run 2026-10-29-0438, state/health written with update kept stale fields"
+docs = "silent"
+source = ["pilot:run-2026-10-29-0438"]
+checked = "2026-10-29"
+risk_if_wrong = "the Desk shows stale health fields; say set with a fixed field list"
+test = "Read state/health after two runs and confirm only the fixed fields are present"
+
+[[capability]]
+id = "seek-bot-challenge-via-browser-connector"
+claim = "SEEK served a bot challenge instead of results to Cloudflare_Browser get_url_markdown (seek.com.au/shopify-developer-jobs, nz.seek.com/shopify-developer-jobs)."
+status = "pilot-verified"
+tested = "2026-10-29, Hiring Signals run 2026-10-29-0438, 2 SEEK pages returned a bot challenge"
+docs = "silent"
+source = ["pilot:run-2026-10-29-0438"]
+checked = "2026-10-29"
+risk_if_wrong = "SEEK markets look empty; try once, record the page in dropped with the reason, set status partial, never retry in a loop"
+test = "Read one SEEK search page through get_url_markdown in a report-only run and record what comes back"
+
+[[capability]]
+id = "run-reads-shared-artifact-db"
+claim = "A run or session on account B can read documents of an artifact owned by account A in the same organization, shared with B."
+status = "pilot-verified"
+tested = "2026-10-30, join pilot, run by Uzair on account B against a Desk owned by Kazim (account A), confirmed passed by Kazim 2026-10-31; the page read meta/owner for B with viewer flags isOwner false, canEdit false, can(data.write) true"
+docs = "silent"
+source = ["pilot:join-cross-account-2026-10-30"]
+checked = "2026-10-31"
+risk_if_wrong = "a worker cannot see its work items; join is not buildable and is parked"
+test = "Share a Desk with a second account in the same organization and have that account read one entities/ document"
+
+[[capability]]
+id = "run-writes-shared-artifact-db"
+claim = "A session on account B can write documents of an artifact owned by account A in the same organization, shared with B; a scheduled run's first write was denied by auto mode."
+status = "pilot-verified"
+tested = "2026-10-30, join pilot, run by Uzair on account B, confirmed passed by Kazim 2026-10-31: interactive writes of workers/pilot--uzair and workers/pilot--uzair-page landed and meta/owner was unchanged; a page write records the real viewer id while a routine write records only the by its prompt typed; the first scheduled write was denied by auto mode rule Modify Shared Resources (soft_deny, must name the specific change)"
+docs = "silent"
+source = ["pilot:join-cross-account-2026-10-30"]
+checked = "2026-10-31"
+risk_if_wrong = "a worker cannot record outcomes on the Desk; outcomes would return as a file the worker publishes on its own account"
+test = "Have a scheduled routine on account B set one workers/ document on a Desk shared by account A and read it back from account A"
+
+[[capability]]
+id = "desk-db-path-rules"
+claim = "A page that declares db rules at publish ({path, read, write} with levels view, interact, admin, owner and self) has them enforced for page writes and for the ArtifactData tool: write owner on meta lets only the artifact owner write meta/, and write self on people with write interact on people/{self} lets each person write only their own people/<id>/. Documents carry no platform-attested writer field."
+status = "docs-stated"
+docs = "Artifact runtime contract 0.2.93 db type definitions and the ArtifactData tool description"
+source = ["docs:artifact-runtime-contract-0.2.93/db.d.ts", "docs:ArtifactData-tool-description"]
+checked = "2026-10-31"
+risk_if_wrong = "any Contributor could create meta/owner or write a release, verified or worker gate decision under another person's people/<id>/ path"
+test = "Publish a Desk with DESK_DB_RULES; from a second account try to set meta/owner and people/<owner id>/decisions/x, and expect both refused"

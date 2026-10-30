@@ -1,0 +1,72 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "engineering-digest",
+  "version": "1.0.0",
+  "title": "Engineering digest",
+  "summary": "A daily digest of open pull requests, issues and failing builds, with the stale ones flagged.",
+  "category": "dev",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "inspiration": [
+    {
+      "source": "n8n",
+      "title": "Back up n8n workflows to GitHub",
+      "url": "https://n8n.io/workflows/1534"
+    }
+  ],
+  "stages": [
+    {
+      "id": "collect",
+      "kind": "model",
+      "title": "Read open work",
+      "does": "Lists open pull requests, bug issues and the latest default-branch build per repository.",
+      "connectors": [
+        "code-host"
+      ]
+    },
+    {
+      "id": "age",
+      "kind": "code",
+      "title": "Age items",
+      "does": "Computes age in days and the stale flag; DATE is today in UTC and DAYS is stale_after_days.",
+      "command": "python3 lib/stale_items.py --in items.json --today DATE --stale-after DAYS"
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "code-host",
+      "label": "Code host",
+      "kind": "connector",
+      "purpose": "Read pull requests, issues and build status.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "collect"
+      ],
+      "alternatives": [
+        "GitHub",
+        "An MCP server for your code host"
+      ],
+      "connect": "Add a connector or MCP server with read access to the repositories you list."
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+[routine]
+name = "content-calendar"
+type = "approval-gated"
+schedule = "0 21 * * 1,3"  # UTC, Monday and Wednesday; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "content-calendar"
+template_version = 1
+
+[[setting]]
+name = "topics"
+type = "list"
+role = "include"
+label = "Topics"
+default = ["product updates", "how-to guides"]
+cost_note = "each topic adds research per run"
+
+[[setting]]
+name = "source_feeds"
+type = "list"
+label = "Source feeds"
+default = ["https://example.org/feed.xml"]
+cost_note = "each feed adds at least one page open per run"
+
+[[setting]]
+name = "formats"
+type = "list"
+role = "include"
+label = "Formats"
+default = ["blog", "linkedin"]
+cost_note = "each format is one more draft per post"
+
+[[setting]]
+name = "posts_per_week"
+type = "number"
+label = "Posts per week"
+default = 2
+min = 1
+max = 7
+cost_note = "each post is one research and drafting pass"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 5
+min = 0
+max = 20
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = true
+transport = "email"
+timeout_hours = 72
+
+[[action]]
+name = "publish-post"
+kind = "post"

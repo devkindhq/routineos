@@ -1,0 +1,168 @@
+{
+  "name": "Notify @@EMAIL@@ about @@KEY@@",
+  "nodes": [
+    {
+      "id": "node-048",
+      "name": "Every day",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        9600,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */5 9 * * 1-5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-049",
+      "name": "Write note",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        9800,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "key",
+              "value": "@@KEY@@",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "to",
+              "value": "@@EMAIL@@",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-050",
+      "name": "Ask model",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        10000,
+        300
+      ],
+      "parameters": {
+        "text": "Mail @@EMAIL@@ or ping @@SLACK@@ using @@KEY@@",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Never share @@KEY@@"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-051",
+      "name": "Calc",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10200,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const k = '@@KEY@@'; return items;"
+      }
+    },
+    {
+      "id": "node-052",
+      "name": "Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        10400,
+        300
+      ],
+      "parameters": {
+        "url": "https://secrets.example.invalid/x",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "@@KEY@@"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-053",
+      "name": "Remark",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        10600,
+        300
+      ],
+      "parameters": {
+        "content": "Contact @@EMAIL@@ in @@SLACK@@"
+      }
+    }
+  ],
+  "connections": {
+    "Every day": {
+      "main": [
+        [
+          {
+            "node": "Write note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write note": {
+      "main": [
+        [
+          {
+            "node": "Ask model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask model": {
+      "main": [
+        [
+          {
+            "node": "Calc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calc": {
+      "main": [
+        [
+          {
+            "node": "Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

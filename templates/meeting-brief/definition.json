@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "label": "Meeting brief",
+  "inbox": true,
+  "types": {
+    "company": {
+      "label": "Company",
+      "plural": "Companies",
+      "icon": "building-2",
+      "identity": "domain",
+      "merge": "merge",
+      "fields": {
+        "name": {
+          "label": "Name",
+          "type": "text",
+          "summary": true
+        },
+        "domain": {
+          "label": "Domain",
+          "type": "url",
+          "summary": true
+        },
+        "industry": {
+          "label": "Industry",
+          "type": "text",
+          "summary": true
+        },
+        "value_proposition": {
+          "label": "What they sell",
+          "type": "text"
+        },
+        "sources": {
+          "label": "Sources",
+          "type": "list"
+        }
+      },
+      "settingFilters": [
+        {
+          "setting": "internal_domains",
+          "field": "domain"
+        }
+      ]
+    },
+    "meeting": {
+      "label": "Meeting",
+      "plural": "Meetings",
+      "icon": "calendar",
+      "identity": "field:ref",
+      "merge": "merge",
+      "links": [
+        "company"
+      ],
+      "fields": {
+        "ref": {
+          "label": "Calendar reference",
+          "type": "text"
+        },
+        "starts": {
+          "label": "Starts",
+          "type": "date",
+          "summary": true
+        },
+        "title": {
+          "label": "Title",
+          "type": "text",
+          "summary": true
+        },
+        "company_domains": {
+          "label": "Company domains",
+          "type": "list",
+          "summary": true
+        },
+        "brief": {
+          "label": "Brief",
+          "type": "text"
+        }
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "upcoming",
+      "type": "meeting",
+      "name": "Upcoming meetings",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "starts",
+        "dir": "asc"
+      },
+      "columns": [
+        "starts",
+        "title",
+        "company_domains"
+      ]
+    },
+    {
+      "id": "companies",
+      "type": "company",
+      "name": "Companies researched",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "name",
+        "industry",
+        "domain"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

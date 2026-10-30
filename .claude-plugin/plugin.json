@@ -1,0 +1,11 @@
+{
+  "name": "routineos",
+  "version": "0.8.1",
+  "description": "A meta framework for Claude routines: conventions, a linter, templates and a mobile-first dashboard shell, so a routine is safe by default and easy to steer.",
+  "author": { "name": "Devkind" },
+  "license": "MIT",
+  "keywords": ["claude", "routines", "scheduled-agents", "framework", "artifacts", "settings", "approval-gates"],
+  "mcpServers": {
+    "routineos": { "type": "http", "url": "https://docs.routineos.org/api/mcp" }
+  }
+}

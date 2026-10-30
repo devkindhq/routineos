@@ -1,0 +1,70 @@
+[routine]
+name = "jobs-watch"
+type = "watch"
+schedule = "0 22 * * 1,4"  # UTC, Monday and Thursday; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "jobs-watch"
+template_version = 1
+
+[[setting]]
+name = "markets"
+type = "list"
+role = "include"
+label = "Markets"
+default = ["AU", "US", "CA", "NZ", "PH"]
+cost_note = "each market adds at least one job board search per run"
+
+[[setting]]
+name = "title_keywords"
+type = "list"
+role = "include"
+label = "Title keywords"
+default = ["Shopify", "headless", "commerce", "AI automation"]
+cost_note = "each keyword adds a search per market"
+
+[[setting]]
+name = "excluded_companies"
+type = "list"
+role = "exclude"
+label = "Excluded companies"
+example = "northwind.example"
+default = []
+cost_note = "no extra cost; roles from these domains are kept but marked dropped"
+
+[[setting]]
+name = "excluded_title_words"
+type = "list"
+role = "exclude"
+label = "Excluded title words"
+example = "intern"
+default = []
+cost_note = "no extra cost; roles whose title carries one of these words are kept but marked dropped"
+
+[[setting]]
+name = "lookback_days"
+type = "number"
+label = "Lookback days"
+default = 7
+min = 1
+max = 30
+cost_note = "a longer window means more postings to compare"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 5
+min = 0
+max = 20
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = true
+transport = "email"
+timeout_hours = 48

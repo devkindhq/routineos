@@ -1,0 +1,235 @@
+{
+  "name": "Support chat agent",
+  "nodes": [
+    {
+      "id": "node-011",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        2200,
+        300
+      ],
+      "parameters": {},
+      "webhookId": "chat-0001"
+    },
+    {
+      "id": "node-012",
+      "name": "Support agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        2400,
+        300
+      ],
+      "parameters": {
+        "text": "={{ $('When chat message received').item.json.chatInput }}",
+        "options": {
+          "systemMessage": "You answer support questions politely. Use the tools when asked."
+        }
+      }
+    },
+    {
+      "id": "node-013",
+      "name": "Chat model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2600,
+        300
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "example-model",
+          "mode": "list"
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "cred-id-0001",
+          "name": "Example model account"
+        }
+      }
+    },
+    {
+      "id": "node-014",
+      "name": "Window memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        2800,
+        300
+      ],
+      "parameters": {
+        "contextWindowLength": 5
+      }
+    },
+    {
+      "id": "node-015",
+      "name": "Send mail",
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        3000,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cred-id-0001",
+          "name": "Example mailbox"
+        }
+      }
+    },
+    {
+      "id": "node-016",
+      "name": "Find mail",
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        3200,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll"
+      }
+    },
+    {
+      "id": "node-017",
+      "name": "Escalate",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3400,
+        300
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf-1",
+          "cachedResultName": "Escalation helper"
+        }
+      }
+    },
+    {
+      "id": "node-018",
+      "name": "Docs store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.1,
+      "position": [
+        3600,
+        300
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool"
+      }
+    },
+    {
+      "id": "node-019",
+      "name": "Embed",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3800,
+        300
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Support agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Support agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Support agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send mail": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find mail": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Docs store": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Docs store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

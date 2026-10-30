@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "label": "Content radar",
+  "inbox": false,
+  "types": {
+    "creator": {
+      "label": "Creator",
+      "plural": "Creators",
+      "icon": "user",
+      "identity": "name",
+      "merge": "merge",
+      "fields": {
+        "name": {"label": "Name", "type": "text", "summary": true},
+        "channel": {"label": "Channel", "type": "url"},
+        "followers": {"label": "Followers", "type": "number", "summary": true},
+        "topic": {"label": "Topic", "type": "text", "summary": true}
+      }
+    },
+    "video": {
+      "label": "Video",
+      "plural": "Videos",
+      "icon": "video",
+      "identity": "field:url",
+      "merge": "merge",
+      "links": ["creator"],
+      "fields": {
+        "title": {"label": "Title", "type": "text", "summary": true},
+        "creator": {"label": "Creator", "type": "text", "summary": true},
+        "topic": {"label": "Topic", "type": "text"},
+        "views": {"label": "Views", "type": "number", "summary": true},
+        "published": {"label": "Published", "type": "date"},
+        "url": {"label": "URL", "type": "url"}
+      },
+      "settingFilters": [
+        {"setting": "topics", "field": "topic"}
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": "top-videos",
+      "type": "video",
+      "name": "Top videos",
+      "filters": {"status": "active"},
+      "sort": {"field": "views", "dir": "desc"},
+      "columns": ["title", "creator", "views"]
+    }
+  ]
+}

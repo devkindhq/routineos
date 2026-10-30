@@ -1,0 +1,1460 @@
+{
+  "format": "routineos.migrate-concepts.v1",
+  "concepts": [
+    {
+      "id": "trigger.schedule",
+      "family": "trigger",
+      "status": "mapped",
+      "routineos": "routine schedule (cron, UTC, at most hourly)",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.scheduleTrigger",
+          "n8n-nodes-base.cron"
+        ],
+        "windmill": [],
+        "zapier": [
+          "Schedule by Zapier"
+        ]
+      },
+      "note": "Sub-hourly intervals are raised to hourly and reported. Schedules are UTC, so hours are not shifted."
+    },
+    {
+      "id": "trigger.webhook",
+      "family": "trigger",
+      "status": "needs-person",
+      "routineos": "default schedule plus the Desk action queue (requests/); inbound webhooks are unverified on the platform",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.webhook",
+          "@n8n/n8n-nodes-langchain.mcpTrigger"
+        ],
+        "windmill": [],
+        "zapier": [
+          "Webhooks by Zapier"
+        ]
+      },
+      "note": "A workflow that must react within seconds becomes a scheduled one."
+    },
+    {
+      "id": "trigger.manual",
+      "family": "trigger",
+      "status": "partial",
+      "routineos": "default schedule; run from the Desk queue",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.manualTrigger"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "trigger.chat",
+      "family": "trigger",
+      "status": "needs-person",
+      "routineos": "default schedule; chat entry has no RoutineOS equivalent",
+      "sources": {
+        "n8n": [
+          "@n8n/n8n-nodes-langchain.chatTrigger",
+          "@n8n/n8n-nodes-langchain.manualChatTrigger"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "trigger.form",
+      "family": "trigger",
+      "status": "needs-person",
+      "routineos": "default schedule plus Desk queue",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.formTrigger"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "trigger.app",
+      "family": "trigger",
+      "status": "partial",
+      "routineos": "scheduled poll with a read connector",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.emailReadImap",
+          "n8n-nodes-base.rssFeedReadTrigger"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": "App triggers are recognised through the app catalog (a node type ending in Trigger that belongs to a catalog app). The poll runs every hour on the hour."
+    },
+    {
+      "id": "trigger.subworkflow",
+      "family": "trigger",
+      "status": "needs-person",
+      "routineos": "the child is its own routine or folded in by hand",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.executeWorkflowTrigger"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "trigger.error",
+      "family": "trigger",
+      "status": "mapped",
+      "routineos": "failure handling (alert Inbox message, run status partial or failed)",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.errorTrigger"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.app",
+      "family": "step",
+      "status": "partial",
+      "routineos": "a model stage using a connector (read or write)",
+      "sources": {
+        "n8n": [],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": "Recognised through the app catalog. A missing or unknown operation counts as write."
+    },
+    {
+      "id": "step.http",
+      "family": "step",
+      "status": "partial",
+      "routineos": "a model stage using an http connector; headers and auth never copied",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.httpRequest",
+          "n8n-nodes-base.httpRequestTool"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.code",
+      "family": "step",
+      "status": "needs-person",
+      "routineos": "a code stage with a stub lib/<id>.py and the original source kept beside it",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.code",
+          "n8n-nodes-base.function",
+          "n8n-nodes-base.functionItem"
+        ],
+        "windmill": [
+          "rawscript"
+        ],
+        "zapier": [
+          "Code by Zapier"
+        ]
+      },
+      "note": "The stub fails until a person or the skill translates the original."
+    },
+    {
+      "id": "step.agent",
+      "family": "step",
+      "status": "partial",
+      "routineos": "a skill stage with a generated skills/<id>/SKILL.md",
+      "sources": {
+        "n8n": [
+          "@n8n/n8n-nodes-langchain.agent",
+          "@n8n/n8n-nodes-langchain.agentTool",
+          "@n8n/n8n-nodes-langchain.openAiAssistant"
+        ],
+        "windmill": [
+          "aiagent"
+        ],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.llm",
+      "family": "step",
+      "status": "partial",
+      "routineos": "a skill stage (chains, extractors, classifiers, summarisers)",
+      "sources": {
+        "n8n": [
+          "@n8n/n8n-nodes-langchain.chainLlm",
+          "@n8n/n8n-nodes-langchain.chainSummarization",
+          "@n8n/n8n-nodes-langchain.chainRetrievalQa",
+          "@n8n/n8n-nodes-langchain.informationExtractor",
+          "@n8n/n8n-nodes-langchain.textClassifier",
+          "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+          "@n8n/n8n-nodes-langchain.openAi",
+          "n8n-nodes-base.openAi"
+        ],
+        "windmill": [],
+        "zapier": [
+          "AI by Zapier"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "step.ai-model",
+      "family": "step",
+      "status": "mapped",
+      "routineos": "the model is Claude; the provider is recorded",
+      "sources": {
+        "n8n": [
+          "@n8n/n8n-nodes-langchain.lmChat*",
+          "@n8n/n8n-nodes-langchain.lmOpenAi",
+          "@n8n/n8n-nodes-langchain.lmCohere",
+          "@n8n/n8n-nodes-langchain.lmOllama",
+          "@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": "A language model provider is not an app. It never becomes a connector."
+    },
+    {
+      "id": "step.ai-memory",
+      "family": "step",
+      "status": "partial",
+      "routineos": "a store collection memory/<id>",
+      "sources": {
+        "n8n": [
+          "@n8n/n8n-nodes-langchain.memory*"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.ai-tool",
+      "family": "step",
+      "status": "partial",
+      "routineos": "a connector on the owning skill stage",
+      "sources": {
+        "n8n": [
+          "@n8n/n8n-nodes-langchain.tool*",
+          "@n8n/n8n-nodes-langchain.mcpClientTool"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": "Exact matches (for example toolVectorStore) win over this prefix."
+    },
+    {
+      "id": "step.ai-output-parser",
+      "family": "step",
+      "status": "partial",
+      "routineos": "output shape described in the skill",
+      "sources": {
+        "n8n": [
+          "@n8n/n8n-nodes-langchain.outputParser*"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.ai-vector",
+      "family": "step",
+      "status": "unmapped",
+      "routineos": "reported; no vector store in RoutineOS",
+      "sources": {
+        "n8n": [
+          "@n8n/n8n-nodes-langchain.vectorStore*",
+          "@n8n/n8n-nodes-langchain.embeddings*",
+          "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+          "@n8n/n8n-nodes-langchain.textSplitter*",
+          "@n8n/n8n-nodes-langchain.retriever*",
+          "@n8n/n8n-nodes-langchain.toolVectorStore"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.branch",
+      "family": "step",
+      "status": "mapped",
+      "routineos": "a model stage that states the condition (IF, Switch, Filter)",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.if",
+          "n8n-nodes-base.switch",
+          "n8n-nodes-base.filter"
+        ],
+        "windmill": [
+          "branchone",
+          "branchall",
+          "aidecision"
+        ],
+        "zapier": [
+          "Filter by Zapier",
+          "Paths by Zapier"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "step.merge",
+      "family": "step",
+      "status": "mapped",
+      "routineos": "a model stage that states how inputs combine",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.merge"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.loop",
+      "family": "step",
+      "status": "mapped",
+      "routineos": "a model stage that runs the body for each item",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.splitInBatches"
+        ],
+        "windmill": [
+          "forloopflow",
+          "whileloopflow"
+        ],
+        "zapier": [
+          "Looping by Zapier"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "step.transform",
+      "family": "step",
+      "status": "mapped",
+      "routineos": "a model stage (Set, Aggregate, Split Out, Sort, Limit, Rename)",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.set",
+          "n8n-nodes-base.aggregate",
+          "n8n-nodes-base.splitOut",
+          "n8n-nodes-base.sort",
+          "n8n-nodes-base.limit",
+          "n8n-nodes-base.renameKeys",
+          "n8n-nodes-base.itemLists",
+          "n8n-nodes-base.summarize",
+          "n8n-nodes-base.removeDuplicates",
+          "n8n-nodes-base.dateTime",
+          "n8n-nodes-base.extractFromFile",
+          "n8n-nodes-base.convertToFile",
+          "n8n-nodes-base.html",
+          "n8n-nodes-base.markdown",
+          "n8n-nodes-base.xml",
+          "n8n-nodes-base.crypto",
+          "n8n-nodes-base.compression",
+          "n8n-nodes-base.editImage",
+          "n8n-nodes-base.readBinaryFile",
+          "n8n-nodes-base.spreadsheetFile",
+          "n8n-nodes-base.htmlExtract"
+        ],
+        "windmill": [],
+        "zapier": [
+          "Formatter by Zapier"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "step.noop",
+      "family": "step",
+      "status": "mapped",
+      "routineos": "dropped, recorded as info",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.noOp"
+        ],
+        "windmill": [
+          "identity"
+        ],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.subworkflow",
+      "family": "step",
+      "status": "needs-person",
+      "routineos": "a model stage naming the child workflow",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.executeWorkflow"
+        ],
+        "windmill": [
+          "script",
+          "flow"
+        ],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.wait-approval",
+      "family": "step",
+      "status": "mapped",
+      "routineos": "a gate stage",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.form"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": "Parsers produce this from a wait that resumes on a person's decision, or a suspend on a module. A plan with several gates folds the extra ones into the first."
+    },
+    {
+      "id": "step.wait-time",
+      "family": "step",
+      "status": "partial",
+      "routineos": "\"on the next run\"; delays become run boundaries",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.wait"
+        ],
+        "windmill": [],
+        "zapier": [
+          "Delay by Zapier"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "step.respond",
+      "family": "step",
+      "status": "needs-person",
+      "routineos": "output goes to the Desk Inbox, not to a webhook caller",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.respondToWebhook"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.store",
+      "family": "step",
+      "status": "partial",
+      "routineos": "a store collection state/<id>",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.dataTable",
+          "n8n-nodes-base.dataTableTool",
+          "n8n-nodes-base.writeBinaryFile",
+          "n8n-nodes-base.readWriteFile",
+          "n8n-nodes-base.redis"
+        ],
+        "windmill": [],
+        "zapier": [
+          "Storage by Zapier"
+        ]
+      },
+      "note": ""
+    },
+    {
+      "id": "step.note",
+      "family": "step",
+      "status": "mapped",
+      "routineos": "sticky note text goes to the pack readme",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.stickyNote"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "step.unknown",
+      "family": "step",
+      "status": "unmapped",
+      "routineos": "reported, and kept as a model stage titled \"Needs a person\"",
+      "sources": {
+        "n8n": [],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": "Any node type the map does not know."
+    },
+    {
+      "id": "output.desk",
+      "family": "output",
+      "status": "mapped",
+      "routineos": "results become Desk items (entities) and Inbox messages",
+      "sources": {
+        "n8n": [],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": "Every migrated routine ends with the write stage."
+    },
+    {
+      "id": "expression",
+      "family": "expression",
+      "status": "partial",
+      "routineos": "explicit stage inputs; complex code flagged",
+      "sources": {
+        "n8n": [],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "credential",
+      "family": "credential",
+      "status": "needs-person",
+      "routineos": "a connector to set up, by type and name only",
+      "sources": {
+        "n8n": [],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": "No identifier or value is carried."
+    },
+    {
+      "id": "failure.node",
+      "family": "failure",
+      "status": "partial",
+      "routineos": "the prompt's failure rule for that stage (continue, stop)",
+      "sources": {
+        "n8n": [
+          "n8n-nodes-base.stopAndError"
+        ],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    },
+    {
+      "id": "failure.workflow",
+      "family": "failure",
+      "status": "mapped",
+      "routineos": "failure handling, as trigger.error",
+      "sources": {
+        "n8n": [],
+        "windmill": [],
+        "zapier": []
+      },
+      "note": ""
+    }
+  ],
+  "apps": {
+    "gmail": {
+      "label": "Gmail",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Outlook"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.gmail",
+        "n8n-nodes-base.gmailTrigger",
+        "n8n-nodes-base.gmailTool"
+      ],
+      "zapier": [
+        "Gmail"
+      ]
+    },
+    "slack": {
+      "label": "Slack",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Microsoft Teams",
+        "Discord"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.slack",
+        "n8n-nodes-base.slackTool"
+      ],
+      "zapier": [
+        "Slack"
+      ]
+    },
+    "googleSheets": {
+      "label": "Google Sheets",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Airtable",
+        "Excel"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.googleSheets",
+        "n8n-nodes-base.googleSheetsTrigger",
+        "n8n-nodes-base.googleSheetsTool"
+      ],
+      "zapier": [
+        "Google Sheets"
+      ]
+    },
+    "googleDrive": {
+      "label": "Google Drive",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Dropbox",
+        "OneDrive"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.googleDrive",
+        "n8n-nodes-base.googleDriveTrigger",
+        "n8n-nodes-base.googleDriveTool"
+      ],
+      "zapier": [
+        "Google Drive"
+      ]
+    },
+    "googleCalendar": {
+      "label": "Google Calendar",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Outlook Calendar"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.googleCalendar",
+        "n8n-nodes-base.googleCalendarTrigger",
+        "n8n-nodes-base.googleCalendarTool"
+      ],
+      "zapier": [
+        "Google Calendar"
+      ]
+    },
+    "googleDocs": {
+      "label": "Google Docs",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Notion"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.googleDocs",
+        "n8n-nodes-base.googleDocsTool"
+      ],
+      "zapier": [
+        "Google Docs"
+      ]
+    },
+    "notion": {
+      "label": "Notion",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Confluence",
+        "Airtable"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.notion",
+        "n8n-nodes-base.notionTrigger",
+        "n8n-nodes-base.notionTool"
+      ],
+      "zapier": [
+        "Notion"
+      ]
+    },
+    "airtable": {
+      "label": "Airtable",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Notion",
+        "Google Sheets"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.airtable",
+        "n8n-nodes-base.airtableTrigger",
+        "n8n-nodes-base.airtableTool"
+      ],
+      "zapier": [
+        "Airtable"
+      ]
+    },
+    "hubspot": {
+      "label": "HubSpot",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Salesforce",
+        "Pipedrive"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.hubspot",
+        "n8n-nodes-base.hubspotTrigger",
+        "n8n-nodes-base.hubspotTool"
+      ],
+      "zapier": [
+        "HubSpot"
+      ]
+    },
+    "salesforce": {
+      "label": "Salesforce",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "HubSpot",
+        "Pipedrive"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.salesforce",
+        "n8n-nodes-base.salesforceTrigger",
+        "n8n-nodes-base.salesforceTool"
+      ],
+      "zapier": [
+        "Salesforce"
+      ]
+    },
+    "shopify": {
+      "label": "Shopify",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "WooCommerce"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.shopify",
+        "n8n-nodes-base.shopifyTrigger",
+        "n8n-nodes-base.shopifyTool"
+      ],
+      "zapier": [
+        "Shopify"
+      ]
+    },
+    "stripe": {
+      "label": "Stripe",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "PayPal"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.stripe",
+        "n8n-nodes-base.stripeTrigger",
+        "n8n-nodes-base.stripeTool"
+      ],
+      "zapier": [
+        "Stripe"
+      ]
+    },
+    "telegram": {
+      "label": "Telegram",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Slack",
+        "Discord"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.telegram",
+        "n8n-nodes-base.telegramTrigger",
+        "n8n-nodes-base.telegramTool"
+      ],
+      "zapier": [
+        "Telegram"
+      ]
+    },
+    "discord": {
+      "label": "Discord",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Slack",
+        "Telegram"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.discord",
+        "n8n-nodes-base.discordTool"
+      ],
+      "zapier": [
+        "Discord"
+      ]
+    },
+    "microsoftOutlook": {
+      "label": "Microsoft Outlook",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Gmail"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.microsoftOutlook",
+        "n8n-nodes-base.microsoftOutlookTrigger",
+        "n8n-nodes-base.microsoftOutlookTool"
+      ],
+      "zapier": [
+        "Microsoft Outlook"
+      ]
+    },
+    "microsoftTeams": {
+      "label": "Microsoft Teams",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Slack"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.microsoftTeams",
+        "n8n-nodes-base.microsoftTeamsTrigger",
+        "n8n-nodes-base.microsoftTeamsTool"
+      ],
+      "zapier": [
+        "Microsoft Teams"
+      ]
+    },
+    "microsoftExcel": {
+      "label": "Microsoft Excel",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Google Sheets"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.microsoftExcel",
+        "n8n-nodes-base.microsoftExcelTool"
+      ],
+      "zapier": [
+        "Microsoft Excel"
+      ]
+    },
+    "jira": {
+      "label": "Jira",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Linear",
+        "ClickUp"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.jira",
+        "n8n-nodes-base.jiraTrigger",
+        "n8n-nodes-base.jiraTool"
+      ],
+      "zapier": [
+        "Jira"
+      ]
+    },
+    "confluence": {
+      "label": "Confluence",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Notion"
+      ],
+      "claude_connector": "verified",
+      "n8n": [],
+      "zapier": [
+        "Confluence"
+      ]
+    },
+    "github": {
+      "label": "GitHub",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "GitLab"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.github",
+        "n8n-nodes-base.githubTrigger",
+        "n8n-nodes-base.githubTool"
+      ],
+      "zapier": [
+        "GitHub"
+      ]
+    },
+    "gitlab": {
+      "label": "GitLab",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "GitHub"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.gitlab",
+        "n8n-nodes-base.gitlabTrigger",
+        "n8n-nodes-base.gitlabTool"
+      ],
+      "zapier": [
+        "GitLab"
+      ]
+    },
+    "clickup": {
+      "label": "ClickUp",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Asana",
+        "Trello"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.clickUp",
+        "n8n-nodes-base.clickUpTrigger",
+        "n8n-nodes-base.clickUpTool"
+      ],
+      "zapier": [
+        "ClickUp"
+      ]
+    },
+    "mondayCom": {
+      "label": "monday.com",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Asana",
+        "ClickUp"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.mondayCom",
+        "n8n-nodes-base.mondayComTool"
+      ],
+      "zapier": [
+        "monday.com"
+      ]
+    },
+    "trello": {
+      "label": "Trello",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Asana",
+        "ClickUp"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.trello",
+        "n8n-nodes-base.trelloTrigger",
+        "n8n-nodes-base.trelloTool"
+      ],
+      "zapier": [
+        "Trello"
+      ]
+    },
+    "asana": {
+      "label": "Asana",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "ClickUp",
+        "Trello"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.asana",
+        "n8n-nodes-base.asanaTrigger",
+        "n8n-nodes-base.asanaTool"
+      ],
+      "zapier": [
+        "Asana"
+      ]
+    },
+    "postgres": {
+      "label": "Postgres",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "MySQL",
+        "Supabase"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.postgres",
+        "n8n-nodes-base.postgresTrigger",
+        "n8n-nodes-base.postgresTool"
+      ],
+      "zapier": [
+        "Postgres"
+      ]
+    },
+    "mysql": {
+      "label": "MySQL",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Postgres"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.mySql",
+        "n8n-nodes-base.mySqlTool"
+      ],
+      "zapier": [
+        "MySQL"
+      ]
+    },
+    "supabase": {
+      "label": "Supabase",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Postgres"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.supabase",
+        "n8n-nodes-base.supabaseTool"
+      ],
+      "zapier": [
+        "Supabase"
+      ]
+    },
+    "http": {
+      "label": "HTTP request",
+      "connector": "http",
+      "message": false,
+      "alternatives": [],
+      "claude_connector": "unverified",
+      "n8n": [],
+      "zapier": []
+    },
+    "emailSend": {
+      "label": "Email (SMTP)",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Gmail",
+        "SendGrid"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.emailSend",
+        "n8n-nodes-base.emailSendTool"
+      ],
+      "zapier": [
+        "Email (SMTP)"
+      ]
+    },
+    "twilio": {
+      "label": "Twilio",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "WhatsApp"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.twilio",
+        "n8n-nodes-base.twilioTrigger",
+        "n8n-nodes-base.twilioTool"
+      ],
+      "zapier": [
+        "Twilio"
+      ]
+    },
+    "whatsApp": {
+      "label": "WhatsApp",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Twilio"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.whatsApp",
+        "n8n-nodes-base.whatsAppTrigger"
+      ],
+      "zapier": [
+        "WhatsApp"
+      ]
+    },
+    "mailchimp": {
+      "label": "Mailchimp",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "SendGrid"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.mailchimp",
+        "n8n-nodes-base.mailchimpTrigger"
+      ],
+      "zapier": [
+        "Mailchimp"
+      ]
+    },
+    "typeform": {
+      "label": "Typeform",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Google Forms"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.typeformTrigger"
+      ],
+      "zapier": [
+        "Typeform"
+      ]
+    },
+    "zendesk": {
+      "label": "Zendesk",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Intercom"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.zendesk",
+        "n8n-nodes-base.zendeskTrigger",
+        "n8n-nodes-base.zendeskTool"
+      ],
+      "zapier": [
+        "Zendesk"
+      ]
+    },
+    "intercom": {
+      "label": "Intercom",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Zendesk"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.intercom",
+        "n8n-nodes-base.intercomTool"
+      ],
+      "zapier": [
+        "Intercom"
+      ]
+    },
+    "linear": {
+      "label": "Linear",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Jira"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.linear",
+        "n8n-nodes-base.linearTrigger",
+        "n8n-nodes-base.linearTool"
+      ],
+      "zapier": [
+        "Linear"
+      ]
+    },
+    "dropbox": {
+      "label": "Dropbox",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Google Drive"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.dropbox",
+        "n8n-nodes-base.dropboxTool"
+      ],
+      "zapier": [
+        "Dropbox"
+      ]
+    },
+    "wordpress": {
+      "label": "WordPress",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Webflow"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.wordpress",
+        "n8n-nodes-base.wordpressTool"
+      ],
+      "zapier": [
+        "WordPress"
+      ]
+    },
+    "youtube": {
+      "label": "YouTube",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.youTube",
+        "n8n-nodes-base.youTubeTool"
+      ],
+      "zapier": [
+        "YouTube"
+      ]
+    },
+    "twitter": {
+      "label": "X (Twitter)",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "LinkedIn"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.twitter",
+        "n8n-nodes-base.twitterTool"
+      ],
+      "zapier": [
+        "X (Twitter)"
+      ]
+    },
+    "linkedin": {
+      "label": "LinkedIn",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "X (Twitter)"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.linkedIn",
+        "n8n-nodes-base.linkedInTool"
+      ],
+      "zapier": [
+        "LinkedIn"
+      ]
+    },
+    "figma": {
+      "label": "Figma",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.figmaTrigger"
+      ],
+      "zapier": [
+        "Figma"
+      ]
+    },
+    "bigquery": {
+      "label": "BigQuery",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Postgres"
+      ],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.googleBigQuery",
+        "n8n-nodes-base.googleBigQueryTool"
+      ],
+      "zapier": [
+        "BigQuery"
+      ]
+    },
+    "cloudflare": {
+      "label": "Cloudflare",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [],
+      "claude_connector": "verified",
+      "n8n": [
+        "n8n-nodes-base.cloudflare",
+        "n8n-nodes-base.cloudflareTool"
+      ],
+      "zapier": [
+        "Cloudflare"
+      ]
+    },
+    "sendGrid": {
+      "label": "SendGrid",
+      "connector": "connector",
+      "message": true,
+      "alternatives": [
+        "Mailchimp",
+        "Gmail"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.sendGrid",
+        "n8n-nodes-base.sendGridTool"
+      ],
+      "zapier": [
+        "SendGrid"
+      ]
+    },
+    "pipedrive": {
+      "label": "Pipedrive",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "HubSpot"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.pipedrive",
+        "n8n-nodes-base.pipedriveTrigger",
+        "n8n-nodes-base.pipedriveTool"
+      ],
+      "zapier": [
+        "Pipedrive"
+      ]
+    },
+    "mongoDb": {
+      "label": "MongoDB",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Postgres"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.mongoDb",
+        "n8n-nodes-base.mongoDbTool"
+      ],
+      "zapier": [
+        "MongoDB"
+      ]
+    },
+    "googleCloudStorage": {
+      "label": "Google Cloud Storage",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Google Drive"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.googleCloudStorage",
+        "n8n-nodes-base.googleCloudStorageTool"
+      ],
+      "zapier": [
+        "Google Cloud Storage"
+      ]
+    },
+    "googleAds": {
+      "label": "Google Ads",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.googleAds"
+      ],
+      "zapier": [
+        "Google Ads"
+      ]
+    },
+    "awsS3": {
+      "label": "AWS S3",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [
+        "Google Cloud Storage"
+      ],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.awsS3",
+        "n8n-nodes-base.awsS3Tool",
+        "n8n-nodes-base.s3"
+      ],
+      "zapier": [
+        "Amazon S3"
+      ]
+    },
+    "facebook": {
+      "label": "Facebook Graph API",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.facebookGraphApi"
+      ],
+      "zapier": [
+        "Facebook Pages"
+      ]
+    },
+    "rssFeed": {
+      "label": "RSS feed",
+      "connector": "http",
+      "message": false,
+      "alternatives": [],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.rssFeedRead"
+      ],
+      "zapier": [
+        "RSS by Zapier"
+      ]
+    },
+    "googleAnalytics": {
+      "label": "Google Analytics",
+      "connector": "connector",
+      "message": false,
+      "alternatives": [],
+      "claude_connector": "unverified",
+      "n8n": [
+        "n8n-nodes-base.googleAnalytics"
+      ],
+      "zapier": [
+        "Google Analytics 4"
+      ]
+    }
+  },
+  "read_operations": [
+    "get",
+    "getAll",
+    "getMany",
+    "list",
+    "search",
+    "read",
+    "lookup",
+    "download",
+    "find",
+    "select"
+  ]
+}

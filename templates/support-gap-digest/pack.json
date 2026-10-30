@@ -1,0 +1,102 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "support-gap-digest",
+  "version": "1.0.0",
+  "title": "Support gap digest",
+  "summary": "Each week, groups repeated support questions and flags the ones your help pages do not answer yet.",
+  "category": "support",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "inspiration": [
+    {
+      "source": "n8n",
+      "title": "RAG chatbot for company documents (Drive + Gemini)",
+      "url": "https://n8n.io/workflows/2753"
+    },
+    {
+      "source": "n8n",
+      "title": "HR and IT helpdesk chatbot",
+      "url": "https://n8n.io/workflows/2752"
+    },
+    {
+      "source": "n8n",
+      "title": "WhatsApp sales chatbot",
+      "url": "https://n8n.io/workflows/2465"
+    }
+  ],
+  "stages": [
+    {
+      "id": "collect",
+      "kind": "model",
+      "title": "Read tickets",
+      "does": "Reads each ticket's question text and reference, with customer details removed.",
+      "connectors": [
+        "helpdesk"
+      ]
+    },
+    {
+      "id": "group",
+      "kind": "code",
+      "title": "Group questions",
+      "does": "Groups questions by a normalised form and counts each group.",
+      "command": "python3 lib/group_questions.py --in questions.json"
+    },
+    {
+      "id": "check",
+      "kind": "model",
+      "title": "Check the help pages",
+      "does": "Looks for an answer to each repeated question on the help pages.",
+      "connectors": [
+        "web"
+      ]
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "helpdesk",
+      "label": "Help desk",
+      "kind": "mcp",
+      "purpose": "Read the question text and reference of recent tickets.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "collect"
+      ],
+      "alternatives": [
+        "A JSON export of ticket texts placed in the run folder"
+      ],
+      "connect": "Add an MCP server or connector for your help desk with read access to tickets."
+    },
+    {
+      "id": "web",
+      "label": "Web fetch",
+      "kind": "builtin",
+      "purpose": "Open the help pages.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "check"
+      ],
+      "connect": "Nothing to connect when the run can already open web pages."
+    }
+  ]
+}

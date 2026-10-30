@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "label": "Weekly marketing report",
+  "inbox": true,
+  "types": {
+    "metric": {
+      "label": "Metric",
+      "plural": "Metrics",
+      "icon": "chart-line",
+      "identity": "field:key",
+      "merge": "merge",
+      "fields": {
+        "key": {
+          "label": "Key",
+          "type": "text"
+        },
+        "source": {
+          "label": "Source",
+          "type": "text",
+          "summary": true
+        },
+        "name": {
+          "label": "Metric",
+          "type": "text",
+          "summary": true
+        },
+        "week": {
+          "label": "Week",
+          "type": "date",
+          "summary": true
+        },
+        "value": {
+          "label": "This week",
+          "type": "number",
+          "summary": true
+        },
+        "previous": {
+          "label": "Last week",
+          "type": "number"
+        },
+        "change_pct": {
+          "label": "Change %",
+          "type": "number",
+          "summary": true
+        }
+      },
+      "settingFilters": [
+        {
+          "setting": "sources",
+          "field": "source"
+        }
+      ]
+    },
+    "audit": {
+      "label": "Page audit",
+      "plural": "Page audits",
+      "icon": "file-search",
+      "identity": "field:url",
+      "merge": "merge",
+      "fields": {
+        "url": {
+          "label": "URL",
+          "type": "url",
+          "summary": true
+        },
+        "title": {
+          "label": "Title",
+          "type": "text",
+          "summary": true
+        },
+        "checked": {
+          "label": "Checked",
+          "type": "date"
+        },
+        "issues": {
+          "label": "Issues",
+          "type": "list"
+        }
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "this-week",
+      "type": "metric",
+      "name": "This week",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "source",
+        "name",
+        "value",
+        "change_pct"
+      ]
+    },
+    {
+      "id": "page-audits",
+      "type": "audit",
+      "name": "Page audits",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "url",
+        "title",
+        "issues"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

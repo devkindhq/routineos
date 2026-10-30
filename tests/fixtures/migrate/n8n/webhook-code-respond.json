@@ -1,0 +1,132 @@
+{
+  "name": "Lead score API",
+  "nodes": [
+    {
+      "id": "node-006",
+      "name": "Incoming lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ],
+      "parameters": {
+        "path": "lead-score",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "hook-0001"
+    },
+    {
+      "id": "node-007",
+      "name": "Score lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const score = $input.item.json.size > 10 ? 80 : 20;\nreturn { json: { score } };"
+      }
+    },
+    {
+      "id": "node-008",
+      "name": "Python tidy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        300
+      ],
+      "parameters": {
+        "language": "python",
+        "pythonCode": "for item in _items:\n    item['json']['score'] = 1\nreturn _items"
+      }
+    },
+    {
+      "id": "node-009",
+      "name": "Call scoring service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://scores.example.invalid/v1/score?token=abc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Auth",
+              "value": "not-copied"
+            }
+          ]
+        },
+        "sendBody": true
+      }
+    },
+    {
+      "id": "node-010",
+      "name": "Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2000,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json"
+      }
+    }
+  ],
+  "connections": {
+    "Incoming lead": {
+      "main": [
+        [
+          {
+            "node": "Score lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score lead": {
+      "main": [
+        [
+          {
+            "node": "Python tidy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Python tidy": {
+      "main": [
+        [
+          {
+            "node": "Call scoring service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call scoring service": {
+      "main": [
+        [
+          {
+            "node": "Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "label": "Engineering digest",
+  "inbox": true,
+  "types": {
+    "item": {
+      "label": "Item",
+      "plural": "Items",
+      "icon": "git-pull-request",
+      "identity": "field:url",
+      "merge": "merge",
+      "fields": {
+        "url": {
+          "label": "URL",
+          "type": "url"
+        },
+        "repo": {
+          "label": "Repository",
+          "type": "text",
+          "summary": true
+        },
+        "kind": {
+          "label": "Kind",
+          "type": "choice",
+          "choices": [
+            "pull-request",
+            "issue",
+            "build"
+          ],
+          "summary": true
+        },
+        "title": {
+          "label": "Title",
+          "type": "text",
+          "summary": true
+        },
+        "updated": {
+          "label": "Updated",
+          "type": "date"
+        },
+        "age_days": {
+          "label": "Age (days)",
+          "type": "number",
+          "summary": true
+        },
+        "stale": {
+          "label": "Stale",
+          "type": "bool",
+          "summary": true
+        },
+        "build_status": {
+          "label": "Build",
+          "type": "text"
+        }
+      },
+      "settingFilters": [
+        {
+          "setting": "repositories",
+          "field": "repo"
+        }
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": "open-work",
+      "type": "item",
+      "name": "Open work",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "age_days",
+        "dir": "desc"
+      },
+      "columns": [
+        "repo",
+        "kind",
+        "title",
+        "age_days",
+        "stale"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "jobs-watch",
+  "version": "1.0.0",
+  "title": "Jobs watch",
+  "summary": "Tracks public job postings for commerce and automation roles, links each role to its company, and puts the few that need a person in the Inbox.",
+  "category": "sales",
+  "maturity": "piloted",
+  "license": "MIT",
+  "stages": [
+    {
+      "id": "search",
+      "kind": "model",
+      "title": "Search postings",
+      "does": "Searches each market for postings inside the lookback window whose title matches a keyword, and opens the ones it reports.",
+      "connectors": [
+        "web-search",
+        "web"
+      ]
+    },
+    {
+      "id": "record",
+      "kind": "model",
+      "title": "Record roles and companies",
+      "does": "Records each role linked to its company and drafts the Inbox messages, inside max_inbox_per_run."
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox",
+        "pending"
+      ]
+    },
+    {
+      "id": "approve",
+      "kind": "gate",
+      "title": "Approve an intro note",
+      "does": "A person approves or declines an intro note by email; the gate times out after 48 hours. Nothing is sent from this routine.",
+      "connectors": [
+        "mail"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "web-search",
+      "label": "Web search",
+      "kind": "builtin",
+      "purpose": "Find job postings by market and title keyword.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "search"
+      ],
+      "connect": "Nothing to connect when the run already has web search; check it does before the first run."
+    },
+    {
+      "id": "web",
+      "label": "Web fetch",
+      "kind": "builtin",
+      "purpose": "Open each job page it reports.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "search"
+      ],
+      "connect": "Nothing to connect when the run can already open web pages."
+    },
+    {
+      "id": "mail",
+      "label": "Mail",
+      "kind": "connector",
+      "purpose": "Carry the approval email for an intro-note gate.",
+      "required": false,
+      "access": "write",
+      "stages": [
+        "approve"
+      ],
+      "alternatives": [
+        "Slack"
+      ],
+      "connect": "Add a mail connector to the routine's environment before you turn gated messages on."
+    }
+  ]
+}

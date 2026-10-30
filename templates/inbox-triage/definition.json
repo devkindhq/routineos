@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "label": "Inbox triage",
+  "inbox": true,
+  "types": {
+    "thread": {
+      "label": "Thread",
+      "plural": "Threads",
+      "icon": "mail",
+      "identity": "field:thread_ref",
+      "merge": "merge",
+      "fields": {
+        "thread_ref": {
+          "label": "Thread reference",
+          "type": "text"
+        },
+        "sender_domain": {
+          "label": "Sender domain",
+          "type": "url",
+          "summary": true
+        },
+        "subject": {
+          "label": "Subject",
+          "type": "text",
+          "summary": true
+        },
+        "label": {
+          "label": "Label",
+          "type": "text",
+          "summary": true
+        },
+        "received": {
+          "label": "Received",
+          "type": "date",
+          "summary": true
+        },
+        "needs_reply": {
+          "label": "Needs reply",
+          "type": "bool"
+        },
+        "summary": {
+          "label": "Summary",
+          "type": "text"
+        }
+      },
+      "settingFilters": [
+        {
+          "setting": "skip_from_domains",
+          "field": "sender_domain"
+        }
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": "needs-reply",
+      "type": "thread",
+      "name": "Needs a reply",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "received",
+        "dir": "desc"
+      },
+      "columns": [
+        "received",
+        "sender_domain",
+        "subject",
+        "label"
+      ]
+    },
+    {
+      "id": "skipped",
+      "type": "thread",
+      "name": "Skipped by settings",
+      "filters": {
+        "status": "dropped"
+      },
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "sender_domain",
+        "subject",
+        "dropReason"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

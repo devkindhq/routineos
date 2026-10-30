@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "label": "Candidate shortlist",
+  "inbox": true,
+  "types": {
+    "candidate": {
+      "label": "Candidate",
+      "plural": "Candidates",
+      "icon": "user",
+      "identity": "field:ref",
+      "merge": "merge",
+      "fields": {
+        "ref": {
+          "label": "Applicant reference",
+          "type": "text",
+          "summary": true
+        },
+        "role": {
+          "label": "Role",
+          "type": "text",
+          "summary": true
+        },
+        "score": {
+          "label": "Score",
+          "type": "number",
+          "summary": true
+        },
+        "evidence": {
+          "label": "Evidence",
+          "type": "text"
+        },
+        "suggestion": {
+          "label": "Suggestion",
+          "type": "choice",
+          "choices": [
+            "shortlist",
+            "review"
+          ],
+          "summary": true
+        }
+      },
+      "settingFilters": [
+        {
+          "setting": "roles",
+          "field": "role"
+        }
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": "by-score",
+      "type": "candidate",
+      "name": "By score",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "score",
+        "dir": "desc"
+      },
+      "columns": [
+        "ref",
+        "role",
+        "score",
+        "suggestion"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

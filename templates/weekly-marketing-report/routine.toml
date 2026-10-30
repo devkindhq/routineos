@@ -1,0 +1,50 @@
+[routine]
+name = "weekly-marketing-report"
+type = "watch"
+schedule = "0 21 * * 0"  # UTC, Sunday; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "weekly-marketing-report"
+template_version = 1
+
+[[setting]]
+name = "sources"
+type = "list"
+role = "include"
+label = "Data sources"
+default = ["analytics", "search-ads", "social-ads"]
+cost_note = "each source is one more read from the analytics connector"
+
+[[setting]]
+name = "pages_to_audit"
+type = "list"
+label = "Pages to audit"
+example = "https://example.org/pricing"
+default = []
+cost_note = "each page adds one page open per run"
+
+[[setting]]
+name = "change_alert_pct"
+type = "number"
+label = "Alert on change (%)"
+default = 20
+min = 5
+max = 100
+cost_note = "no extra cost; a lower value means more alerts"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 5
+min = 0
+max = 20
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = false
