@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-RoutineOS is the self-improving framework for Claude routines, the scheduled Claude agents that do recurring work in the cloud. It learns from what it sees and what you decide, proposes each change with its source, and changes nothing until you say yes. It is for anyone who runs the same judgment task every week (triage, a watch, a report, a shortlist), and it gives each routine typed settings, a linter, templates, approval gates and a mobile Desk.
+RoutineOS is the self-improving framework for Claude routines: a free Claude Code plugin for the scheduled Claude agents that do recurring work in the cloud. It learns from what it sees and what you decide, proposes each change with its source, and changes nothing until you say yes. It is for anyone who runs the same judgment task every week (triage, a watch, a report, a shortlist), and it gives each routine typed settings, a linter, templates, approval gates and a mobile Desk.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme/desk-dark.webp"><img alt="The RoutineOS Desk for an inbox triage routine. On desktop, the Threads list filtered to mail skipped by settings, each with its drop reason, excluded by skip_from_domains, except one a person kept, pending the next run. On a phone, the Suggestions tab proposes removing fernhill-accounting.example from skip_from_domains, because you kept 6 of its 7 skipped threads." src=".github/assets/readme/desk-light.webp" width="100%"></picture>
 
@@ -59,16 +59,16 @@ The [Quickstart](https://docs.routineos.org/introduction/quickstart) builds a fu
 
 Each template is one pack file listed in `catalog/index.json`. Piloted means a real run checked it. Digest and tracker starters are coming soon.
 
-- candidate-shortlist: unpiloted, watch
-- content-calendar: unpiloted, approval-gated
-- engineering-digest: unpiloted, watch
-- inbox-triage: unpiloted, approval-gated
-- invoice-exceptions: unpiloted, watch
-- jobs-watch: piloted, watch
-- meeting-brief: unpiloted, watch
-- support-gap-digest: unpiloted, watch
-- watch: piloted, watch
-- weekly-marketing-report: unpiloted, watch
+- candidate-shortlist: unpiloted, watch. Scores new applicants against your rubric with evidence per criterion and suggests a shortlist. It never rejects anyone.
+- content-calendar: unpiloted, approval-gated. Drafts cited posts from your topics and sources in your house style, and publishes only what a person approves.
+- engineering-digest: unpiloted, watch. A daily digest of open pull requests, issues and failing builds, with the stale ones flagged.
+- inbox-triage: unpiloted, approval-gated. Labels new mail threads, drafts replies in your style, and sends a reply only after a person approves it.
+- invoice-exceptions: unpiloted, watch. Reads incoming invoices and flags duplicates, large amounts and new vendors for a person to check. It never pays.
+- jobs-watch: piloted, watch. Tracks public job postings for commerce and automation roles, links each role to its company, and puts the few that need a person in the Inbox.
+- meeting-brief: unpiloted, watch. Before each outside meeting, researches the other company and writes a short, cited brief to the Desk.
+- support-gap-digest: unpiloted, watch. Each week, groups repeated support questions and flags the ones your help pages do not answer yet.
+- watch: piloted, watch. Watches a list of sources for new and changed items and writes one report per run, even in a quiet week.
+- weekly-marketing-report: unpiloted, watch. Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves.
 
 ```
 python3 skills/routineos/scripts/routineos.py pack list catalog/index.json
@@ -113,6 +113,36 @@ Claude (web and Claude Desktop): **Customize > Connectors**, **+ Add**, **Add cu
 
 Then ask Claude things like "search the RoutineOS docs for gates" or "set up the jobs watch template". Tools and details: [The RoutineOS MCP](https://docs.routineos.org/mcp).
 
+## FAQ
+
+### What is a Claude routine?
+
+A routine is a Claude Code configuration (a prompt, repositories and connectors) that runs on Anthropic's cloud on a schedule, on an API call or on a GitHub event, so it keeps working when your laptop is closed. Anthropic now calls them scheduled tasks; the earlier name, routines, still appears in the app, the `/routines` command and the API. They are a research preview. See [Anthropic's docs](https://code.claude.com/docs/en/routines).
+
+### How do I schedule Claude Code to run every day?
+
+Run `/schedule` in Claude Code (for example `/schedule daily PR review at 9am`) or create a task at claude.ai/code/routines. The shortest interval is one hour. RoutineOS adds the parts a bare schedule lacks: settings with defaults, a linter, approval gates and a Desk that shows every run.
+
+### Is RoutineOS an n8n alternative?
+
+It is a different shape. n8n, Zapier and Make wire steps into a fixed flow; a RoutineOS routine is a Claude agent that makes judgment calls, shows its reasons and asks before it acts. If you already have an n8n workflow, `routineos migrate n8n <file-or-url> --out <dir>` converts it into a routine pack. The result is report-only and unpiloted, and `MIGRATION.md` lists what a person must finish. See [how it compares](https://docs.routineos.org/introduction/comparison).
+
+### How does a routine improve itself?
+
+Code counts the signals: records you keep that a setting dropped, list items that match nothing, runs that hit a limit. When a pattern holds, the routine proposes one settings change in your Inbox with its evidence. You accept, reject or snooze it. A routine never applies its own suggestion.
+
+### Will it send email or post without asking?
+
+No. The first run is report-only, and every send, post or delete goes through an approval gate.
+
+### What does it cost?
+
+RoutineOS is free and MIT licensed. Routines run on the Claude plan you already pay for; Anthropic lists scheduled tasks on Pro, Max, Ultra, Team and Enterprise plans.
+
+### Can Claude read the RoutineOS docs?
+
+Yes. The docs and the template catalog are a free, read-only MCP server at `https://docs.routineos.org/api/mcp`. See [Docs inside Claude](#docs-inside-claude).
+
 ## Licence
 
-MIT, Devkind, 2026. Built by Devkind.
+MIT, Devkind, 2026. Built by [Devkind](https://devkind.com.au).
