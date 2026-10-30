@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use RoutineOS, please cite it as below."
+title: "RoutineOS: the self-improving framework for Claude routines"
+type: software
+authors:
+  - name: Devkind
+version: 0.8.1
+license: MIT
+repository-code: "https://github.com/devkindhq/routineos"
+url: "https://docs.routineos.org"
+abstract: >-
+  RoutineOS is a Claude Code plugin for Claude routines (Claude Code
+  scheduled tasks). It gives each routine typed settings, a linter,
+  templates, approval gates and a mobile Desk. A routine proposes changes
+  to its own settings from the evidence of your decisions and applies them
+  only when you say yes.
+keywords:
+  - claude
+  - claude-code
+  - claude-code-plugin
+  - scheduled-tasks
+  - ai-agents
+  - workflow-automation
+  - human-in-the-loop

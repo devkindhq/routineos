@@ -1,12 +1,12 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "routineos",
-  "description": "RoutineOS: a meta framework for Claude routines.",
+  "description": "RoutineOS: the self-improving framework for Claude routines.",
   "owner": { "name": "Devkind" },
   "plugins": [
     {
       "name": "routineos",
-      "description": "A meta framework for Claude routines: conventions, a linter, templates and a mobile-first dashboard shell.",
+      "description": "The self-improving framework for Claude routines: conventions, a linter, templates, approval gates and a mobile Desk.",
       "source": "./",
       "category": "development"
     }

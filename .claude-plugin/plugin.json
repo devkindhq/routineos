@@ -1,10 +1,12 @@
 {
   "name": "routineos",
   "version": "0.8.1",
-  "description": "A meta framework for Claude routines: conventions, a linter, templates and a mobile-first dashboard shell, so a routine is safe by default and easy to steer.",
+  "description": "The self-improving framework for Claude routines: conventions, a linter, templates, approval gates and a mobile Desk. A routine proposes changes to itself and applies them only on your yes.",
   "author": { "name": "Devkind" },
+  "homepage": "https://docs.routineos.org",
+  "repository": "https://github.com/devkindhq/routineos",
   "license": "MIT",
-  "keywords": ["claude", "routines", "scheduled-agents", "framework", "artifacts", "settings", "approval-gates"],
+  "keywords": ["claude", "routines", "scheduled-agents", "framework", "artifacts", "settings", "approval-gates", "claude-code", "scheduled-tasks", "self-improving", "automation", "templates", "n8n"],
   "mcpServers": {
     "routineos": { "type": "http", "url": "https://docs.routineos.org/api/mcp" }
   }
