@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 
-from pack_fixtures import CATALOG, CLI, gated_pack, minimal_pack
+from pack_fixtures import CATALOG, CLI, ROOT, gated_pack, minimal_pack
 
 import jsonschema_subset
 import pack
@@ -228,6 +228,13 @@ class CommittedCatalogTests(unittest.TestCase):
     def test_catalog_check_passes_on_the_tree(self):
         res = run("pack", "catalog", "--check")
         self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+
+    def test_readme_template_list_matches_the_catalog(self):
+        with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as fh:
+            section = fh.read().split("\n## Templates\n", 1)[1].split("\n## ", 1)[0]
+        listed = [line[2:].split(":", 1)[0] for line in section.splitlines() if line.startswith("- ")]
+        index = load_json(os.path.join(CATALOG, "index.json"))
+        self.assertEqual(listed, [t["id"] for t in index["templates"]])
 
     def test_every_catalog_file_validates(self):
         pack_schema = load_json(os.path.join(SCHEMA_DIR, "pack.v1.schema.json"))
