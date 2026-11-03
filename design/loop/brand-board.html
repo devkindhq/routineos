@@ -1,0 +1,687 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>RoutineOS Loop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700&family=Instrument+Serif:ital@1&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --paper:#FAFBFD; --white:#FFFFFF; --cobalt:#1F3FD1; --cobalt-700:#1730A8; --cobalt-100:#E6EBFF; --ink:#121624;
+  --n50:#F4F6FA; --n100:#EBEEF4; --n200:#DCE1EA; --n300:#C5CBD8; --n400:#8A92A6; --n600:#5A6278; --n800:#353B4D;
+  --ok:#1A7F4B; --warn:#9A6200; --fail:#C0322B; --info:#2A6F97;
+  --s1:#2A6F97; --s2:#12766F; --s3:#4D7426; --s4:#8A6410; --s5:#B4472F; --s6:#A83C62; --s7:#6A4BB0; --s8:#4A5668;
+  --display:"Instrument Sans", system-ui, sans-serif; --serif:"Instrument Serif", Georgia, serif; --mono:"Geist Mono", ui-monospace, monospace;
+  --r:10px;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:400 16px/1.55 var(--display);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--cobalt)}
+.in{max-width:1180px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+section{padding-block:72px;border-top:1px solid var(--n200)}
+h1,h2,h3{font-family:var(--display);font-stretch:88%;letter-spacing:-.02em;margin:0;font-weight:650}
+h2{font-size:clamp(28px,4vw,40px);line-height:1.1}
+h3{font-size:18px;font-weight:600;letter-spacing:-.01em}
+p{margin:0}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--n600);display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.eyebrow b{color:var(--cobalt);font-weight:600}
+.lede{color:var(--n800);max-width:62ch;margin-top:12px}
+.serif{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:0;font-stretch:100%}
+.mono{font-family:var(--mono)}
+.cap{font:500 11px/1.3 var(--mono);color:var(--n600);letter-spacing:.04em;text-transform:uppercase}
+.grid{display:grid;gap:16px}
+.tile{background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:20px}
+.tile .cap{margin-top:14px}
+.stage{display:flex;align-items:center;justify-content:center;min-height:150px}
+svg{display:block}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+
+/* header */
+.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--n200)}
+.top .in{display:flex;align-items:center;gap:24px;height:62px}
+.lock{display:inline-flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font:650 20px/1 var(--display);font-stretch:88%;letter-spacing:-.02em;flex-shrink:0}
+.lock svg{width:26px;height:26px;color:var(--cobalt)}
+.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.nav a{color:var(--n800);text-decoration:none;font-size:14.5px;font-weight:500;padding:7px 11px;border-radius:999px;white-space:nowrap}
+.nav a:hover{background:var(--n100)}
+.nav a.gh{margin-left:auto;display:inline-flex;gap:6px;align-items:center;border:1px solid var(--n300)}
+.nav a.gh svg{width:16px;height:16px}
+
+/* intro */
+.intro{border-top:0;padding-block:80px 64px}
+.intro .in{display:grid;grid-template-columns:1.3fr 1fr;gap:48px;align-items:center}
+.intro h1{font-size:clamp(46px,8vw,96px);line-height:.95;font-weight:700;font-stretch:80%}
+.intro h1 .serif{color:var(--cobalt)}
+.words{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
+.words span{font:500 13px/1 var(--mono);border:1px solid var(--n300);border-radius:999px;padding:9px 14px;background:var(--white)}
+.words span i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:0}
+.bigring{width:min(100%,380px);margin-inline:auto;aspect-ratio:1}
+
+/* wordmark */
+.wm{font:650 1em/1 var(--display);font-stretch:88%;letter-spacing:-.025em;white-space:nowrap;color:var(--ink)}
+.wm .o{display:inline-block;width:.8em;height:.8em;vertical-align:-.075em;margin:0 .015em 0 .01em;color:var(--cobalt)}
+.logos{grid-template-columns:repeat(6,1fr)}
+.logos .tile{grid-column:span 2}
+.logos .wide{grid-column:span 3}
+.logos .full{grid-column:span 6}
+.rev{background:var(--cobalt);border-color:var(--cobalt)}
+.rev .wm,.rev .lock{color:#fff}.rev .wm .o,.rev .lock svg{color:#fff}
+.rev .cap{color:#DCE3FF}
+.inkt{background:var(--ink);border-color:var(--ink)}
+.inkt .lock{color:var(--paper)}.inkt .lock svg{color:var(--paper)}.inkt .cap{color:var(--n300)}
+.stack{display:flex;flex-direction:column;align-items:center;gap:10px}
+.stack svg{width:64px;height:64px;color:var(--cobalt)}
+.stack .t{font:650 30px/1 var(--display);font-stretch:88%;letter-spacing:-.02em}
+.fav{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap}
+.fav div{display:flex;flex-direction:column;align-items:center;gap:8px}
+.fav .chip{background:var(--white);border:1px solid var(--n200);border-radius:22%;display:grid;place-items:center}
+.donts{grid-template-columns:repeat(3,1fr)}
+.dont{position:relative;overflow:hidden}
+.dont .x{position:absolute;inset:0;pointer-events:none}
+.dont p{font-size:13.5px;color:var(--n800);margin-top:10px}
+.dont p b{color:var(--fail)}
+
+/* desk */
+.desk{display:grid;grid-template-columns:1fr 1.6fr;gap:24px;align-items:start}
+.dmark{display:inline-flex;align-items:center;gap:10px;font:600 22px/1 var(--display);letter-spacing:-.01em}
+.dmark svg{width:32px;height:32px}
+.rel{font-size:20px;line-height:1.35;margin-top:22px;font-weight:500;letter-spacing:-.01em}
+.app{background:var(--white);border:1px solid var(--n300);border-radius:12px;overflow:hidden;display:grid;grid-template-columns:200px 1fr;min-height:340px;box-shadow:0 1px 0 var(--n200),0 18px 40px -28px rgba(18,22,36,.35)}
+.side{background:var(--n50);border-right:1px solid var(--n200);padding:14px 10px}
+.side .dmark{font-size:16px;gap:8px;padding:4px 6px 14px}
+.side .dmark svg{width:24px;height:24px}
+.side .rn{font:500 11px/1.3 var(--mono);color:var(--n600);padding:0 6px 10px;border-bottom:1px solid var(--n200);margin-bottom:8px}
+.side a{display:flex;justify-content:space-between;font-size:14px;color:var(--n800);text-decoration:none;padding:7px 8px;border-radius:7px}
+.side a.on{background:var(--cobalt-100);color:var(--cobalt-700);font-weight:600}
+.side a kbd{font:400 11px var(--mono);color:var(--n400)}
+.side .by{font:500 10.5px/1.4 var(--mono);color:var(--n400);padding:16px 8px 0;display:flex;gap:6px;align-items:center}
+.side .by svg{width:12px;height:12px;color:var(--n400)}
+.main{padding:18px 20px}
+.bar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.bar h3{font-size:20px}
+.k{font:500 12px var(--mono);border:1px solid var(--n300);border-radius:6px;padding:4px 8px;color:var(--n600)}
+.runline{font:400 12.5px/1.5 var(--mono);color:var(--n800);background:var(--n50);border:1px solid var(--n200);border-radius:8px;padding:9px 12px;margin:14px 0}
+.sug{border:1px solid var(--n200);border-radius:10px;padding:14px}
+.sug .tag{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--s7);display:flex;gap:6px;align-items:center}
+.sug .tag svg{width:14px;height:14px}
+.sug h4{margin:8px 0 4px;font-size:16px;font-weight:600}
+.sug p{font-size:13.5px;color:var(--n600)}
+.btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{font:600 13.5px/1 var(--display);padding:9px 14px;border-radius:999px;border:1px solid var(--n300);background:var(--white);color:var(--ink);text-decoration:none}
+.btn.p{background:var(--cobalt);border-color:var(--cobalt);color:#fff}
+
+/* icons */
+.icons{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.ic{background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:16px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.ic svg{width:24px;height:24px;color:var(--ink)}
+.ic span{font:500 11.5px/1.2 var(--mono);color:var(--n600)}
+.big{display:flex;gap:28px;flex-wrap:wrap;align-items:center;background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:24px;margin-top:16px;background-image:linear-gradient(var(--n100) 1px,transparent 1px),linear-gradient(90deg,var(--n100) 1px,transparent 1px);background-size:8px 8px}
+.big svg{width:48px;height:48px}
+.subhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:32px 0 12px;flex-wrap:wrap}
+
+/* type */
+.type{grid-template-columns:1fr 1fr 1fr}
+.grid > *{min-width:0}
+.spec .big1{font:700 clamp(40px,6vw,64px)/1 var(--display);font-stretch:80%;letter-spacing:-.03em}
+.scale{margin-top:16px;border-top:1px solid var(--n200)}
+.scale div{display:grid;grid-template-columns:110px 1fr;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--n200);overflow:hidden}
+.scale div span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-stretch:88%;letter-spacing:-.015em}
+.wts{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:28px;font-stretch:88%}
+.code{font:400 13.5px/1.7 var(--mono);background:var(--n50);border:1px solid var(--n200);border-radius:var(--r);padding:16px 18px;overflow-x:auto;white-space:pre;color:var(--ink)}
+.code .p{color:var(--cobalt);user-select:none}.code .c{color:var(--n600)}.code .g{color:var(--ok)}.code .f{color:var(--s7)}
+
+/* colour */
+.sw{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.swc{background:var(--white);border:1px solid var(--n200);border-radius:var(--r);overflow:hidden}
+.swc .chip{height:84px;border-bottom:1px solid var(--n200)}
+.swc div:last-child{padding:10px 12px}
+.swc b{display:block;font-size:14px;font-weight:600}
+.swc code{font:500 12px var(--mono);color:var(--n600)}
+.swc small{display:block;font-size:12.5px;color:var(--n600);margin-top:2px;line-height:1.35}
+.ramp{display:grid;grid-template-columns:repeat(8,1fr);border-radius:var(--r);overflow:hidden;border:1px solid var(--n200)}
+.ramp div{padding:46px 8px 8px;font:500 10.5px/1.3 var(--mono)}
+.spec8{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.spec8 div{border-radius:8px;padding:48px 8px 8px;color:#fff;font:500 10.5px/1.3 var(--mono)}
+.spec8 b{display:block;font:600 12.5px var(--display)}
+.tbl{overflow-x:auto;border:1px solid var(--n200);border-radius:var(--r);background:var(--white)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--n200);vertical-align:top}
+th{font:500 11.5px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--n600);background:var(--n50)}
+tr:last-child td{border-bottom:0}
+.pass{font:600 11px var(--mono);color:var(--ok);background:#E6F4EC;border-radius:999px;padding:3px 8px}
+.pair{display:inline-flex;align-items:center;gap:8px}
+.pair i{width:30px;height:20px;border-radius:5px;display:grid;place-items:center;font:700 11px var(--display);font-style:normal;border:1px solid var(--n200)}
+
+/* lifecycle */
+.lc-head{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center}
+.lc-head svg{width:120px;height:120px}
+.strip{overflow-x:auto;margin-top:32px;background:var(--white);border:1px solid var(--n200);border-radius:var(--r)}
+.strip svg{min-width:880px;width:100%;height:auto}
+.cards{grid-template-columns:repeat(4,1fr);margin-top:16px}
+.card{background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px}
+.card .hd{display:flex;align-items:center;gap:12px}
+.card .hd svg.mr{width:40px;height:40px;flex-shrink:0}
+.card .num{font:500 11px var(--mono);color:var(--n600)}
+.card h3{font-size:19px}
+.card p{font-size:14px;color:var(--n800)}
+.ev{border-top:1px dashed var(--n300);padding-top:10px;font-size:13.5px}
+.ev .cap{display:flex;gap:6px;align-items:center;margin-bottom:4px}
+.ev .cap svg{width:14px;height:14px}
+.st{--o1:.14;--o2:.14;--o3:.14;--o4:.14;--o5:.14;--o6:.14;--o7:.14;--o8:.14}
+.st.k1{--o1:1}.st.k2{--o2:1}.st.k3{--o3:1}.st.k4{--o4:1}.st.k5{--o5:1}.st.k6{--o6:1}.st.k7{--o7:1}.st.k8{--o8:1}
+.states{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;align-items:center}
+.states span{font:500 12.5px var(--mono);padding:8px 12px;border-radius:999px;border:1px solid var(--n300);background:var(--white);display:inline-flex;gap:8px;align-items:center}
+.states span svg{width:16px;height:16px}
+.states .done{border-color:var(--ok);color:var(--ok)}
+.quote{font-size:15px;color:var(--n800);margin-top:14px}
+
+/* applications */
+.apps{grid-template-columns:repeat(6,1fr)}
+.apps > *{grid-column:span 3}
+.apps .full{grid-column:span 6}
+.hero{background:var(--white);border:1px solid var(--n300);border-radius:12px;overflow:hidden}
+.hero .mininav{display:flex;align-items:center;gap:18px;padding:12px 20px;border-bottom:1px solid var(--n200);overflow-x:auto;scrollbar-width:none}
+.hero .mininav .lock{font-size:16px}.hero .mininav .lock svg{width:20px;height:20px}
+.hero .mininav a:not(.lock){font-size:13px;color:var(--n800);text-decoration:none;white-space:nowrap}
+.hero .body{display:grid;grid-template-columns:1.4fr 1fr;gap:24px;padding:48px 32px;align-items:center;background:radial-gradient(circle at 85% 50%,var(--cobalt-100),transparent 45%)}
+.hero h2{font-size:clamp(32px,4.6vw,54px);line-height:1.02;font-stretch:82%;font-weight:700}
+.hero h2 .serif{color:var(--cobalt)}
+.hero p{margin-top:14px;color:var(--n800);max-width:46ch}
+.hero .ring{width:100%;max-width:260px;margin-inline:auto}
+.tcard{background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:12px}
+.tcard .row{display:flex;gap:8px;flex-wrap:wrap}
+.pill{font:500 11.5px var(--mono);padding:5px 9px;border-radius:999px;background:var(--n100);color:var(--n800);display:inline-flex;gap:6px;align-items:center}
+.pill.ok{background:#E6F4EC;color:var(--ok)}
+.pill svg{width:13px;height:13px}
+.tcard h3{font-size:22px}
+.tcard .ti{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.tcard .ti svg{width:40px;height:40px;color:var(--s1)}
+.tcard .foot{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--n200);padding-top:12px;font:400 12px var(--mono);color:var(--n600);flex-wrap:wrap}
+.yes{color:var(--ok);font-weight:600}
+.og{aspect-ratio:1200/630;background:var(--paper);border:1px solid var(--n300);border-radius:12px;position:relative;overflow:hidden;container-type:inline-size}
+.og .ogin{position:absolute;inset:0;padding:6.5cqw;display:flex;flex-direction:column;justify-content:space-between}
+.og .lock{font-size:3.4cqw}.og .lock svg{width:4.4cqw;height:4.4cqw}
+.og h2{font-size:6.6cqw;line-height:1.02;max-width:62%;font-stretch:80%;font-weight:700}
+.og .u{font:500 2.1cqw var(--mono);color:var(--n600)}
+.og .ogring{position:absolute;right:-9cqw;top:50%;transform:translateY(-50%);width:56cqw;height:56cqw}
+
+footer{border-top:1px solid var(--n200);padding-block:40px;background:var(--white)}
+footer .in{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+footer p{font-size:14px;color:var(--n800)}
+footer small{font:400 12px var(--mono);color:var(--n600);display:block;margin-top:4px}
+
+@media (max-width: 900px){
+  .intro .in,.desk,.lc-head{grid-template-columns:1fr}
+  .logos .tile,.logos .wide{grid-column:span 3}
+  .type{grid-template-columns:1fr}
+  .cards{grid-template-columns:1fr 1fr}
+  .apps > *{grid-column:span 6}
+  .hero .body{grid-template-columns:1fr;padding:32px 20px}
+  .hero .ring{max-width:180px}
+  .ramp,.spec8{grid-template-columns:repeat(4,1fr)}
+}
+@media (max-width: 600px){
+  section{padding-block:52px}
+  .logos .tile,.logos .wide{grid-column:span 6}
+  .donts{grid-template-columns:1fr}
+  .cards{grid-template-columns:1fr}
+  .app{grid-template-columns:1fr}
+  .side{border-right:0;border-bottom:1px solid var(--n200)}
+  .side nav{display:flex;flex-wrap:wrap;gap:2px}
+  .side a kbd,.side .by{display:none}
+  .lock{font-size:18px}
+  .top .in{gap:12px}
+  .lc-head svg{width:88px;height:88px}
+}
+</style>
+
+<!-- ============ shared symbols ============ -->
+<svg class="defs" aria-hidden="true">
+  <defs>
+    <!-- primary mark: 8 segments, re-entry gap at top. pathLength 100: gap 5, joints 1.5, segment 10.5625 -->
+    <symbol id="mk" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="7" transform="rotate(-90 24 24)">
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-2.5"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-14.5625"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-26.625"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-38.6875"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-50.75"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-62.8125"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-74.875"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-86.9375"/>
+    </g></symbol>
+    <!-- spectrum mark: each segment its stage colour; opacity hooks for highlighting one stage -->
+    <symbol id="mkc" viewBox="0 0 48 48"><g fill="none" stroke-width="7" transform="rotate(-90 24 24)">
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-2.5" style="stroke:var(--s1);opacity:var(--o1,1)"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-14.5625" style="stroke:var(--s2);opacity:var(--o2,1)"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-26.625" style="stroke:var(--s3);opacity:var(--o3,1)"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-38.6875" style="stroke:var(--s4);opacity:var(--o4,1)"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-50.75" style="stroke:var(--s5);opacity:var(--o5,1)"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-62.8125" style="stroke:var(--s6);opacity:var(--o6,1)"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-74.875" style="stroke:var(--s7);opacity:var(--o7,1)"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-86.9375" style="stroke:var(--s8);opacity:var(--o8,1)"/>
+    </g></symbol>
+    <!-- small-size mark: joints dropped below 32px, only the re-entry gap survives -->
+    <symbol id="mks" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.25" fill="none" stroke="currentColor" stroke-width="3" pathLength="100" stroke-dasharray="88 100" stroke-dashoffset="-6" transform="rotate(-90 8 8)"/></symbol>
+    <symbol id="mk32" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="5.5" transform="rotate(-90 16 16)">
+      <circle cx="16" cy="16" r="10.5" pathLength="100" stroke-dasharray="20.25 100" stroke-dashoffset="-4"/>
+      <circle cx="16" cy="16" r="10.5" pathLength="100" stroke-dasharray="20.25 100" stroke-dashoffset="-27.25"/>
+      <circle cx="16" cy="16" r="10.5" pathLength="100" stroke-dasharray="20.25 100" stroke-dashoffset="-50.5"/>
+      <circle cx="16" cy="16" r="10.5" pathLength="100" stroke-dasharray="20.25 100" stroke-dashoffset="-73.75"/>
+    </g></symbol>
+    <!-- Desk sub-brand: rounded square + ring dot -->
+    <symbol id="desk" viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="9" fill="var(--ink)"/><circle cx="16" cy="16" r="6" fill="none" stroke="var(--paper)" stroke-width="3.2"/><circle cx="16" cy="16" r="1.9" fill="var(--paper)"/></symbol>
+
+    <!-- icons: 24 grid, 1.5 stroke, round caps and joins -->
+    <symbol id="i-routine" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.6 4.15A8 8 0 1 1 10.4 4.15"/><path d="M12 8v4l2.5 1.5"/></g></symbol>
+    <symbol id="i-run" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.25 8.75 15 12l-4.75 3.25z"/></g></symbol>
+    <symbol id="i-record" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M9 16h6"/></g></symbol>
+    <symbol id="i-schedule" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.75M9.5 3h5"/></g></symbol>
+    <symbol id="i-gate" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20.5V10a7 7 0 0 1 14 0v10.5M3.5 20.5h17"/><path d="m9.25 13.5 2 2 3.5-4"/></g></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16M4 16h16"/><circle cx="9" cy="8" r="2.5" style="fill:var(--white)"/><circle cx="15" cy="16" r="2.5" style="fill:var(--white)"/></g></symbol>
+    <symbol id="i-learn" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17.5c0-2-3-3.2-3-7a6 6 0 0 1 12 0c0 3.8-3 5-3 7z"/><path d="M9.75 20.75h4.5M12 8v4M10 10h4"/></g></symbol>
+    <symbol id="i-template" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="7.5" r="3.5"/><circle cx="16.5" cy="7.5" r="3.5"/><circle cx="7.5" cy="16.5" r="3.5"/><circle cx="16.5" cy="16.5" r="3.5" stroke-dasharray="2 2"/></g></symbol>
+    <symbol id="i-desk" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5.5"/><circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r=".6" fill="currentColor"/></g></symbol>
+    <symbol id="i-connector" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="12" r="3.5"/><circle cx="17.5" cy="12" r="3.5"/><path d="M10 12h4"/></g></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.5"/><path d="M5 6v12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></g></symbol>
+    <symbol id="i-report" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.75 12S6.25 6 12 6s9.25 6 9.25 6-3.5 6-9.25 6-9.25-6-9.25-6z"/><circle cx="12" cy="12" r="2.75"/></g></symbol>
+    <symbol id="i-discover" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5M8.25 10.5a2.25 2.25 0 0 1 2.25-2.25"/></g></symbol>
+    <symbol id="i-design" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6.5"/><path d="M12 2.75v4M12 17.25v4M2.75 12h4M17.25 12h4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></g></symbol>
+    <symbol id="i-build" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="13" width="7.5" height="7.5" rx="2"/><rect x="13" y="13" width="7.5" height="7.5" rx="2"/><circle cx="12" cy="7" r="3.75"/></g></symbol>
+    <symbol id="i-verify" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.25 2.4 2.4 4.6-5"/></g></symbol>
+    <symbol id="i-deploy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M6.5 12.5a6 6 0 1 0 11 0"/></g></symbol>
+    <symbol id="i-operate" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M6.5 12h2.75l1.5-3 2.5 6 1.5-3h2.75"/></g></symbol>
+    <symbol id="i-improve" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12A7.5 7.5 0 1 1 17.3 6.7"/><path d="M19.25 3.5v3.75H15.5"/><path d="M12 9v6M9 12h6"/></g></symbol>
+    <symbol id="i-retire" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10 9v6M14 9v6"/></g></symbol>
+    <symbol id="i-gh" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M9.5 20.2v-3a2.5 2.5 0 0 1 .7-1.9c-2.3-.3-4-1.3-4-4.1a3.2 3.2 0 0 1 .9-2.2 2.9 2.9 0 0 1 .1-2.1s.8-.2 2.3.9a8 8 0 0 1 5 0c1.5-1.1 2.3-.9 2.3-.9a2.9 2.9 0 0 1 .1 2.1 3.2 3.2 0 0 1 .9 2.2c0 2.8-1.7 3.8-4 4.1a2.5 2.5 0 0 1 .7 1.9v3"/></g></symbol>
+  </defs>
+</svg>
+
+<!-- ============ 1. header ============ -->
+<header class="top">
+  <div class="in">
+    <a class="lock" href="#top" aria-label="RoutineOS home"><svg aria-hidden="true"><use href="#mk"/></svg>RoutineOS</a>
+    <nav class="nav" aria-label="Main">
+      <a href="#type">Docs</a><a href="#apps">Templates</a><a href="#intro">Concepts</a><a href="#lifecycle">Lifecycle</a><a href="#compare">Compare</a>
+      <a class="gh" href="#footer"><svg aria-hidden="true"><use href="#i-gh"/></svg>GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ 2. concept intro ============ -->
+<section class="intro" id="intro">
+  <div class="in">
+    <div>
+      <div class="eyebrow"><b>Concept 02</b> RoutineOS brand board</div>
+      <h1><span class="serif">Loop</span></h1>
+      <p class="lede" style="font-size:18px">The identity is the lifecycle itself. Eight stages, Discover to Retire, sit on one ring, each segment a stage, each with the evidence that must exist before moving on. A small gap at the top is where a run re-enters, so the mark reads as the "O" in OS and as a cycle that never quite closes on its own: a person has to look, decide, and let the next run in. The palette stays on porcelain and cobalt, with an eight-step stage spectrum reserved for the lifecycle.</p>
+      <div class="words">
+        <span><i style="background:var(--cobalt)"></i>Cyclical</span>
+        <span><i style="background:var(--s2)"></i>Evidenced</span>
+        <span><i style="background:var(--s7)"></i>Learning</span>
+      </div>
+    </div>
+    <svg class="bigring" viewBox="0 0 48 48" role="img" aria-label="RoutineOS spectrum mark: eight stage segments with a gap at the top"><use href="#mkc"/></svg>
+  </div>
+</section>
+
+<!-- ============ 3. logo system ============ -->
+<section id="logo">
+  <div class="in">
+    <div class="eyebrow"><b>03</b> Logo system</div>
+    <h2>One ring, eight segments, one way back in.</h2>
+    <p class="lede">The mark is drawn, never typed: a ring split into the eight lifecycle stages, with a wider gap at twelve o'clock. In the wordmark the ring takes the place of the "O", so "OS" is spelled by the cycle itself.</p>
+
+    <div class="grid logos" style="margin-top:32px">
+      <div class="tile full"><div class="stage" style="min-height:200px"><span class="wm" style="font-size:clamp(48px,9vw,104px)">Routine<svg class="o" aria-hidden="true"><use href="#mk"/></svg>S</span></div><div class="cap">Primary wordmark · Instrument Sans 650, width 88%, tracking -2.5% · ring replaces the O</div></div>
+
+      <div class="tile"><div class="stage"><svg width="112" height="112" style="color:var(--cobalt)" role="img" aria-label="Symbol"><use href="#mk"/></svg></div><div class="cap">Symbol · cobalt</div></div>
+      <div class="tile"><div class="stage"><svg width="112" height="112" role="img" aria-label="Spectrum symbol"><use href="#mkc"/></svg></div><div class="cap">Spectrum symbol · lifecycle, OG, app icon only</div></div>
+      <div class="tile"><div class="stage"><div class="stack"><svg aria-hidden="true"><use href="#mk"/></svg><span class="t">RoutineOS</span></div></div><div class="cap">Stacked lockup</div></div>
+
+      <div class="tile wide"><div class="stage"><span class="lock" style="font-size:38px;gap:14px"><svg style="width:48px;height:48px" aria-hidden="true"><use href="#mk"/></svg>RoutineOS</span></div><div class="cap">Horizontal lockup · mark = 1.25 x cap height</div></div>
+      <div class="tile wide"><div class="stage"><span class="lock" style="font-size:38px;gap:14px;color:var(--ink)"><svg style="width:48px;height:48px;color:var(--ink)" aria-hidden="true"><use href="#mk"/></svg>RoutineOS</span></div><div class="cap">One-colour · ink #121624</div></div>
+
+      <div class="tile wide rev"><div class="stage"><span class="wm" style="font-size:56px">Routine<svg class="o" aria-hidden="true"><use href="#mk"/></svg>S</span></div><div class="cap">Reversed · white on cobalt #1F3FD1 · 7.81:1</div></div>
+      <div class="tile wide inkt"><div class="stage"><span class="lock" style="font-size:34px;gap:12px"><svg style="width:42px;height:42px" aria-hidden="true"><use href="#mk"/></svg>RoutineOS</span></div><div class="cap">Dark tile variant · porcelain on ink · 17.4:1</div></div>
+
+      <div class="tile wide"><div class="stage"><div class="fav">
+        <div><div class="chip" style="width:28px;height:28px"><svg width="16" height="16" style="color:var(--cobalt)" aria-hidden="true"><use href="#mks"/></svg></div><span class="cap">16 px</span></div>
+        <div><div class="chip" style="width:46px;height:46px"><svg width="32" height="32" style="color:var(--cobalt)" aria-hidden="true"><use href="#mk32"/></svg></div><span class="cap">32 px</span></div>
+        <div><div class="chip" style="width:84px;height:84px"><svg width="64" height="64" style="color:var(--cobalt)" aria-hidden="true"><use href="#mk"/></svg></div><span class="cap">64 px</span></div>
+        <div><div class="chip" style="width:84px;height:84px;background:var(--cobalt);border-color:var(--cobalt)"><svg width="56" height="56" style="color:#fff" aria-hidden="true"><use href="#mk"/></svg></div><span class="cap">App icon</span></div>
+      </div></div><div class="cap">Small sizes · 16 px keeps only the gap · 32 px uses 4 joints · 64 px and up: all 8</div></div>
+
+      <div class="tile wide"><div class="stage">
+        <svg viewBox="0 0 300 150" width="100%" style="max-width:340px" role="img" aria-label="Clear space diagram">
+          <rect x="1" y="1" width="298" height="148" fill="none" stroke="var(--n300)" stroke-dasharray="3 3"/>
+          <rect x="41" y="31" width="218" height="88" fill="var(--cobalt-100)" opacity=".55"/>
+          <svg x="56" y="46" width="58" height="58" style="color:var(--cobalt)"><use href="#mk"/></svg>
+          <text x="124" y="87" font-family="Instrument Sans" font-weight="650" font-size="27" fill="var(--ink)" style="font-stretch:88%" letter-spacing="-.5">RoutineOS</text>
+          <g stroke="var(--fail)" stroke-width="1"><path d="M1 75h40M259 75h40M150 1v30M150 119v30"/></g>
+          <g font-family="Geist Mono" font-size="10" fill="var(--fail)"><text x="8" y="70">x</text><text x="285" y="70">x</text><text x="154" y="20">x</text><text x="154" y="140">x</text></g>
+          <text x="56" y="140" font-family="Geist Mono" font-size="9" fill="var(--n600)">x = ring thickness x 2</text>
+        </svg>
+      </div><div class="cap">Clear space x = 2 ring widths · min size: mark 16 px, lockup 96 px wide</div></div>
+    </div>
+
+    <div class="subhead"><h3>Don'ts</h3><span class="cap">Shown small, crossed</span></div>
+    <div class="grid donts">
+      <div class="tile dont"><div class="stage" style="min-height:110px"><svg width="72" height="72" viewBox="0 0 48 48" style="color:var(--cobalt)"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="7"/></svg></div><svg class="x" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M8 8 92 92M92 8 8 92" stroke="var(--fail)" stroke-width=".8" vector-effect="non-scaling-stroke" opacity=".7"/></svg><p><b>Don't close the gap.</b> A closed ring has no way back in; the loop needs a person.</p></div>
+      <div class="tile dont"><div class="stage" style="min-height:110px"><svg width="72" height="72" style="color:var(--cobalt);transform:rotate(130deg)"><use href="#mk"/></svg></div><svg class="x" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M8 8 92 92M92 8 8 92" stroke="var(--fail)" stroke-width=".8" vector-effect="non-scaling-stroke" opacity=".7"/></svg><p><b>Don't rotate the ring.</b> The gap always sits at twelve o'clock.</p></div>
+      <div class="tile dont"><div class="stage" style="min-height:110px"><span class="lock" style="font-size:22px"><svg aria-hidden="true"><use href="#mk"/></svg>RoutineOS Desk</span></div><svg class="x" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M8 8 92 92M92 8 8 92" stroke="var(--fail)" stroke-width=".8" vector-effect="non-scaling-stroke" opacity=".7"/></svg><p><b>Don't add "Desk" to the logo.</b> The brand is RoutineOS. The Desk has its own mark.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. desk sub-brand ============ -->
+<section id="desk">
+  <div class="in desk">
+    <div>
+      <div class="eyebrow"><b>04</b> The Desk sub-brand</div>
+      <span class="dmark"><svg aria-hidden="true"><use href="#desk"/></svg>Desk</span>
+      <p class="rel">RoutineOS is the framework. The Desk is where people meet the routines.</p>
+      <p class="lede" style="font-size:15px">A rounded square, like a table seen from above, with one ring dot at its centre: the routine you sit down with. Ink, never cobalt, so it never competes with the RoutineOS ring. The word "Desk" is set in Instrument Sans 600 at normal width.</p>
+      <p class="quote">"A desk is where you come, take a seat, look, think, understand, and then leave." <span class="cap" style="display:block;margin-top:6px">Kazim Ali, Devkind</span></p>
+    </div>
+    <div class="app" role="img" aria-label="Desk app mock with sidebar header">
+      <aside class="side">
+        <div class="dmark"><svg aria-hidden="true"><use href="#desk"/></svg>Desk</div>
+        <div class="rn">Jobs watch · watch type</div>
+        <nav>
+          <a class="on" href="#desk">Today <kbd>g t</kbd></a><a href="#desk">Inbox <kbd>g i</kbd></a><a href="#desk">Approvals <kbd>g a</kbd></a><a href="#desk">Browse</a><a href="#desk">History <kbd>g h</kbd></a><a href="#desk">Settings <kbd>g s</kbd></a>
+        </nav>
+        <div class="by"><svg aria-hidden="true"><use href="#mk"/></svg>Built with RoutineOS</div>
+      </aside>
+      <div class="main">
+        <div class="bar"><h3>Today</h3><span class="k">Ctrl K</span></div>
+        <div class="runline">Run Thu 22:00 UTC · 41 found · 9 new · 3 dropped by settings · 1 gate waiting</div>
+        <div class="sug">
+          <div class="tag"><svg aria-hidden="true"><use href="#i-learn"/></svg>Suggestion · Example</div>
+          <h4>Add "Shopify Plus" to title keywords.</h4>
+          <p>Seen in 6 kept titles, 4 near misses.</p>
+          <div class="btns"><a class="btn p" href="#desk">Accept</a><a class="btn" href="#desk">Reject</a><a class="btn" href="#desk">Snooze 7 days</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. icons ============ -->
+<section id="icons">
+  <div class="in">
+    <div class="eyebrow"><b>05</b> Icon family</div>
+    <h2>Drawn on the same circle.</h2>
+    <p class="lede">24 px grid, 2 px live-area padding, 1.5 px stroke with round caps and joins. Every icon is built from a circle or rounded square, so the family sits beside the ring without shouting.</p>
+
+    <div class="subhead"><h3>Framework</h3><span class="cap">24 px · ink</span></div>
+    <div class="grid icons">
+      <div class="ic"><svg><use href="#i-routine"/></svg><span>routine</span></div>
+      <div class="ic"><svg><use href="#i-run"/></svg><span>run</span></div>
+      <div class="ic"><svg><use href="#i-record"/></svg><span>record</span></div>
+      <div class="ic"><svg><use href="#i-schedule"/></svg><span>schedule</span></div>
+      <div class="ic"><svg><use href="#i-gate"/></svg><span>gate / approval</span></div>
+      <div class="ic"><svg><use href="#i-settings"/></svg><span>settings</span></div>
+      <div class="ic"><svg><use href="#i-learn"/></svg><span>suggestion</span></div>
+      <div class="ic"><svg><use href="#i-template"/></svg><span>template</span></div>
+      <div class="ic"><svg><use href="#i-desk"/></svg><span>Desk</span></div>
+      <div class="ic"><svg><use href="#i-connector"/></svg><span>connector</span></div>
+      <div class="ic"><svg><use href="#i-store"/></svg><span>store</span></div>
+      <div class="ic"><svg><use href="#i-report"/></svg><span>report-only</span></div>
+    </div>
+
+    <div class="subhead"><h3>Lifecycle stages</h3><span class="cap">24 px · stage colour</span></div>
+    <div class="grid icons">
+      <div class="ic"><svg style="color:var(--s1)"><use href="#i-discover"/></svg><span>Discover</span></div>
+      <div class="ic"><svg style="color:var(--s2)"><use href="#i-design"/></svg><span>Design</span></div>
+      <div class="ic"><svg style="color:var(--s3)"><use href="#i-build"/></svg><span>Build</span></div>
+      <div class="ic"><svg style="color:var(--s4)"><use href="#i-verify"/></svg><span>Verify</span></div>
+      <div class="ic"><svg style="color:var(--s5)"><use href="#i-deploy"/></svg><span>Deploy</span></div>
+      <div class="ic"><svg style="color:var(--s6)"><use href="#i-operate"/></svg><span>Operate</span></div>
+      <div class="ic"><svg style="color:var(--s7)"><use href="#i-improve"/></svg><span>Improve</span></div>
+      <div class="ic"><svg style="color:var(--s8)"><use href="#i-retire"/></svg><span>Retire</span></div>
+    </div>
+
+    <div class="big" aria-label="Lifecycle icons at 48 px on an 8 px grid">
+      <svg style="color:var(--s1)"><use href="#i-discover"/></svg><svg style="color:var(--s2)"><use href="#i-design"/></svg><svg style="color:var(--s3)"><use href="#i-build"/></svg><svg style="color:var(--s4)"><use href="#i-verify"/></svg><svg style="color:var(--s5)"><use href="#i-deploy"/></svg><svg style="color:var(--s6)"><use href="#i-operate"/></svg><svg style="color:var(--s7)"><use href="#i-improve"/></svg><svg style="color:var(--s8)"><use href="#i-retire"/></svg>
+      <span class="cap" style="flex-basis:100%">Enlarged to 48 px · stroke scales to 3 px</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. typography ============ -->
+<section id="type">
+  <div class="in">
+    <div class="eyebrow"><b>06</b> Typography</div>
+    <h2>Narrow for headlines, natural for reading.</h2>
+    <p class="lede">Instrument Sans carries everything, using its width axis: 80 to 88% for display, 100% for body. Instrument Serif italic appears for one or two words a page, never a sentence. Geist Mono handles commands, run lines and labels.</p>
+
+    <div class="grid type" style="margin-top:28px">
+      <div class="tile spec"><div class="cap" style="margin:0 0 14px">Display · Instrument Sans 700, wdth 80</div><div class="big1">Describe the job.</div><div class="wts"><span style="font-weight:400">Aa 400</span><span style="font-weight:500">Aa 500</span><span style="font-weight:600">Aa 600</span><span style="font-weight:700">Aa 700</span></div></div>
+      <div class="tile spec"><div class="cap" style="margin:0 0 14px">Body · Instrument Sans 400, wdth 100</div><p style="font-size:16px;line-height:1.6">You describe a routine; an agent scaffolds it with typed settings, a prompt, a linter, and a Desk. No servers to deploy. The first run is report-only, and nothing sends, posts or deletes without an approval gate.</p><div class="cap" style="margin:18px 0 6px">Accent · Instrument Serif italic</div><p class="serif" style="font-size:44px;line-height:1;color:var(--cobalt)">re-enters</p></div>
+      <div class="tile spec"><div class="cap" style="margin:0 0 14px">Mono · Geist Mono 400 / 500</div><div class="code" style="font-size:13px"><span class="p">$ </span>routineos new my-watch --type watch
+<span class="c"># routine.toml, prompt.md, README.md</span>
+<span class="c"># definition.json, dashboard/index.html</span></div><div class="wts mono" style="font-size:20px;font-stretch:100%"><span style="font-weight:400">0123 400</span><span style="font-weight:500">0123 500</span></div></div>
+    </div>
+
+    <div class="scale">
+      <div><span class="cap">Display XL · 96</span><span style="font:700 clamp(40px,8vw,96px)/1 var(--display);font-stretch:80%">Loop</span></div>
+      <div><span class="cap">Display · 64</span><span style="font:700 clamp(34px,6vw,64px)/1.05 var(--display);font-stretch:80%">Claude on Rails.</span></div>
+      <div><span class="cap">H1 · 48</span><span style="font:650 clamp(30px,5vw,48px)/1.1 var(--display)">Templates</span></div>
+      <div><span class="cap">H2 · 32</span><span style="font:650 32px/1.15 var(--display)">The lifecycle</span></div>
+      <div><span class="cap">H3 · 22</span><span style="font:600 22px/1.25 var(--display)">Approval-gated routines</span></div>
+      <div><span class="cap">Body L · 18</span><span style="font:400 18px/1.5 var(--display);font-stretch:100%;letter-spacing:0">People decide. It gets better every run.</span></div>
+      <div><span class="cap">Body · 16</span><span style="font:400 16px/1.55 var(--display);font-stretch:100%;letter-spacing:0">Secrets stay in connectors.</span></div>
+      <div><span class="cap">Mono · 13</span><span style="font:400 13px/1.5 var(--mono);font-stretch:100%;letter-spacing:0">routineos lint my-watch</span></div>
+      <div><span class="cap">Label · 11</span><span style="font:500 11px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.06em">Exit evidence</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7. colour ============ -->
+<section id="colour">
+  <div class="in">
+    <div class="eyebrow"><b>07</b> Colour</div>
+    <h2>Porcelain, cobalt, and eight stages.</h2>
+    <p class="lede">Light first. Cobalt is the only brand colour in UI chrome. The stage spectrum is reserved for the lifecycle: segments, stage icons and stage labels. Every stage hue passes AA as text on white, so a stage name can be written in its own colour.</p>
+
+    <div class="subhead"><h3>Brand</h3><span class="cap">Primary + secondary</span></div>
+    <div class="grid sw">
+      <div class="swc"><div class="chip" style="background:var(--cobalt)"></div><div><b>Cobalt</b><code>#1F3FD1</code><small>Primary. Mark, links, primary buttons.</small></div></div>
+      <div class="swc"><div class="chip" style="background:var(--cobalt-700)"></div><div><b>Cobalt 700</b><code>#1730A8</code><small>Pressed states, active nav text.</small></div></div>
+      <div class="swc"><div class="chip" style="background:var(--cobalt-100)"></div><div><b>Cobalt mist</b><code>#E6EBFF</code><small>Secondary. Selected rows, focus wash.</small></div></div>
+      <div class="swc"><div class="chip" style="background:var(--ink)"></div><div><b>Ink</b><code>#121624</code><small>Secondary. Text, Desk mark, one-colour logo.</small></div></div>
+      <div class="swc"><div class="chip" style="background:var(--paper)"></div><div><b>Porcelain</b><code>#FAFBFD</code><small>Page ground.</small></div></div>
+    </div>
+
+    <div class="subhead"><h3>Neutrals</h3><span class="cap">8 steps · cool slate</span></div>
+    <div class="ramp">
+      <div style="background:var(--white)">White<br>#FFFFFF</div>
+      <div style="background:var(--n50)">N50<br>#F4F6FA</div>
+      <div style="background:var(--n100)">N100<br>#EBEEF4</div>
+      <div style="background:var(--n200)">N200<br>#DCE1EA</div>
+      <div style="background:var(--n300)">N300<br>#C5CBD8</div>
+      <div style="background:var(--n400);color:#fff">N400<br>#8A92A6</div>
+      <div style="background:var(--n600);color:#fff">N600<br>#5A6278</div>
+      <div style="background:var(--n800);color:#fff">N800<br>#353B4D</div>
+    </div>
+
+    <div class="subhead"><h3>Semantic</h3><span class="cap">All AA on white</span></div>
+    <div class="grid sw">
+      <div class="swc"><div class="chip" style="background:var(--ok)"></div><div><b>OK</b><code>#1A7F4B · 5.02:1</code><small>Live and tested, lint passes.</small></div></div>
+      <div class="swc"><div class="chip" style="background:var(--warn)"></div><div><b>Warn</b><code>#9A6200 · 5.10:1</code><small>Gate waiting, near budget.</small></div></div>
+      <div class="swc"><div class="chip" style="background:var(--fail)"></div><div><b>Fail</b><code>#C0322B · 5.63:1</code><small>Failed run, refused instruction.</small></div></div>
+      <div class="swc"><div class="chip" style="background:var(--info)"></div><div><b>Info</b><code>#2A6F97 · 5.50:1</code><small>Notes, report-only notices.</small></div></div>
+    </div>
+
+    <div class="subhead"><h3>Lifecycle stages</h3><span class="cap">Sky to slate · ratio on white</span></div>
+    <div class="spec8">
+      <div style="background:var(--s1)"><b>Discover</b>Sky #2A6F97<br>5.50</div>
+      <div style="background:var(--s2)"><b>Design</b>Teal #12766F<br>5.46</div>
+      <div style="background:var(--s3)"><b>Build</b>Moss #4D7426<br>5.47</div>
+      <div style="background:var(--s4)"><b>Verify</b>Ochre #8A6410<br>5.37</div>
+      <div style="background:var(--s5)"><b>Deploy</b>Coral #B4472F<br>5.41</div>
+      <div style="background:var(--s6)"><b>Operate</b>Rose #A83C62<br>6.02</div>
+      <div style="background:var(--s7)"><b>Improve</b>Violet #6A4BB0<br>6.47</div>
+      <div style="background:var(--s8)"><b>Retire</b>Slate #4A5668<br>7.44</div>
+    </div>
+
+    <div class="subhead"><h3>Contrast, main text pairs</h3><span class="cap">WCAG 2.2</span></div>
+    <div class="tbl"><table>
+      <thead><tr><th>Pair</th><th>Use</th><th>Ratio</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pair"><i style="background:var(--paper);color:var(--ink)">Aa</i>Ink on porcelain</span></td><td>Body text</td><td class="mono">17.40:1</td><td><span class="pass">AAA</span></td></tr>
+        <tr><td><span class="pair"><i style="background:var(--white);color:var(--cobalt)">Aa</i>Cobalt on white</span></td><td>Links, mark</td><td class="mono">7.81:1</td><td><span class="pass">AAA</span></td></tr>
+        <tr><td><span class="pair"><i style="background:var(--cobalt);color:#fff">Aa</i>White on cobalt</span></td><td>Primary button</td><td class="mono">7.81:1</td><td><span class="pass">AAA</span></td></tr>
+        <tr><td><span class="pair"><i style="background:var(--paper);color:var(--n600)">Aa</i>N600 on porcelain</span></td><td>Secondary text, labels</td><td class="mono">5.87:1</td><td><span class="pass">AA</span></td></tr>
+        <tr><td><span class="pair"><i style="background:var(--cobalt-100);color:var(--cobalt)">Aa</i>Cobalt on mist</span></td><td>Active nav item</td><td class="mono">6.58:1</td><td><span class="pass">AA</span></td></tr>
+        <tr><td><span class="pair"><i style="background:var(--paper);color:var(--s4)">Aa</i>Ochre on porcelain</span></td><td>Lowest stage text</td><td class="mono">5.19:1</td><td><span class="pass">AA</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="cap" style="margin-top:10px;text-transform:none">N400 #8A92A6 (3.11:1) is for borders and disabled glyphs only, never body text.</p>
+  </div>
+</section>
+
+<!-- ============ 8. lifecycle ============ -->
+<section id="lifecycle">
+  <div class="in">
+    <div class="lc-head">
+      <svg viewBox="0 0 48 48" role="img" aria-label="Spectrum ring"><use href="#mkc"/></svg>
+      <div>
+        <div class="eyebrow"><b>08</b> The lifecycle</div>
+        <h2>The ring, opened up.</h2>
+        <p class="lede">Each segment is a stage. Each stage has exit evidence: the thing that must exist before moving on. Cut the ring at its gap and lay it flat, and you get the lifecycle every routine follows.</p>
+      </div>
+    </div>
+
+    <div class="strip">
+      <svg viewBox="0 0 1000 190" role="img" aria-label="Eight lifecycle stages laid out as a straight segmented band, with a return arc from Improve">
+        <g font-family="Geist Mono" font-size="11" fill="var(--n600)">
+          <text x="44" y="30">GAP · START</text><text x="956" y="30" text-anchor="end">GAP · END</text>
+        </g>
+        <path d="M842 92 C 842 40, 619 40, 619 78" fill="none" stroke="var(--s7)" stroke-width="1.5" stroke-dasharray="4 4" stroke-linecap="round"/>
+        <path d="M614 72 619 80 624 72" fill="none" stroke="var(--s7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="730" y="40" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="var(--s7)">suggestions feed the next run</text>
+        <g stroke-width="16">
+          <line x1="44" y1="100" x2="152" y2="100" stroke="var(--s1)" stroke-dasharray="6 4"/>
+          <line x1="159" y1="100" x2="267" y2="100" stroke="var(--s2)"/>
+          <line x1="274" y1="100" x2="382" y2="100" stroke="var(--s3)"/>
+          <line x1="389" y1="100" x2="497" y2="100" stroke="var(--s4)"/>
+          <line x1="504" y1="100" x2="612" y2="100" stroke="var(--s5)"/>
+          <line x1="619" y1="100" x2="727" y2="100" stroke="var(--s6)"/>
+          <line x1="734" y1="100" x2="842" y2="100" stroke="var(--s7)"/>
+          <line x1="849" y1="100" x2="957" y2="100" stroke="var(--s8)"/>
+        </g>
+        <g font-family="Instrument Sans" font-size="16" font-weight="600" style="font-stretch:88%">
+          <text x="44" y="136" fill="var(--s1)">Discover</text><text x="159" y="136" fill="var(--s2)">Design</text><text x="274" y="136" fill="var(--s3)">Build</text><text x="389" y="136" fill="var(--s4)">Verify</text><text x="504" y="136" fill="var(--s5)">Deploy</text><text x="619" y="136" fill="var(--s6)">Operate</text><text x="734" y="136" fill="var(--s7)">Improve</text><text x="849" y="136" fill="var(--s8)">Retire</text>
+        </g>
+        <g font-family="Geist Mono" font-size="10.5" fill="var(--n600)">
+          <text x="44" y="156">01 · optional</text><text x="159" y="156">02</text><text x="274" y="156">03</text><text x="389" y="156">04</text><text x="504" y="156">05</text><text x="619" y="156">06</text><text x="734" y="156">07</text><text x="849" y="156">08</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="grid cards">
+      <article class="card"><div class="hd"><svg class="mr st k1" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg><div><div class="num">01 · optional</div><h3 style="color:var(--s1)">Discover</h3></div></div><p>Interview, or read a brief the person already has.</p><div class="ev"><div class="cap"><svg style="color:var(--s1)"><use href="#i-discover"/></svg>Exit evidence</div>A written brief the person accepted.</div></article>
+      <article class="card"><div class="hd"><svg class="mr st k2" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg><div><div class="num">02</div><h3 style="color:var(--s2)">Design</h3></div></div><p>Pick routines, the mix of code and model, store, gates, secrets pattern, cost; list risks.</p><div class="ev"><div class="cap"><svg style="color:var(--s2)"><use href="#i-design"/></svg>Exit evidence</div>A design the person approved, risks listed.</div></article>
+      <article class="card"><div class="hd"><svg class="mr st k3" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg><div><div class="num">03</div><h3 style="color:var(--s3)">Build</h3></div></div><p>Scaffold, write prompts and scripts, build the Desk.</p><div class="ev"><div class="cap"><svg style="color:var(--s3)"><use href="#i-build"/></svg>Exit evidence</div>Lint passes; every external contact declared.</div></article>
+      <article class="card"><div class="hd"><svg class="mr st k4" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg><div><div class="num">04</div><h3 style="color:var(--s4)">Verify</h3></div></div><p>Dry checks, then a real report-only first run.</p><div class="ev"><div class="cap"><svg style="color:var(--s4)"><use href="#i-verify"/></svg>Exit evidence</div>A run record exists and the person looked at the output.</div></article>
+      <article class="card"><div class="hd"><svg class="mr st k5" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg><div><div class="num">05</div><h3 style="color:var(--s5)">Deploy</h3></div></div><p>Show the permission screen, create the routine and triggers, load seed data.</p><div class="ev"><div class="cap"><svg style="color:var(--s5)"><use href="#i-deploy"/></svg>Exit evidence</div>The routine is listed on the account with the stated schedule.</div></article>
+      <article class="card"><div class="hd"><svg class="mr st k6" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg><div><div class="num">06</div><h3 style="color:var(--s6)">Operate</h3></div></div><p>Read run records, watch health and cost, relay approvals.</p><div class="ev"><div class="cap"><svg style="color:var(--s6)"><use href="#i-operate"/></svg>Exit evidence</div>Health and cost visible on the Desk.</div></article>
+      <article class="card"><div class="hd"><svg class="mr st k7" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg><div><div class="num">07</div><h3 style="color:var(--s7)">Improve</h3></div></div><p>Change or add routines and integrations without losing data.</p><div class="ev"><div class="cap"><svg style="color:var(--s7)"><use href="#i-improve"/></svg>Exit evidence</div>Change applied, verified, summarised in plain words.</div></article>
+      <article class="card"><div class="hd"><svg class="mr st k8" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg><div><div class="num">08</div><h3 style="color:var(--s8)">Retire</h3></div></div><p>Pause or archive cleanly, remove secrets.</p><div class="ev"><div class="cap"><svg style="color:var(--s8)"><use href="#i-retire"/></svg>Exit evidence</div>Nothing scheduled; secrets deleted.</div></article>
+    </div>
+
+    <div class="states">
+      <span class="cap" style="border:0;background:none;padding:0">Done means live and tested</span>
+      <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="var(--n400)" stroke-width="1.5" stroke-dasharray="3 3"/></svg>Not live</span>
+      <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="var(--warn)" stroke-width="1.5"/><path d="M12 4a8 8 0 0 1 0 16z" fill="var(--warn)"/></svg>Live, not yet tested</span>
+      <span class="done"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="var(--ok)"/><path d="m8.5 12.25 2.4 2.4 4.6-5" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live and tested</span>
+    </div>
+    <p class="quote">"Only live and tested counts as finished. An agent saying a routine works is not evidence."</p>
+  </div>
+</section>
+
+<!-- ============ 9. applications ============ -->
+<section id="apps">
+  <div class="in">
+    <div class="eyebrow"><b>09</b> Applications</div>
+    <h2>The ring at work.</h2>
+
+    <div class="grid apps" style="margin-top:28px">
+      <div class="full">
+        <div class="hero">
+          <div class="mininav"><a class="lock" href="#apps"><svg aria-hidden="true"><use href="#mk"/></svg>RoutineOS</a><a href="#apps">Docs</a><a href="#apps">Templates</a><a href="#apps">Concepts</a><a href="#apps">Lifecycle</a><a href="#apps">Compare</a><a href="#apps">GitHub</a></div>
+          <div class="body">
+            <div>
+              <div class="eyebrow" style="margin-bottom:10px"><b>v0.6.0</b> MIT · open source</div>
+              <h2>Describe the job. People decide. It gets better every <span class="serif">run</span>.</h2>
+              <p>A full-stack framework for Claude routines. Claude builds the routine and its Desk; every run learns from what people keep and drop.</p>
+              <div class="btns" style="margin-top:20px"><a class="btn p" href="#apps">Read the docs</a><a class="btn" href="#apps">Browse templates</a></div>
+            </div>
+            <svg class="ring" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg>
+          </div>
+        </div>
+        <div class="cap" style="margin-top:10px">Homepage hero crop · light only</div>
+      </div>
+
+      <div>
+        <div class="tcard">
+          <div class="ti"><div class="row"><span class="pill ok"><svg><use href="#i-verify"/></svg>Piloted</span><span class="pill"><svg><use href="#i-report"/></svg>Watch type</span></div><svg aria-hidden="true"><use href="#i-template"/></svg></div>
+          <h3>Jobs watch</h3>
+          <p style="font-size:14.5px;color:var(--n800)">Sales signals from job postings. Finds companies hiring for Shopify, headless and commerce roles, saves them as records, and drafts intro notes behind an approval.</p>
+          <div class="row"><span class="pill"><svg><use href="#i-schedule"/></svg>Weekly</span><span class="pill"><svg><use href="#i-gate"/></svg>Gate on drafts</span><span class="pill"><svg><use href="#i-desk"/></svg>Desk</span></div>
+          <div class="foot"><span>Starts report-only</span><span>1 of 10 templates</span></div>
+        </div>
+        <div class="cap" style="margin-top:10px">Templates gallery card</div>
+      </div>
+
+      <div id="compare">
+        <div class="tbl"><table style="min-width:420px">
+          <thead><tr><th></th><th style="color:var(--cobalt)">RoutineOS</th><th>n8n</th><th>Zapier</th></tr></thead>
+          <tbody>
+            <tr><td><b>Judgement</b></td><td>Claude in every run</td><td>AI steps you wire up</td><td>AI steps in a Zap</td></tr>
+            <tr><td><b>Learns from people</b></td><td class="yes">Yes, as suggestions you approve</td><td>No</td><td>No</td></tr>
+            <tr><td><b>Licence</b></td><td>MIT</td><td>Fair-code</td><td>Proprietary</td></tr>
+          </tbody>
+        </table></div>
+        <div class="cap" style="margin-top:10px">Compare table snippet</div>
+      </div>
+
+      <div>
+        <div class="code"><span class="p">$ </span>routineos new my-watch --type watch
+<span class="g">created</span> my-watch/routine.toml
+<span class="g">created</span> my-watch/prompt.md
+<span class="g">created</span> my-watch/README.md
+<span class="g">created</span> my-watch/definition.json
+<span class="g">created</span> my-watch/dashboard/index.html
+<span class="p">$ </span>routineos lint my-watch
+<span class="c"># first run is report-only</span></div>
+        <div class="cap" style="margin-top:10px">CLI block · Geist Mono on N50 · prompt in cobalt</div>
+      </div>
+
+      <div>
+        <div class="og" role="img" aria-label="Social card, 1200 by 630">
+          <svg class="ogring" viewBox="0 0 48 48" aria-hidden="true"><use href="#mkc"/></svg>
+          <div class="ogin">
+            <span class="lock"><svg aria-hidden="true"><use href="#mk"/></svg>RoutineOS</span>
+            <h2>Routines that learn from the people who use them.</h2>
+            <span class="u">docs.routineos.org · MIT · by Devkind</span>
+          </div>
+        </div>
+        <div class="cap" style="margin-top:10px">Social / OG card · 1200 x 630</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10. footer ============ -->
+<footer id="footer">
+  <div class="in">
+    <span class="lock"><svg aria-hidden="true"><use href="#mk"/></svg>RoutineOS</span>
+    <div>
+      <p>RoutineOS is MIT licensed, our gift to everyone, from Devkind.</p>
+      <small>Not affiliated with or endorsed by Anthropic · docs.routineos.org · Concept 02, Loop</small>
+    </div>
+  </div>
+</footer>

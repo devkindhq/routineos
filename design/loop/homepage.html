@@ -1,0 +1,974 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>RoutineOS Loop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700&family=Instrument+Serif:ital@1&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --paper:#FAFBFD; --white:#FFFFFF; --cobalt:#1F3FD1; --cobalt-700:#1730A8; --cobalt-100:#E6EBFF; --ink:#121624;
+  --n50:#F4F6FA; --n100:#EBEEF4; --n200:#DCE1EA; --n300:#C5CBD8; --n400:#8A92A6; --n600:#5A6278; --n800:#353B4D;
+  --ok:#1A7F4B; --ok-100:#E6F4EC; --warn:#9A6200; --warn-100:#FBF1DE; --info:#2A6F97; --info-100:#E4F0F6;
+  --s1:#2A6F97; --s2:#12766F; --s3:#4D7426; --s4:#8A6410; --s5:#B4472F; --s6:#A83C62; --s7:#6A4BB0; --s8:#4A5668;
+  --s7-100:#EFEAFA;
+  --shadow:0 1px 0 var(--n200),0 18px 40px -28px rgba(18,22,36,.35);
+  --display:"Instrument Sans", system-ui, sans-serif; --serif:"Instrument Serif", Georgia, serif; --mono:"Geist Mono", ui-monospace, monospace;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{background:var(--paper);color:var(--ink);font:400 16px/1.55 var(--display);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--cobalt)}
+.in{max-width:1180px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+section{padding-block:88px;border-top:1px solid var(--n200)}
+h1,h2,h3,h4{font-family:var(--display);font-stretch:88%;letter-spacing:-.02em;margin:0;font-weight:650}
+h2{font-size:clamp(30px,4.4vw,46px);line-height:1.06}
+h3{font-size:18px;font-weight:600;letter-spacing:-.01em}
+p{margin:0}
+.eyebrow{font:600 12.5px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--n600);display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.eyebrow b{color:var(--cobalt);font-weight:650}
+.eyebrow svg{width:16px;height:16px}
+.lede{color:var(--n800);max-width:60ch;margin-top:14px;font-size:18px}
+.serif{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:0;font-stretch:100%}
+h2 .serif,h1 .serif{color:var(--cobalt)}
+.mono{font-family:var(--mono)}
+.cap{font:500 12.5px/1.4 var(--display);color:var(--n600)}
+.grid{display:grid;gap:16px}
+.grid > *{min-width:0}
+svg{display:block}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:600 14.5px/1 var(--display);padding:12px 18px;border-radius:999px;border:1px solid var(--n300);background:var(--white);color:var(--ink);text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{border-color:var(--n400)}
+.btn.p{background:var(--cobalt);border-color:var(--cobalt);color:#fff}
+.btn.p:hover{background:var(--cobalt-700)}
+.btn.sm{font-size:12.5px;padding:7px 11px}
+.btn svg{width:16px;height:16px}
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+.chip{font:600 11.5px/1 var(--display);padding:5px 9px;border-radius:999px;background:var(--n100);color:var(--n800);white-space:nowrap;display:inline-flex;gap:5px;align-items:center;border:0}
+.chip svg{width:13px;height:13px;flex:none}
+.chip.ok{background:var(--ok-100);color:var(--ok)}
+.chip.w{background:var(--warn-100);color:var(--warn)}
+.chip.v{background:var(--s7-100);color:var(--s7)}
+.chip.info{background:var(--info-100);color:var(--info)}
+.chip.mute{background:var(--n100);color:var(--n600)}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top, 0px);z-index:20;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--n200)}
+.top .in{display:flex;align-items:center;gap:20px;height:64px}
+.lock{display:inline-flex;align-items:center;text-decoration:none;color:var(--ink);font:650 21px/1 var(--display);font-stretch:88%;letter-spacing:-.02em;flex-shrink:0}
+.lock svg{width:.86em;height:.86em;color:var(--cobalt);margin:0 .02em;transform:translateY(.02em)}
+.nav{display:flex;gap:2px;flex:1;min-width:0;align-items:center}
+.nav a{color:var(--n800);text-decoration:none;font-size:14.5px;font-weight:500;padding:7px 11px;border-radius:999px;white-space:nowrap}
+.nav a:hover{background:var(--n100)}
+.nav .sp{flex:1}
+.nav a.gh{display:inline-flex;gap:6px;align-items:center}
+.nav a.gh svg{width:16px;height:16px}
+.nav a.inst{background:var(--cobalt);color:#fff;font-weight:600;padding:8px 15px;margin-left:6px}
+.nav a.inst:hover{background:var(--cobalt-700)}
+.menu{display:none;margin-left:auto;border:1px solid var(--n300);background:var(--white);border-radius:999px;font:600 13.5px/1 var(--display);padding:9px 14px;color:var(--ink);cursor:pointer;align-items:center;gap:8px}
+.menu svg{width:16px;height:16px}
+.panel{border-top:1px solid var(--n200);background:var(--paper)}
+.panel nav{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding-block:12px 18px}
+.panel a{color:var(--ink);text-decoration:none;font-weight:500;padding:11px 12px;border-radius:8px;background:var(--white);border:1px solid var(--n200)}
+.panel a.inst{grid-column:span 2;background:var(--cobalt);color:#fff;border-color:var(--cobalt);text-align:center;font-weight:600}
+
+/* hero */
+.hero{border-top:0;padding-block:56px 80px;background:radial-gradient(ellipse 55% 45% at 80% 22%,var(--cobalt-100),transparent 70%)}
+.hero .split{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+.hero h1{font-size:clamp(42px,6.2vw,78px);line-height:.98;font-weight:700;font-stretch:80%;letter-spacing:-.03em}
+.hero .pos{font-size:19.5px;line-height:1.5;color:var(--n800);margin-top:22px;max-width:46ch}
+.hero .btns{margin-top:28px}
+.hero .note{margin-top:14px}
+.ringstage{position:relative;width:100%;max-width:440px;margin-inline:auto}
+.ringstage svg{width:100%;height:auto;overflow:visible}
+.seg{transition:stroke-width .35s ease}
+.seg.on{stroke-width:46}
+.runner{opacity:0}
+.anim .runner{opacity:1}
+.ringcap{text-align:center;margin-top:6px}
+
+/* interactive desk */
+.deskwrap{margin-top:48px}
+.deskwrap .dlead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.deskwrap .dlead b{font:650 20px/1.2 var(--display);font-stretch:88%;letter-spacing:-.01em}
+.app{border:1px solid var(--n300);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);background:var(--white);display:grid;grid-template-columns:190px 1fr;position:relative}
+.app aside{background:var(--n50);padding:16px 10px;border-right:1px solid var(--n200)}
+.dmark{display:flex;align-items:center;gap:9px;padding-left:6px}
+.dmark svg{width:26px;height:26px}
+.dmark b{font:650 18px/1 var(--display);font-stretch:88%}
+.app aside .by{font:500 12.5px/1 var(--display);color:var(--n600);margin:6px 0 14px 41px}
+.app nav{display:grid;gap:2px}
+.app nav button{display:flex;width:100%;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:8px;color:var(--n800);background:transparent;border:0;cursor:pointer;font:500 14px/1 var(--display);text-align:left}
+.app nav button:hover{background:var(--n100)}
+.app nav button.on{background:var(--white);color:var(--cobalt-700);font-weight:600;box-shadow:0 0 0 1px var(--n200)}
+.app nav .n{background:var(--cobalt);color:#fff;font:650 11px/1 var(--display);padding:4px 7px;border-radius:99px}
+.app nav kbd{font:500 11px/1 var(--display);color:var(--n400)}
+.app .main{padding:18px 20px;min-width:0;min-height:380px;display:flex;flex-direction:column}
+.dhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.dhead h3{font-size:20px}
+.kbtn{cursor:pointer}
+.tabs{display:flex;gap:4px;margin:12px 0 4px;flex-wrap:wrap;border-bottom:1px solid var(--n200)}
+.tabs button{font:600 13.5px/1 var(--display);padding:10px 12px;background:none;color:var(--n600);border:0;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tabs button.on{color:var(--cobalt-700);border-bottom-color:var(--cobalt)}
+.thr{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--n100);font-size:14px}
+.thr svg{width:18px;height:18px;color:var(--n400);flex:none}
+.thr .d{font-size:12.5px;color:var(--n600);display:block}
+.thr .chip{margin-left:auto;flex:none}
+.keep{cursor:pointer;margin-left:auto;flex:none;border:1px solid var(--n300)!important;background:var(--white)!important}
+.keep[aria-pressed="true"]{background:var(--ok-100)!important;color:var(--ok);border-color:var(--ok-100)!important}
+.sugg{border:1px solid var(--n300);border-left:4px solid var(--s7);border-radius:12px;padding:14px 16px;margin-top:14px;background:var(--white)}
+.sugg .tag{font:650 11.5px/1 var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--s7);display:flex;gap:6px;align-items:center}
+.sugg .tag svg{width:15px;height:15px}
+.sugg h4{font-size:17px;line-height:1.3;margin:8px 0 4px;font-weight:600;font-stretch:92%}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.acts button{font:600 13px/1 var(--display);padding:9px 13px;border-radius:999px;background:var(--white);border:1px solid var(--n300);color:var(--ink);cursor:pointer}
+.acts .yes{background:var(--cobalt);color:#fff;border-color:var(--cobalt)}
+.acts button:disabled{opacity:.45;cursor:default}
+.result{font:600 13px/1.4 var(--display);color:var(--ink);margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.result button{font:600 12.5px/1 var(--display);background:transparent;border:0;color:var(--cobalt);text-decoration:underline;cursor:pointer;padding:4px}
+.todo{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--n50);border:1px solid var(--n200);border-radius:10px;padding:12px 14px;margin-top:10px;cursor:pointer;font:500 14.5px/1.3 var(--display);color:var(--ink)}
+.todo:hover{border-color:var(--cobalt)}
+.todo b{font:700 24px/1 var(--display);color:var(--cobalt);min-width:22px;font-stretch:80%}
+.gate{border:1px solid var(--n200);border-radius:12px;padding:12px 14px;margin-top:10px}
+.gate .draft{font-size:14px;margin-top:6px;background:var(--n50);border-radius:8px;padding:9px 11px}
+.srch input{width:100%;font:400 14.5px/1.2 var(--display);padding:10px 12px;border:1px solid var(--n300);border-radius:8px;margin:10px 0 4px;background:var(--white);color:var(--ink)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.hrow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--n100);font-size:14px}
+.hrow .t{font-weight:600;min-width:84px}
+.runline{font:500 12.5px/1.5 var(--display);color:var(--n600);background:var(--n50);padding:8px 12px;border-radius:8px;margin-top:auto}
+.app .demo{margin-top:8px}
+.kpal{position:absolute;inset:0;background:rgba(18,22,36,.28);display:flex;align-items:flex-start;justify-content:center;padding-top:60px;z-index:5}
+.kbox{background:var(--white);border-radius:12px;width:min(320px,90%);box-shadow:0 18px 40px rgba(18,22,36,.25);overflow:hidden;border:1px solid var(--n200)}
+.kbox input{width:100%;border:0;border-bottom:1px solid var(--n200);padding:12px 14px;font:400 15px var(--display);color:var(--ink);background:var(--white)}
+.kbox input:focus{outline:none}
+#klist button{display:flex;justify-content:space-between;width:100%;background:transparent;border:0;padding:10px 14px;font:500 14px var(--display);color:var(--ink);cursor:pointer;text-align:left}
+#klist button.hl,#klist button:hover{background:var(--cobalt-100);color:var(--cobalt-700)}
+
+/* the loop */
+.loop .in{display:grid;grid-template-columns:.95fr 1.05fr;gap:56px;align-items:center}
+.loopring{max-width:460px;width:100%;margin-inline:auto}
+.loopring svg{width:100%;height:auto}
+.mk circle{transition:stroke-width .2s}
+.steps{list-style:none;padding:0;margin:28px 0 0;display:grid}
+.steps li{display:grid;grid-template-columns:36px 1fr;gap:14px;padding:13px 0;border-top:1px solid var(--n200);cursor:default}
+.steps li:last-child{border-bottom:1px solid var(--n200)}
+.steps .ix{width:32px;height:32px;border-radius:50%;border:2.5px solid var(--c);color:var(--c);display:grid;place-items:center;font:700 14px/1 var(--display);background:var(--white)}
+.steps li.on .ix{background:var(--c);color:#fff}
+.steps b{display:block;font-weight:600;font-size:17px}
+.steps span{color:var(--n800);font-size:15px}
+.defn{margin-top:22px;background:var(--white);border:1px solid var(--n200);border-left:4px solid var(--cobalt);border-radius:var(--r);padding:16px 18px;font-size:16px;color:var(--n800)}
+.defn b{color:var(--ink)}
+
+/* in charge */
+.pts{grid-template-columns:repeat(4,1fr);margin-top:32px}
+.pt{background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:10px}
+.pt svg{width:28px;height:28px}
+.pt p{font-size:15px;color:var(--n800)}
+
+/* templates */
+.shead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.tgrid{grid-template-columns:repeat(3,1fr);margin-top:32px}
+.tcard{background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:inherit;transition:border-color .2s}
+.tcard:hover{border-color:var(--cobalt)}
+.tcard .ti{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.tcard .ti svg{width:28px;height:28px;color:var(--cobalt)}
+.tcard .nm{font-weight:600;font-size:13.5px;color:var(--n600)}
+.tcard h3{font-size:22px;line-height:1.15}
+.tcard p{font-size:15px;color:var(--n800)}
+.tcard .foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--n200)}
+
+/* install */
+.inst .in{display:grid;grid-template-columns:.8fr 1.2fr;gap:48px;align-items:start}
+.tabbar{display:inline-flex;background:var(--n100);border-radius:999px;padding:4px;gap:4px;flex-wrap:wrap}
+.tabbar button{font:600 15px/1 var(--display);padding:11px 18px;border-radius:999px;border:0;background:none;color:var(--n800);cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.tabbar button svg{width:18px;height:18px}
+.tabbar button[aria-selected="true"]{background:var(--white);color:var(--cobalt-700);box-shadow:0 1px 0 var(--n200),0 4px 12px -6px rgba(18,22,36,.3)}
+.ipanel{background:var(--white);border:1px solid var(--n300);border-radius:14px;box-shadow:var(--shadow);padding:8px 22px;margin-top:16px}
+.isteps{list-style:none;margin:0;padding:0;counter-reset:s}
+.isteps li{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:16px 0;border-bottom:1px solid var(--n200);font-size:16px;color:var(--n800)}
+.isteps li:last-child{border-bottom:0}
+.isteps li::before{counter-increment:s;content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--cobalt-100);color:var(--cobalt-700);font:700 14px/30px var(--display);text-align:center}
+.isteps b{color:var(--ink)}
+.cmd{display:flex;align-items:center;gap:10px;background:var(--n50);border:1px solid var(--n300);border-radius:10px;padding:6px 6px 6px 12px;margin-top:10px;max-width:100%}
+.cmd code{font:400 13.5px/1.4 var(--mono);color:var(--ink);flex:1;min-width:0;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding-block:6px}
+.cmd .btn{flex-shrink:0}
+.cmd.say code{font:500 15px/1.4 var(--display);white-space:normal}
+.small{font-size:13.5px;color:var(--n600);margin-top:12px;background:var(--n50);border-radius:8px;padding:10px 12px}
+.free{margin-top:16px;font-weight:600;display:flex;gap:8px;align-items:center}
+.free svg{width:18px;height:18px;color:var(--ok)}
+
+/* together */
+.join .in{display:grid;grid-template-columns:1fr 1.1fr;gap:48px;align-items:center}
+.lanes{background:var(--white);border:1px solid var(--n300);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.lanes .lh{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--n200);background:var(--n50);gap:10px;flex-wrap:wrap}
+.lane{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--n200)}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:650 12px var(--display);color:#fff}
+.lane b{font-weight:600;font-size:15px;display:block}
+.lane small{font-size:12.5px;color:var(--n600)}
+.srcline{padding:14px 16px;display:flex;gap:10px;align-items:center;font-size:14.5px;color:var(--n800)}
+.srcline svg{width:18px;height:18px;color:var(--s7);flex-shrink:0}
+
+/* lifecycle */
+.strip{overflow-x:auto;margin-top:32px;background:var(--white);border:1px solid var(--n200);border-radius:var(--r)}
+.strip svg{min-width:880px;width:100%;height:auto}
+.cards{grid-template-columns:repeat(4,1fr);margin-top:16px}
+.card{background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:8px;border-top:4px solid var(--c)}
+.card .num{font:600 12px var(--display);color:var(--n600)}
+.card h3{font-size:20px;color:var(--c)}
+.card p{font-size:15px;color:var(--n800)}
+.donel{margin-top:20px;display:inline-flex;gap:10px;align-items:center;font-weight:600;color:var(--ok);background:var(--ok-100);border-radius:999px;padding:9px 16px}
+.donel svg{width:18px;height:18px}
+
+/* story */
+.story .in{display:grid;grid-template-columns:1.3fr 1fr;gap:48px;align-items:center}
+.tq{background:var(--white);border:1px solid var(--n200);border-radius:14px;padding:28px;margin:40px 0 0;max-width:820px}
+.tq blockquote{margin:0;font-size:clamp(21px,2.4vw,27px);line-height:1.32;font-weight:500;letter-spacing:-.015em;font-stretch:92%}
+.tq blockquote p + p{margin-top:12px;font-size:.78em;color:var(--n800)}
+.who{display:flex;gap:14px;align-items:center;margin-top:22px}
+.who img{width:68px;height:68px;border-radius:50%;object-fit:cover;border:3px solid var(--white);box-shadow:0 0 0 2px var(--cobalt)}
+.who b{display:block;font-weight:600}
+.who span{font-size:13px;color:var(--n600)}
+.facts{display:grid;border-top:1px solid var(--n200)}
+.facts div{display:grid;grid-template-columns:120px 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--n200);font-size:15px;color:var(--n800);align-items:center}
+.facts .big{font:700 34px/1 var(--display);font-stretch:80%;color:var(--cobalt);letter-spacing:-.02em}
+
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--n200);border-radius:var(--r);background:var(--white);margin-top:28px}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:560px}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--n200);vertical-align:top}
+th{font:600 12.5px var(--display);text-transform:uppercase;letter-spacing:.05em;color:var(--n600);background:var(--n50)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600}
+.col-r{color:var(--cobalt)}
+.yes{color:var(--ok);font-weight:600}
+
+/* technical band */
+.tech{background:var(--n50)}
+.tech > .in > details > summary{display:flex;justify-content:space-between;gap:16px;align-items:center;cursor:pointer;list-style:none}
+.tech summary::-webkit-details-marker{display:none}
+.tech .tag{font:500 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--cobalt);display:block;margin-bottom:12px}
+.tech .tog{font:500 12.5px var(--mono);color:var(--n600);border:1px solid var(--n300);border-radius:999px;padding:7px 12px;background:var(--white);white-space:nowrap}
+.tech details[open] .tog .c{display:none}
+.tech details:not([open]) .tog .o{display:none}
+.tech .two{display:grid;grid-template-columns:1.05fr .95fr;gap:24px;margin-top:28px;align-items:start}
+.tech .tbl{margin-top:0}
+.tech th{font-family:var(--mono);font-weight:500;font-size:11.5px}
+.tech td{font-size:14px}
+.tech td code,.tech p code,.tech li code{font:400 13px var(--mono);background:var(--white);border:1px solid var(--n200);border-radius:4px;padding:1px 5px}
+.tech h3{font-size:15px;margin:22px 0 8px}
+.tech h3:first-child{margin-top:0}
+.tech p,.tech li{font-size:14.5px;color:var(--n800)}
+.tech ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.code{font:400 13px/1.75 var(--mono);background:var(--white);border:1px solid var(--n200);border-radius:var(--r);padding:12px 16px;overflow-x:auto;white-space:pre;color:var(--ink)}
+.code .p{color:var(--cobalt);user-select:none}.code .c{color:var(--n600)}
+.tech .cmd{background:var(--white)}
+.lic{font:500 12.5px var(--mono);color:var(--n600);margin-top:16px}
+
+/* faq */
+.faq .in{display:grid;grid-template-columns:.8fr 1.2fr;gap:48px;align-items:start}
+.qa details{border-bottom:1px solid var(--n200)}
+.qa details:first-child{border-top:1px solid var(--n200)}
+.qa summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px;align-items:center;padding:18px 0;font-weight:600;font-size:17.5px;letter-spacing:-.01em}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary svg{width:20px;height:20px;flex-shrink:0;color:var(--cobalt);transition:transform .25s}
+.qa details[open] summary svg{transform:rotate(45deg)}
+.qa details p{padding:0 0 18px;color:var(--n800);max-width:62ch;font-size:16px}
+
+/* cta + footer */
+.cta{background:var(--cobalt);color:#fff;border-top:0;position:relative;overflow:hidden;padding-block:72px}
+.cta .in{display:grid;grid-template-columns:1.2fr 1fr;gap:32px;align-items:center;position:relative}
+.cta h2{color:#fff}
+.cta h2 .serif{color:#DCE3FF}
+.cta p{color:#DCE3FF;margin-top:12px;font-size:17px}
+.cta .btn{border-color:rgba(255,255,255,.5);background:transparent;color:#fff}
+.cta .btn.w{background:#fff;color:var(--cobalt-700);border-color:#fff}
+.cta .ghost{position:absolute;right:-120px;top:50%;transform:translateY(-50%);width:420px;height:420px;color:#fff;opacity:.12;pointer-events:none}
+footer{padding-block:48px 40px;background:var(--white);border-top:1px solid var(--n200)}
+.fgrid{display:grid;grid-template-columns:1.2fr 2fr;gap:32px}
+.flinks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px}
+.flinks a{color:var(--n800);text-decoration:none;font-size:14.5px}
+.flinks a:hover{color:var(--cobalt)}
+footer p{font-size:14.5px;color:var(--n800);margin-top:14px;max-width:40ch}
+footer small{font-size:13px;color:var(--n600);display:block;margin-top:28px;padding-top:16px;border-top:1px solid var(--n200)}
+
+@media (max-width: 1060px){.nav{display:none}.menu{display:inline-flex}}
+@media (max-width: 900px){
+  section{padding-block:64px}
+  .hero .split,.loop .in,.inst .in,.join .in,.story .in,.faq .in,.cta .in,.tech .two{grid-template-columns:1fr}
+  .hero .split{gap:20px}
+  .ringstage{max-width:340px}
+  .pts,.cards,.tgrid{grid-template-columns:1fr 1fr}
+  .fgrid{grid-template-columns:1fr}
+  .flinks{grid-template-columns:repeat(3,1fr)}
+  .loop .in{gap:32px}
+}
+@media (max-width: 640px){
+  .pts,.cards,.tgrid{grid-template-columns:1fr}
+  .flinks{grid-template-columns:1fr 1fr}
+  .facts div{grid-template-columns:96px 1fr}
+  .cta .ghost{display:none}
+  .hero h1{font-size:44px}
+  .app{grid-template-columns:1fr}
+  .app aside{border-right:0;border-bottom:1px solid var(--n200);padding:12px 10px}
+  .app aside .by{margin-bottom:10px}
+  .app nav{display:flex;flex-wrap:wrap;gap:4px}
+  .app nav button{width:auto;gap:8px}
+  .app nav kbd{display:none}
+  .app .main{padding:14px}
+  .ipanel{padding:4px 14px}
+  .hero .btns .btn{width:100%;justify-content:center}
+}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .seg,.qa summary svg,.tcard,.mk circle{transition:none}
+}
+</style>
+
+<!-- shared symbols (Loop board) -->
+<svg class="defs" aria-hidden="true">
+  <defs>
+    <symbol id="mk" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="7" transform="rotate(-90 24 24)">
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-2.5"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-14.5625"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-26.625"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-38.6875"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-50.75"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-62.8125"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-74.875"/>
+      <circle cx="24" cy="24" r="17" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-86.9375"/>
+    </g></symbol>
+    <symbol id="desk" viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="9" fill="var(--ink)"/><circle cx="16" cy="16" r="6" fill="none" stroke="var(--paper)" stroke-width="3.2"/><circle cx="16" cy="16" r="1.9" fill="var(--paper)"/></symbol>
+    <symbol id="i-record" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="3"/><path d="m4.5 7.5 7.5 5.5 7.5-5.5"/></g></symbol>
+    <symbol id="i-gate" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20.5V10a7 7 0 0 1 14 0v10.5M3.5 20.5h17"/><path d="m9.25 13.5 2 2 3.5-4"/></g></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16M4 16h16"/><circle cx="9" cy="8" r="2.5" style="fill:var(--white)"/><circle cx="15" cy="16" r="2.5" style="fill:var(--white)"/></g></symbol>
+    <symbol id="i-learn" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17.5c0-2-3-3.2-3-7a6 6 0 0 1 12 0c0 3.8-3 5-3 7z"/><path d="M9.75 20.75h4.5M12 8v4M10 10h4"/></g></symbol>
+    <symbol id="i-report" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.75 12S6.25 6 12 6s9.25 6 9.25 6-3.5 6-9.25 6-9.25-6-9.25-6z"/><circle cx="12" cy="12" r="2.75"/></g></symbol>
+    <symbol id="i-web" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.4 3.5 8.5s-1 5.9-3.5 8.5c-2.5-2.6-3.5-5.4-3.5-8.5s1-5.9 3.5-8.5"/></g></symbol>
+    <symbol id="i-verify" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.25 2.4 2.4 4.6-5"/></g></symbol>
+    <symbol id="i-jobs" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7.5" width="17" height="12" rx="3"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3.5 13h17"/></g></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h4"/></g></symbol>
+    <symbol id="i-bill" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12h6M9 15.5h3"/></g></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.5"/><path d="M3 19.5c.8-3.3 3.2-5 6-5s5.2 1.7 6 5"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.5 14.6c2.3.2 4 1.7 4.5 4.4"/></g></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5h16M7 16.5v-4M12 16.5v-9M17 16.5v-6"/></g></symbol>
+    <symbol id="i-gh" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M9.5 20.2v-3a2.5 2.5 0 0 1 .7-1.9c-2.3-.3-4-1.3-4-4.1a3.2 3.2 0 0 1 .9-2.2 2.9 2.9 0 0 1 .1-2.1s.8-.2 2.3.9a8 8 0 0 1 5 0c1.5-1.1 2.3-.9 2.3-.9a2.9 2.9 0 0 1 .1 2.1 3.2 3.2 0 0 1 .9 2.2c0 2.8-1.7 3.8-4 4.1a2.5 2.5 0 0 1 .7 1.9v3"/></g></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="12" height="12" rx="3"/><path d="M15.5 8.5V6.5a3 3 0 0 0-3-3h-6a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h2"/></g></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13.5 6.5 19 12l-5.5 5.5"/></g></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></g></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h16M4 16h16"/></g></symbol>
+    <symbol id="i-screen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="2.5"/><path d="M9 20h6M12 16.5V20"/></g></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7 10 3 2.5L7 15M12.5 15H17"/></g></symbol>
+  </defs>
+</svg>
+
+<!-- 1. header -->
+<header class="top">
+  <div class="in">
+    <a class="lock" href="#top" aria-label="RoutineOS home">Routine<svg aria-hidden="true" viewBox="0 0 48 48"><use href="#mk"/></svg>S</a>
+    <nav class="nav" aria-label="Main">
+      <a href="#templates">Templates</a><a href="#how">How it works</a><a href="#lifecycle">Lifecycle</a><a href="#compare">Compare</a><a href="https://docs.routineos.org">Docs</a>
+      <span class="sp"></span>
+      <a class="gh" href="https://github.com/devkindhq/routineos"><svg aria-hidden="true"><use href="#i-gh"/></svg>GitHub</a>
+      <a class="inst" href="#start">Get started</a>
+    </nav>
+    <button class="menu" type="button" aria-expanded="false" aria-controls="mpanel"><svg aria-hidden="true"><use href="#i-menu"/></svg>Menu</button>
+  </div>
+  <div class="panel" id="mpanel" hidden>
+    <nav class="in" aria-label="Mobile">
+      <a href="#templates">Templates</a><a href="#how">How it works</a><a href="#lifecycle">Lifecycle</a><a href="#compare">Compare</a><a href="https://docs.routineos.org">Docs</a><a href="https://github.com/devkindhq/routineos">GitHub</a>
+      <a class="inst" href="#start">Get started</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<!-- 2. hero -->
+<section class="hero">
+  <div class="in">
+    <div class="split">
+      <div>
+        <div class="eyebrow"><b>Free</b> Works inside Claude</div>
+        <h1>Claude does your weekly busywork. You stay in <span class="serif">charge</span>.</h1>
+        <p class="pos">Set it up once. Each time it runs, you keep or drop what it found, and it gets a little better. Nothing is sent without your yes.</p>
+        <div class="btns">
+          <a class="btn p" href="#start" data-pick="desktop">Get started in Claude Desktop <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          <a class="btn" href="#start" data-pick="code">I use Claude Code</a>
+        </div>
+        <p class="cap note">Free and open source. Runs on the Claude plan you already pay for.</p>
+      </div>
+
+      <div>
+        <div class="ringstage" id="ring">
+          <svg viewBox="0 0 480 460" role="img" aria-label="The loop: a ring of eight coloured segments with a gap at the top. Each time round, the routine comes back in through the gap a little better.">
+            <text x="240" y="20" text-anchor="middle" font-family="Instrument Sans" font-size="13" font-weight="600" fill="var(--n600)">Next time round</text>
+            <path d="M240 30v22" stroke="var(--cobalt)" stroke-width="1.5" stroke-dasharray="3 3" fill="none"/>
+            <path d="M235 47 240 55 245 47" stroke="var(--cobalt)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="240" cy="250" r="170" fill="none" stroke="var(--n100)" stroke-width="34" pathLength="100" stroke-dasharray="95 100" stroke-dashoffset="-2.5" transform="rotate(-90 240 250)"/>
+            <g fill="none" stroke-width="34" transform="rotate(-90 240 250)">
+              <circle class="seg" cx="240" cy="250" r="170" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-2.5" stroke="var(--s1)"/>
+              <circle class="seg" cx="240" cy="250" r="170" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-14.5625" stroke="var(--s2)"/>
+              <circle class="seg" cx="240" cy="250" r="170" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-26.625" stroke="var(--s3)"/>
+              <circle class="seg" cx="240" cy="250" r="170" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-38.6875" stroke="var(--s4)"/>
+              <circle class="seg" cx="240" cy="250" r="170" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-50.75" stroke="var(--s5)"/>
+              <circle class="seg" cx="240" cy="250" r="170" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-62.8125" stroke="var(--s6)"/>
+              <circle class="seg" cx="240" cy="250" r="170" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-74.875" stroke="var(--s7)"/>
+              <circle class="seg" cx="240" cy="250" r="170" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-86.9375" stroke="var(--s8)"/>
+            </g>
+            <text x="240" y="214" text-anchor="middle" font-family="Instrument Sans" font-size="15" font-weight="600" fill="var(--n600)" letter-spacing="1.5">TIME ROUND</text>
+            <text id="rnum" x="240" y="292" text-anchor="middle" font-family="Instrument Serif" font-style="italic" font-size="92" fill="var(--cobalt)">12</text>
+            <text x="240" y="324" text-anchor="middle" font-family="Instrument Sans" font-size="16" fill="var(--n800)">a little better each time</text>
+            <g class="runner" id="runner">
+              <circle r="13" fill="var(--white)" stroke="var(--cobalt)" stroke-width="3" cx="240" cy="80"/>
+              <circle r="4.5" fill="var(--cobalt)" cx="240" cy="80"/>
+            </g>
+          </svg>
+        </div>
+        <p class="cap ringcap">It's just a loop. There's nothing to understand.</p>
+      </div>
+    </div>
+
+    <!-- interactive Desk demo -->
+    <div class="deskwrap">
+      <div class="dlead"><b>This is your Desk. Try it.</b><span class="cap">Click around. Press Ctrl K to jump to a page.</span></div>
+      <div class="app" id="desk" aria-label="Try the Desk: an interactive demo with example data">
+        <aside>
+          <div class="dmark"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#desk"/></svg><b>Desk</b></div>
+          <p class="by">Inbox triage</p>
+          <nav aria-label="Desk pages">
+            <button type="button" data-view="today">Today <kbd>g t</kbd></button>
+            <button type="button" data-view="inbox" class="on" aria-current="page">Inbox <span class="n" data-count="inbox">1</span></button>
+            <button type="button" data-view="approvals">Approvals <span class="n" data-count="approvals">2</span></button>
+            <button type="button" data-view="browse">Browse <kbd>/</kbd></button>
+            <button type="button" data-view="history">History <kbd>g h</kbd></button>
+          </nav>
+        </aside>
+        <div class="main">
+          <div class="dhead"><h3 id="dtitle">Emails</h3><button type="button" class="chip info kbtn" id="kopen" aria-haspopup="dialog">Ctrl K</button></div>
+
+          <div class="view" data-v="today" hidden>
+            <p class="cap">Only what needs you today</p>
+            <button type="button" class="todo" data-go="inbox"><b data-count="inbox">1</b><span>suggestion, based on what you kept</span></button>
+            <button type="button" class="todo" data-go="approvals"><b data-count="approvals">2</b><span>replies waiting for your yes</span></button>
+            <div class="runline" style="margin-top:14px">Last run 7:00 am · 14 emails read · 4 skipped · 0 sent</div>
+          </div>
+
+          <div class="view" data-v="inbox">
+            <div class="tabs" role="tablist" aria-label="Emails">
+              <button type="button" role="tab" data-tab="kept" aria-selected="false">Kept</button>
+              <button type="button" role="tab" data-tab="skipped" aria-selected="false">Skipped</button>
+              <button type="button" role="tab" data-tab="sugg" aria-selected="true" class="on">Suggestions</button>
+            </div>
+            <div class="tabp" data-p="kept" hidden>
+              <div class="thr"><svg aria-hidden="true"><use href="#i-record"/></svg><span style="min-width:0">Q3 statement ready<span class="d">fernhill-accounting.example · you kept this</span></span><span class="chip ok">You kept</span></div>
+              <div class="thr"><svg aria-hidden="true"><use href="#i-record"/></svg><span style="min-width:0">Invoice 2231 question<span class="d">fernhill-accounting.example · you kept this</span></span><span class="chip ok">You kept</span></div>
+            </div>
+            <div class="tabp" data-p="skipped" hidden>
+              <div class="thr"><svg aria-hidden="true"><use href="#i-record"/></svg><span style="min-width:0">Weekly deals digest<span class="d">promo-mailer.example · on your skip list</span></span><button type="button" class="chip keep">Keep</button></div>
+              <div class="thr"><svg aria-hidden="true"><use href="#i-record"/></svg><span style="min-width:0">Your order has shipped<span class="d">notify.example · on your skip list</span></span><button type="button" class="chip keep">Keep</button></div>
+            </div>
+            <div class="tabp" data-p="sugg">
+              <div class="thr"><svg aria-hidden="true"><use href="#i-record"/></svg><span style="min-width:0">Q3 statement ready<span class="d">fernhill-accounting.example · skipped, then you kept it</span></span><span class="chip ok">You kept</span></div>
+              <div class="sugg">
+                <div class="tag"><svg aria-hidden="true"><use href="#i-learn"/></svg>Suggestion · from what you kept</div>
+                <h4>Take fernhill-accounting.example off your skip list</h4>
+                <p class="cap">Because you kept 6 of its 7 skipped emails.</p>
+                <div class="acts" id="hacts">
+                  <button type="button" class="yes" data-act="accept">Accept</button>
+                  <button type="button" data-act="reject">Reject</button>
+                  <button type="button" data-act="snooze">Snooze</button>
+                </div>
+                <p class="result" id="hres" role="status" hidden></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-v="approvals" hidden>
+            <p class="cap">Drafts wait here until you say yes</p>
+            <div class="gate" data-gate>
+              <p class="cap">Reply to fernhill-accounting.example · 21 hours left</p>
+              <p class="draft">Thanks, the Q3 statement is received. We will confirm the figures by Friday.</p>
+              <div class="acts"><button type="button" class="yes" data-g="approve">Approve</button><button type="button" data-g="reject">Reject</button></div>
+              <p class="result" role="status" hidden></p>
+            </div>
+            <div class="gate" data-gate>
+              <p class="cap">Reply to harbourpine.example · 40 hours left</p>
+              <p class="draft">Happy to move our call to Thursday at 10:00. I will send a new invite.</p>
+              <div class="acts"><button type="button" class="yes" data-g="approve">Approve</button><button type="button" data-g="reject">Reject</button></div>
+              <p class="result" role="status" hidden></p>
+            </div>
+          </div>
+
+          <div class="view" data-v="browse" hidden>
+            <label class="srch"><span class="sr">Search emails</span><input id="bq" type="search" placeholder="Search emails" autocomplete="off"></label>
+            <div id="blist">
+              <div class="thr" data-t="q3 statement ready fernhill-accounting"><span style="min-width:0">Q3 statement ready<span class="d">fernhill-accounting.example</span></span><span class="chip ok">Kept</span></div>
+              <div class="thr" data-t="weekly deals digest promo-mailer"><span style="min-width:0">Weekly deals digest<span class="d">promo-mailer.example</span></span><span class="chip mute">Skipped</span></div>
+              <div class="thr" data-t="call on thursday harbourpine"><span style="min-width:0">Call on Thursday?<span class="d">harbourpine.example</span></span><span class="chip info">Needs a reply</span></div>
+              <div class="thr" data-t="your order has shipped notify"><span style="min-width:0">Your order has shipped<span class="d">notify.example</span></span><span class="chip mute">Skipped</span></div>
+            </div>
+            <p class="cap" id="bnone" hidden>No emails match.</p>
+          </div>
+
+          <div class="view" data-v="history" hidden>
+            <div class="hrow"><span class="t">Tue 7:00</span><span>14 read · 4 skipped</span><span class="chip ok">All good</span></div>
+            <div class="hrow"><span class="t">Mon 7:00</span><span>11 read · 3 skipped</span><span class="chip ok">All good</span></div>
+            <div class="hrow"><span class="t">Sun 7:00</span><span>6 read · 2 skipped</span><span class="chip ok">All good</span></div>
+            <div class="hrow"><span class="t">Sat 7:00</span><span>First run · only showed what it would do</span><span class="chip info">Preview</span></div>
+          </div>
+
+          <div class="runline" id="hrun" style="margin-top:16px">Ran 7:00 am · 0 sent</div>
+          <p class="cap demo">Example data. Nothing here is sent.</p>
+        </div>
+
+        <div class="kpal" id="kpal" role="dialog" aria-label="Go to a page" hidden>
+          <div class="kbox">
+            <input id="kq" type="text" placeholder="Go to a page" autocomplete="off" aria-label="Go to a page">
+            <div id="klist" role="listbox"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. the loop -->
+<section class="loop" id="how">
+  <div class="in">
+    <div class="loopring">
+      <svg viewBox="0 0 480 480" role="img" aria-label="The loop in six steps around a ring, with a gap at the top where the next time round begins">
+        <text x="240" y="24" text-anchor="middle" font-family="Instrument Sans" font-size="13" font-weight="600" fill="var(--n600)">Next time round</text>
+        <g fill="none" stroke-width="26" transform="rotate(-90 240 240)">
+          <circle cx="240" cy="240" r="160" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-2.5" stroke="var(--s1)"/>
+          <circle cx="240" cy="240" r="160" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-14.5625" stroke="var(--s2)"/>
+          <circle cx="240" cy="240" r="160" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-26.625" stroke="var(--s3)"/>
+          <circle cx="240" cy="240" r="160" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-38.6875" stroke="var(--s4)"/>
+          <circle cx="240" cy="240" r="160" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-50.75" stroke="var(--s5)"/>
+          <circle cx="240" cy="240" r="160" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-62.8125" stroke="var(--s6)"/>
+          <circle cx="240" cy="240" r="160" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-74.875" stroke="var(--s7)"/>
+          <circle cx="240" cy="240" r="160" pathLength="100" stroke-dasharray="10.5625 100" stroke-dashoffset="-86.9375" stroke="var(--s8)"/>
+        </g>
+        <g class="mk" font-family="Instrument Sans" font-size="17" font-weight="700" text-anchor="middle">
+          <g data-m="0"><circle cx="320" cy="101.4" r="21" fill="#fff" stroke="var(--s1)" stroke-width="3"/><text x="320" y="107.4" fill="var(--s1)">1</text></g>
+          <g data-m="1"><circle cx="400" cy="240" r="21" fill="#fff" stroke="var(--s3)" stroke-width="3"/><text x="400" y="246" fill="var(--s3)">2</text></g>
+          <g data-m="2"><circle cx="320" cy="378.6" r="21" fill="#fff" stroke="var(--s4)" stroke-width="3"/><text x="320" y="384.6" fill="var(--s4)">3</text></g>
+          <g data-m="3"><circle cx="160" cy="378.6" r="21" fill="#fff" stroke="var(--s5)" stroke-width="3"/><text x="160" y="384.6" fill="var(--s5)">4</text></g>
+          <g data-m="4"><circle cx="80" cy="240" r="21" fill="#fff" stroke="var(--s7)" stroke-width="3"/><text x="80" y="246" fill="var(--s7)">5</text></g>
+          <g data-m="5"><circle cx="160" cy="101.4" r="21" fill="#fff" stroke="var(--cobalt)" stroke-width="3"/><text x="160" y="107.4" fill="var(--cobalt)">6</text></g>
+        </g>
+        <text x="240" y="226" text-anchor="middle" font-family="Instrument Sans" font-size="22" font-weight="600" fill="var(--ink)">Nothing is sent</text>
+        <text x="240" y="262" text-anchor="middle" font-family="Instrument Sans" font-size="22" font-weight="600" fill="var(--ink)">without your <tspan font-family="Instrument Serif" font-style="italic" font-weight="400" font-size="28" fill="var(--cobalt)">yes</tspan>.</text>
+      </svg>
+    </div>
+    <div>
+      <div class="eyebrow"><b>How it works</b> One loop, every time</div>
+      <h2>It goes round. Each time, it gets a little <span class="serif">better</span>.</h2>
+      <div class="defn"><b>A routine</b> is a job Claude does for you on a schedule, like checking your inbox every morning or watching for new job posts twice a week.</div>
+      <ol class="steps" id="steps">
+        <li style="--c:var(--s1)"><span class="ix">1</span><div><b>Claude does the job</b><span>On your schedule, like every morning at 7.</span></div></li>
+        <li style="--c:var(--s3)"><span class="ix">2</span><div><b>You look at the Desk</b><span>One private page shows what it found, what it skipped, and why.</span></div></li>
+        <li style="--c:var(--s4)"><span class="ix">3</span><div><b>You keep or drop what it found</b><span>Keep an email it skipped. Drop a post it kept. That is all the teaching it needs.</span></div></li>
+        <li style="--c:var(--s5)"><span class="ix">4</span><div><b>It suggests a better setting</b><span>When your choices point the same way, it suggests one small change and shows why.</span></div></li>
+        <li style="--c:var(--s7)"><span class="ix">5</span><div><b>You say yes or no</b><span>Or later. It never changes its own settings.</span></div></li>
+        <li style="--c:var(--cobalt)"><span class="ix">6</span><div><b>Next time round, it is better</b><span>The next run uses what you agreed to. Then the loop goes again.</span></div></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 4. in charge -->
+<section id="charge">
+  <div class="in">
+    <div class="eyebrow"><svg aria-hidden="true" style="color:var(--cobalt)"><use href="#i-gate"/></svg><b>You stay in charge</b></div>
+    <h2>It asks. You <span class="serif">decide</span>.</h2>
+    <div class="grid pts">
+      <div class="pt"><svg style="color:var(--ok)" aria-hidden="true"><use href="#i-gate"/></svg><h3>Nothing goes out without your yes</h3><p>Emails, posts and deletions wait on your Desk until you approve them.</p></div>
+      <div class="pt"><svg style="color:var(--info)" aria-hidden="true"><use href="#i-report"/></svg><h3>The first run is a preview</h3><p>It only shows you what it would do. You check it before it does anything.</p></div>
+      <div class="pt"><svg style="color:var(--s7)" aria-hidden="true"><use href="#i-web"/></svg><h3>The web is information, not orders</h3><p>If a web page or an email says "do this", Claude reads it as information. It never follows it as an order.</p></div>
+      <div class="pt"><svg style="color:var(--ink)" aria-hidden="true"><use href="#i-settings"/></svg><h3>It never changes its own settings</h3><p>It can only suggest a change. You are the one who says yes.</p></div>
+    </div>
+    <figure class="tq">
+      <blockquote>
+        <p>"I took the philosophy of Rails, Laravel and Django, gave it to the AI, and said: we need to achieve this. But you can only use Claude."</p>
+        <p>"The cherry on top is that it is self-evolving. After every run it pulls out what it learned."</p>
+      </blockquote>
+      <figcaption class="who"><img src="kazim-avatar.jpg" alt="Kazim Ali" width="68" height="68"><div><b>Kazim Ali, Devkind</b><span>Made RoutineOS</span></div></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 5. ready-made routines -->
+<section id="templates">
+  <div class="in">
+    <div class="shead">
+      <div>
+        <div class="eyebrow"><b>Ready-made routines</b> Start from one that already works</div>
+        <h2>Pick one. It learns your <span class="serif">way</span>.</h2>
+      </div>
+      <a class="btn" href="https://docs.routineos.org">See all 10 <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+    </div>
+    <div class="grid tgrid">
+      <a class="tcard" href="https://docs.routineos.org"><div class="ti"><span class="nm">Jobs watch</span><svg aria-hidden="true"><use href="#i-jobs"/></svg></div><h3>Know who is hiring before your competitors call them.</h3><p>Watches public job posts for the roles you care about. Links each one to its company. Puts the few worth a look on your Desk.</p><div class="foot"><span class="chip ok"><svg aria-hidden="true"><use href="#i-verify"/></svg>Tried on a real run</span></div></a>
+      <a class="tcard" href="https://docs.routineos.org"><div class="ti"><span class="nm">Inbox triage</span><svg aria-hidden="true"><use href="#i-record"/></svg></div><h3>Your inbox, sorted before you wake up.</h3><p>Labels your emails and drafts replies in your style. Sends only after you say yes.</p><div class="foot"><span class="chip v">New</span></div></a>
+      <a class="tcard" href="https://docs.routineos.org"><div class="ti"><span class="nm">Meeting brief</span><svg aria-hidden="true"><use href="#i-cal"/></svg></div><h3>A short brief before every meeting.</h3><p>Before each outside meeting, a short note on the other company, with links to where each fact came from.</p><div class="foot"><span class="chip v">New</span></div></a>
+      <a class="tcard" href="https://docs.routineos.org"><div class="ti"><span class="nm">Invoice check</span><svg aria-hidden="true"><use href="#i-bill"/></svg></div><h3>Odd invoices caught before you pay.</h3><p>Flags doubles, large amounts and new suppliers. It never pays anything.</p><div class="foot"><span class="chip v">New</span></div></a>
+      <a class="tcard" href="https://docs.routineos.org"><div class="ti"><span class="nm">Candidate shortlist</span><svg aria-hidden="true"><use href="#i-people"/></svg></div><h3>A fair shortlist, with the reasons.</h3><p>Scores applicants against your own checklist and shows the evidence. It never rejects anyone.</p><div class="foot"><span class="chip v">New</span></div></a>
+      <a class="tcard" href="https://docs.routineos.org"><div class="ti"><span class="nm">Weekly marketing report</span><svg aria-hidden="true"><use href="#i-chart"/></svg></div><h3>Your marketing week, on one page.</h3><p>A short weekly summary of how your marketing did, ready when you start Monday.</p><div class="foot"><span class="chip v">New</span></div></a>
+    </div>
+    <p class="cap" style="margin-top:14px">"Tried on a real run" means we have run it for real. "New" means it is ready to use but has not had a real run yet.</p>
+  </div>
+</section>
+
+<!-- 6. install -->
+<section class="inst" id="start">
+  <div class="in">
+    <div>
+      <div class="eyebrow"><b>Get started in Claude</b> About two minutes</div>
+      <h2>Add it to the Claude you already <span class="serif">use</span>.</h2>
+      <p class="lede">Pick where you use Claude. Follow the steps. Then ask Claude for your first routine in plain words.</p>
+      <p class="free"><svg aria-hidden="true"><use href="#i-verify"/></svg>Free and open source. Runs on the Claude plan you already pay for.</p>
+    </div>
+    <div>
+      <div class="tabbar" role="tablist" aria-label="Where you use Claude">
+        <button type="button" role="tab" id="t-desktop" aria-controls="p-desktop" aria-selected="true"><svg aria-hidden="true"><use href="#i-screen"/></svg>Claude Desktop</button>
+        <button type="button" role="tab" id="t-code" aria-controls="p-code" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-term"/></svg>Claude Code</button>
+      </div>
+      <div class="ipanel" role="tabpanel" id="p-desktop" aria-labelledby="t-desktop">
+        <ol class="isteps">
+          <li><div>Open Claude and go to <b>Customize &gt; Connectors</b>.</div></li>
+          <li><div>Click <b>+ Add</b>, then <b>Add custom connector</b>.</div></li>
+          <li><div>Name it <b>RoutineOS</b> and paste this address. Choose <b>No sign in</b>, then <b>Add</b>.
+            <div class="cmd"><code id="c-url">https://docs.routineos.org/api/mcp</code><button class="btn p sm" type="button" data-copy="c-url"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div></div></li>
+          <li><div>In a chat, turn it on from <b>+ &gt; Connectors</b>. Then ask:
+            <div class="cmd say"><code id="c-ask1">Set up the jobs watch template</code><button class="btn sm" type="button" data-copy="c-ask1"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div></div></li>
+        </ol>
+        <p class="small">Free plans allow one custom connector. On Team and Enterprise, an owner adds it under Organization settings &gt; Connectors.</p>
+        <div style="height:14px"></div>
+      </div>
+      <div class="ipanel" role="tabpanel" id="p-code" aria-labelledby="t-code" hidden>
+        <ol class="isteps">
+          <li><div>Type this in Claude Code:
+            <div class="cmd"><code id="c-plug">/plugin install routineos --marketplace devkindhq/routineos</code><button class="btn p sm" type="button" data-copy="c-plug"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div></div></li>
+          <li><div>Ask Claude, or run <b>/schedule</b>:
+            <div class="cmd say"><code id="c-ask2">Make me a routine that watches job posts twice a week</code><button class="btn sm" type="button" data-copy="c-ask2"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div></div></li>
+        </ol>
+        <p class="small">Needs Claude Code 2.1.275 or later.</p>
+        <div style="height:14px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. work together -->
+<section class="join" id="together">
+  <div class="in">
+    <div>
+      <div class="eyebrow"><b>Work together</b> Join a Desk</div>
+      <h2>Your team helps from their own <span class="serif">Claude</span>.</h2>
+      <p class="lede">Invite your team. Each person helps from their own Claude account. Suggestions show whose decisions they came from, so you always know why.</p>
+    </div>
+    <div class="lanes" aria-label="Example of a shared Desk">
+      <div class="lh"><span class="dmark"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#desk"/></svg><b>Inbox triage</b></span><span class="cap">Shared with 2 people · Example</span></div>
+      <div class="lane"><span class="av" style="background:var(--cobalt)">You</span><div><b>New emails</b><small>From your own Claude account</small></div><span class="chip ok">Helping</span></div>
+      <div class="lane"><span class="av" style="background:var(--s2)">AR</span><div><b>Follow-ups · Alex Rivera</b><small>From Alex's own Claude account · daily limit set</small></div><span class="chip w">1 waiting for Alex</span></div>
+      <div class="srcline"><svg aria-hidden="true"><use href="#i-learn"/></svg><span>Suggestion: "From 7 decisions by you and 5 by Alex Rivera"</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. lifecycle -->
+<section id="lifecycle">
+  <div class="in">
+    <div class="eyebrow"><b>The bigger loop</b> From idea to retired</div>
+    <h2>Every routine has a life, from first idea to <span class="serif">switched off</span>.</h2>
+    <p class="lede">Eight stages. Each one ends with something you can check.</p>
+    <div class="strip">
+      <svg viewBox="0 0 1000 170" role="img" aria-label="Eight stages in a row, Discover to Retire, with an arrow from Improve back to Operate">
+        <path d="M842 82 C 842 30, 619 30, 619 68" fill="none" stroke="var(--s7)" stroke-width="1.5" stroke-dasharray="4 4" stroke-linecap="round"/>
+        <path d="M614 62 619 70 624 62" fill="none" stroke="var(--s7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="730" y="30" text-anchor="middle" font-family="Instrument Sans" font-size="13" font-weight="600" fill="var(--s7)">what you decide feeds the next run</text>
+        <g stroke-width="16">
+          <line x1="44" y1="90" x2="152" y2="90" stroke="var(--s1)" stroke-dasharray="6 4"/>
+          <line x1="159" y1="90" x2="267" y2="90" stroke="var(--s2)"/>
+          <line x1="274" y1="90" x2="382" y2="90" stroke="var(--s3)"/>
+          <line x1="389" y1="90" x2="497" y2="90" stroke="var(--s4)"/>
+          <line x1="504" y1="90" x2="612" y2="90" stroke="var(--s5)"/>
+          <line x1="619" y1="90" x2="727" y2="90" stroke="var(--s6)"/>
+          <line x1="734" y1="90" x2="842" y2="90" stroke="var(--s7)"/>
+          <line x1="849" y1="90" x2="957" y2="90" stroke="var(--s8)"/>
+        </g>
+        <g font-family="Instrument Sans" font-size="17" font-weight="600">
+          <text x="44" y="128" fill="var(--s1)">Discover</text><text x="159" y="128" fill="var(--s2)">Design</text><text x="274" y="128" fill="var(--s3)">Build</text><text x="389" y="128" fill="var(--s4)">Verify</text><text x="504" y="128" fill="var(--s5)">Deploy</text><text x="619" y="128" fill="var(--s6)">Operate</text><text x="734" y="128" fill="var(--s7)">Improve</text><text x="849" y="128" fill="var(--s8)">Retire</text>
+        </g>
+        <g font-family="Instrument Sans" font-size="12.5" fill="var(--n600)">
+          <text x="44" y="150">1 · optional</text><text x="159" y="150">2</text><text x="274" y="150">3</text><text x="389" y="150">4</text><text x="504" y="150">5</text><text x="619" y="150">6</text><text x="734" y="150">7</text><text x="849" y="150">8</text>
+        </g>
+      </svg>
+    </div>
+    <div class="grid cards">
+      <article class="card" style="--c:var(--s1)"><span class="num">1 · optional</span><h3>Discover</h3><p>You agree, in writing, on what the job is.</p></article>
+      <article class="card" style="--c:var(--s2)"><span class="num">2</span><h3>Design</h3><p>You approve the plan. The risks are listed.</p></article>
+      <article class="card" style="--c:var(--s3)"><span class="num">3</span><h3>Build</h3><p>It is put together and checked. Every outside place it contacts is listed.</p></article>
+      <article class="card" style="--c:var(--s4)"><span class="num">4</span><h3>Verify</h3><p>A first run that only shows you what it would do. You check it.</p></article>
+      <article class="card" style="--c:var(--s5)"><span class="num">5</span><h3>Deploy</h3><p>It is switched on, on the schedule you chose.</p></article>
+      <article class="card" style="--c:var(--s6)"><span class="num">6</span><h3>Operate</h3><p>Your Desk shows that it is healthy and what it costs.</p></article>
+      <article class="card" style="--c:var(--s7)"><span class="num">7</span><h3>Improve</h3><p>A change you said yes to, checked and explained in plain words.</p></article>
+      <article class="card" style="--c:var(--s8)"><span class="num">8</span><h3>Retire</h3><p>Switched off. Nothing left on a schedule. Saved passwords deleted.</p></article>
+    </div>
+    <p class="donel"><svg aria-hidden="true"><use href="#i-verify"/></svg>Done means it is live and you have checked it.</p>
+  </div>
+</section>
+
+<!-- 10. compare -->
+<section id="compare">
+  <div class="in">
+    <div class="eyebrow"><b>Compare</b></div>
+    <h2>Not fixed steps. <span class="serif">Judgment</span>, with your yes.</h2>
+    <p class="lede">Tools like n8n and Zapier follow fixed steps. A routine makes judgment calls, shows you why, and asks before it acts.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th></th><th class="col-r">RoutineOS</th><th>n8n</th><th>Zapier</th></tr></thead>
+        <tbody>
+          <tr><td>Makes judgment calls</td><td class="yes">Yes, and shows why</td><td>Follows the steps you set</td><td>Follows the steps you set</td></tr>
+          <tr><td>Learns from what you decide</td><td class="yes">Yes, with your yes</td><td>No</td><td>No</td></tr>
+          <tr><td>Asks before sending</td><td class="yes">Always, from the start</td><td>If you add an approval step</td><td>If you add an approval step</td></tr>
+          <tr><td>Price</td><td>Free. Uses your Claude plan</td><td>Free self-hosted or paid cloud</td><td>Free plan and paid plans</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 11. for technical people -->
+<section class="tech" id="tech">
+  <div class="in">
+    <details open>
+      <summary>
+        <div><span class="tag">For technical people</span><h2>How it is <span class="serif">built</span>.</h2></div>
+        <span class="tog"><span class="o">Hide details</span><span class="c">Show details</span></span>
+      </summary>
+      <div class="two">
+        <div>
+          <h3>If you know Rails, you already know this</h3>
+          <div class="tbl">
+            <table>
+              <thead><tr><th>RoutineOS</th><th>Rails</th><th>Django</th><th>Laravel</th></tr></thead>
+              <tbody>
+                <tr><td>Routine type</td><td>app template</td><td>project template</td><td>starter kit</td></tr>
+                <tr><td>Records and Store</td><td>models, database</td><td>models, ORM</td><td>Eloquent</td></tr>
+                <tr><td>Settings</td><td>config, credentials</td><td>settings</td><td>config, .env</td></tr>
+                <tr><td>Producers</td><td>jobs</td><td>management commands</td><td>queued jobs</td></tr>
+                <tr><td>Gates</td><td>before_action, approvals</td><td>permissions, admin actions</td><td>policies, gates</td></tr>
+                <tr><td>Desk</td><td>views</td><td>templates</td><td>Blade views</td></tr>
+                <tr><td>CLI</td><td>rails g, console</td><td>manage.py</td><td>artisan</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Four routine types</h3>
+          <p><code>new --type</code> scaffolds <code>serverless</code>, <code>watch</code>, <code>approval-gated</code> or <code>interactive</code>.</p>
+          <h3>Learning guardrails</h3>
+          <ul>
+            <li>Signals are counted by code, not guessed by the model.</li>
+            <li>At least 5 cases and a 60% share before a suggestion. At most 3 per run.</li>
+            <li>Never learns sending, gates, permissions or budgets. A rejection is remembered 14 days.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>CLI</h3>
+<div class="code"><span class="p">$ </span>python3 skills/routineos/scripts/routineos.py doctor
+<span class="p">$ </span>python3 skills/routineos/scripts/routineos.py new my-watch --type watch
+<span class="p">$ </span>python3 skills/routineos/scripts/routineos.py lint my-watch</div>
+          <h3>The linter fails on</h3>
+          <ul>
+            <li>a setting with no default</li>
+            <li>a schedule faster than hourly (cron minimum is one hour)</li>
+            <li>a prompt without the untrusted-data clause</li>
+          </ul>
+          <h3>Docs MCP server (read-only, free)</h3>
+          <div class="cmd"><code id="c-mcp">claude mcp add --transport http routineos https://docs.routineos.org/api/mcp</code><button class="btn p sm" type="button" data-copy="c-mcp"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
+          <h3>Migrate from n8n</h3>
+          <div class="cmd"><code id="c-mig">routineos migrate n8n &lt;file-or-url&gt; --out &lt;dir&gt;</code><button class="btn sm" type="button" data-copy="c-mig"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
+          <p style="margin-top:8px">Windmill flows too; Zapier through a guided interview. Output is report-only and unpiloted; MIGRATION.md lists what a person must finish.</p>
+          <p class="lic">MIT · Python 3.11 standard library only · v0.8.1 · <a href="https://github.com/devkindhq/routineos">devkindhq/routineos</a></p>
+        </div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- 12. faq -->
+<section class="faq" id="faq">
+  <div class="in">
+    <div>
+      <div class="eyebrow"><b>Questions</b></div>
+      <h2>Plain <span class="serif">answers</span>.</h2>
+    </div>
+    <div class="qa">
+      <details><summary>What is a routine?<svg aria-hidden="true"><use href="#i-plus"/></svg></summary><p>A job Claude does for you on a schedule, like checking your inbox every morning or watching for new job posts twice a week. RoutineOS gives each routine a Desk and helps it get better each time.</p></details>
+      <details><summary>Do I need to know how to code?<svg aria-hidden="true"><use href="#i-plus"/></svg></summary><p>No. In Claude Desktop you add it in a few clicks, then ask for what you want in plain words. Claude sets it up and asks you to check the first run.</p></details>
+      <details><summary>Will it send emails or post without asking?<svg aria-hidden="true"><use href="#i-plus"/></svg></summary><p>No. Anything that sends, posts or deletes waits on your Desk for your yes. The first run only shows you what it would do.</p></details>
+      <details><summary>How does it get better?<svg aria-hidden="true"><use href="#i-plus"/></svg></summary><p>It watches what you keep and what you drop. When your choices point the same way often enough, it suggests one small change and shows why. You say yes, no or later. It never changes itself.</p></details>
+      <details><summary>What does it cost?<svg aria-hidden="true"><use href="#i-plus"/></svg></summary><p>RoutineOS is free and open source. Routines run on the Claude plan you already pay for.</p></details>
+      <details><summary>How often can a routine run?<svg aria-hidden="true"><use href="#i-plus"/></svg></summary><p>At most once an hour. Each run starts fresh. Scheduled jobs in Claude are still an early preview, and "Run now" on the Desk joins a queue rather than starting that second.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- 13. cta -->
+<section class="cta">
+  <svg class="ghost" viewBox="0 0 48 48" aria-hidden="true"><use href="#mk"/></svg>
+  <div class="in">
+    <div>
+      <h2>Start the loop <span class="serif">today</span>.</h2>
+      <p>Two minutes to set up. Then Claude does the busywork, and you just say yes or no.</p>
+    </div>
+    <div class="btns">
+      <a class="btn w" href="#start" data-pick="desktop">Get started in Claude Desktop</a>
+      <a class="btn" href="#start" data-pick="code">I use Claude Code</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="in">
+    <div class="fgrid">
+      <div>
+        <a class="lock" href="#top">Routine<svg aria-hidden="true" viewBox="0 0 48 48"><use href="#mk"/></svg>S</a>
+        <p>RoutineOS is MIT licensed, our gift to everyone, from Devkind.</p>
+      </div>
+      <nav class="flinks" aria-label="Footer">
+        <a href="https://docs.routineos.org">Docs</a><a href="#templates">Templates</a><a href="#how">How it works</a><a href="#lifecycle">Lifecycle</a>
+        <a href="#compare">Compare</a><a href="#tech">For technical people</a><a href="https://github.com/devkindhq/routineos">GitHub</a><a href="/story">Story</a>
+        <a href="#faq">FAQ</a><a href="#start">Get started</a>
+      </nav>
+    </div>
+    <small>Not affiliated with or endorsed by Anthropic.</small>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // mobile menu
+  var mb=document.querySelector('.menu'),panel=document.getElementById('mpanel');
+  mb.addEventListener('click',function(){var open=panel.hidden;panel.hidden=!open;mb.setAttribute('aria-expanded',String(open));});
+  panel.addEventListener('click',function(e){if(e.target.tagName==='A'){panel.hidden=true;mb.setAttribute('aria-expanded','false');}});
+
+  // copy buttons with select-text fallback
+  function selectText(el){var r=document.createRange();r.selectNodeContents(el);var s=window.getSelection();s.removeAllRanges();s.addRange(r);}
+  document.querySelectorAll('[data-copy]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var el=document.getElementById(b.getAttribute('data-copy')),t=el.textContent.trim(),lab=b.querySelector('span');
+      function done(){lab.textContent='Copied';setTimeout(function(){lab.textContent='Copy';},1600);}
+      function fail(){selectText(el);lab.textContent='Press Ctrl C';setTimeout(function(){lab.textContent='Copy';},2200);}
+      try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,fail);}else{fail();}}catch(e){fail();}
+    });
+  });
+
+  // install tabs
+  var tabs=[document.getElementById('t-desktop'),document.getElementById('t-code')];
+  function pick(which,focus){
+    tabs.forEach(function(t){var on=t.id==='t-'+which;t.setAttribute('aria-selected',String(on));t.tabIndex=on?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=!on;if(on&&focus)t.focus();});
+  }
+  tabs.forEach(function(t,i){
+    t.addEventListener('click',function(){pick(t.id.slice(2));});
+    t.addEventListener('keydown',function(e){if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();pick(tabs[(i+1)%2].id.slice(2),true);}});
+  });
+  document.querySelectorAll('[data-pick]').forEach(function(a){a.addEventListener('click',function(){pick(a.getAttribute('data-pick'));});});
+
+  // loop steps: hover or focus a step to light its marker
+  var marks=document.querySelectorAll('.mk [data-m] circle');
+  document.querySelectorAll('#steps li').forEach(function(li,i){
+    li.tabIndex=0;
+    function on(){document.querySelectorAll('#steps li').forEach(function(x){x.classList.remove('on');});li.classList.add('on');marks.forEach(function(c,j){c.setAttribute('stroke-width',j===i?'6':'3');});}
+    li.addEventListener('mouseenter',on);li.addEventListener('focus',on);
+  });
+
+  /* ---- interactive Desk demo (example data, nothing is sent) ---- */
+  var desk=document.getElementById('desk');
+  if(desk){
+    var titles={today:'Today',inbox:'Emails',approvals:'Approvals',browse:'Browse',history:'History'};
+    var counts={inbox:1,approvals:2};
+    var runline=document.getElementById('hrun'),baseRun='Ran 7:00 am · 0 sent';
+    function setCount(k,n){counts[k]=n;desk.querySelectorAll('[data-count="'+k+'"]').forEach(function(e){e.textContent=n;if(e.classList.contains('n'))e.hidden=n===0;});}
+    function go(v){
+      desk.querySelectorAll('.view').forEach(function(x){x.hidden=x.dataset.v!==v;});
+      desk.querySelectorAll('nav button').forEach(function(b){var on=b.dataset.view===v;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+      document.getElementById('dtitle').textContent=titles[v];
+    }
+    desk.querySelectorAll('nav button').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.view);});});
+    desk.querySelectorAll('[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.go);});});
+    desk.querySelectorAll('[data-tab]').forEach(function(t){t.addEventListener('click',function(){
+      desk.querySelectorAll('[data-tab]').forEach(function(x){var on=x===t;x.classList.toggle('on',on);x.setAttribute('aria-selected',String(on));});
+      desk.querySelectorAll('.tabp').forEach(function(p){p.hidden=p.dataset.p!==t.dataset.tab;});
+    });});
+    desk.querySelectorAll('.keep').forEach(function(k){k.addEventListener('click',function(){var on=k.getAttribute('aria-pressed')!=='true';k.setAttribute('aria-pressed',String(on));k.textContent=on?'Kept for next time':'Keep';});});
+    var acts=document.getElementById('hacts'),res=document.getElementById('hres');
+    var msgs={accept:'Accepted. fernhill-accounting.example comes off your skip list next time round.',reject:'Rejected. It will not suggest this again for 14 days.',snooze:'Snoozed for 7 days.'};
+    function decide(a){
+      acts.querySelectorAll('button').forEach(function(b){b.disabled=true;});
+      res.textContent=msgs[a]+' ';var u=document.createElement('button');u.type='button';u.textContent='Undo';
+      u.addEventListener('click',function(){acts.querySelectorAll('button').forEach(function(b){b.disabled=false;});res.hidden=true;setCount('inbox',1);runline.textContent=baseRun;});
+      res.append(u);res.hidden=false;setCount('inbox',0);
+      runline.textContent=a==='accept'?'Next run 7:00 am · uses your new setting':baseRun;
+    }
+    acts.querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){decide(b.dataset.act);});});
+    desk.querySelectorAll('[data-gate]').forEach(function(g){
+      var r=g.querySelector('.result'),bs=g.querySelectorAll('[data-g]');
+      bs.forEach(function(b){b.addEventListener('click',function(){
+        bs.forEach(function(x){x.disabled=true;});
+        r.textContent=b.dataset.g==='approve'?'Approved. It sends on the next run, exactly as shown.':'Rejected. Nothing is sent.';
+        r.hidden=false;setCount('approvals',Math.max(0,counts.approvals-1));
+      });});
+    });
+    var bq=document.getElementById('bq'),none=document.getElementById('bnone');
+    bq.addEventListener('input',function(){var q=bq.value.trim().toLowerCase(),n=0;desk.querySelectorAll('#blist .thr').forEach(function(r){var m=!q||r.dataset.t.indexOf(q)>-1;r.hidden=!m;if(m)n++;});none.hidden=n>0;});
+    var pal=document.getElementById('kpal'),kq=document.getElementById('kq'),kl=document.getElementById('klist'),hl=0,items=[];
+    var pages=[['today','Today'],['inbox','Inbox'],['approvals','Approvals'],['browse','Browse'],['history','History']];
+    function render(){var q=kq.value.trim().toLowerCase();items=pages.filter(function(p){return p[1].toLowerCase().indexOf(q)>-1;});hl=0;kl.textContent='';
+      items.forEach(function(p,i){var b=document.createElement('button');b.type='button';b.setAttribute('role','option');b.textContent=p[1];if(i===hl)b.className='hl';b.addEventListener('click',function(){closeK();go(p[0]);});kl.append(b);});}
+    function openK(){pal.hidden=false;kq.value='';render();kq.focus();}
+    function closeK(){pal.hidden=true;document.getElementById('kopen').focus();}
+    document.getElementById('kopen').addEventListener('click',openK);
+    pal.addEventListener('click',function(e){if(e.target===pal)closeK();});
+    kq.addEventListener('input',render);
+    kq.addEventListener('keydown',function(e){
+      if(e.key==='Escape'){closeK();}
+      else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(!items.length)return;hl=(hl+(e.key==='ArrowDown'?1:items.length-1))%items.length;kl.querySelectorAll('button').forEach(function(b,i){b.classList.toggle('hl',i===hl);});}
+      else if(e.key==='Enter'&&items[hl]){closeK();go(items[hl][0]);}
+    });
+    var gWait=false;
+    document.addEventListener('keydown',function(e){
+      var typing=/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+      if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();pal.hidden?openK():closeK();return;}
+      if(typing||e.ctrlKey||e.metaKey||e.altKey)return;
+      if(gWait){gWait=false;var m={t:'today',i:'inbox',a:'approvals',h:'history',b:'browse'}[e.key];if(m)go(m);return;}
+      if(e.key==='g'){gWait=true;setTimeout(function(){gWait=false;},1500);}
+      else if(e.key==='/'){var r=desk.getBoundingClientRect();if(r.bottom>0&&r.top<innerHeight){e.preventDefault();go('browse');bq.focus();}}
+    });
+  }
+
+  // the one motion moment: a run goes round the ring and comes back in through the gap
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var stage=document.getElementById('ring'),runner=document.getElementById('runner'),rnum=document.getElementById('rnum');
+  var segs=stage.querySelectorAll('.seg'),dots=runner.querySelectorAll('circle');
+  var CX=240,CY=250,R=170,PERIOD=11000,ENTRY=0.06,start=null,last=-1,lap=-1,base=12;
+  function place(x,y){dots.forEach(function(d){d.setAttribute('cx',x);d.setAttribute('cy',y);});}
+  stage.classList.add('anim');
+  function frame(t){
+    if(start===null) start=t;
+    var el=t-start,l=Math.floor(el/PERIOD),p=(el%PERIOD)/PERIOD,idx=-1;
+    if(l!==lap){lap=l;rnum.textContent=String(base+l);}
+    if(p<ENTRY){var k=p/ENTRY;place(CX,34+k*(CY-R-34));}
+    else{
+      var f=(p-ENTRY)/(1-ENTRY),a=f*2*Math.PI,pct=f*100;
+      place(CX+R*Math.sin(a),CY-R*Math.cos(a));
+      if(pct>2.5&&pct<97.5) idx=Math.min(7,Math.floor((pct-2.5)/12.0625));
+    }
+    if(idx!==last){segs.forEach(function(s,i){s.classList.toggle('on',i===idx);});last=idx;}
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
