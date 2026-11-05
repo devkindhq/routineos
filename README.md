@@ -4,6 +4,10 @@
 
 RoutineOS is the self-improving framework for Claude routines: a free Claude Code plugin for the scheduled Claude agents that do recurring work in the cloud. It learns from what it sees and what you decide, proposes each change with its source, and changes nothing until you say yes. It is for anyone who runs the same judgment task every week (triage, a watch, a report, a shortlist), and it gives each routine typed settings, a linter, templates, approval gates and a mobile Desk.
 
+<video src="https://github.com/devkindhq/routineos/raw/main/.github/assets/readme/routineos-loop.mp4" poster=".github/assets/readme/routineos-loop-poster.jpg" controls muted playsinline width="100%">
+  <a href="https://routineos.org"><img src=".github/assets/readme/routineos-loop-poster.jpg" alt="RoutineOS in under a minute: a 48 second explainer. Watch it on routineos.org." width="100%"></a>
+</video>
+
 <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme/desk-dark.webp"><img alt="The RoutineOS Desk for an inbox triage routine. On desktop, the Threads list filtered to mail skipped by settings, each with its drop reason, excluded by skip_from_domains, except one a person kept, pending the next run. On a phone, the Suggestions tab proposes removing fernhill-accounting.example from skip_from_domains, because you kept 6 of its 7 skipped threads." src=".github/assets/readme/desk-light.webp" width="100%"></picture>
 
 - Home: [routineos.org](https://routineos.org)
