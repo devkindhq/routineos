@@ -47,7 +47,7 @@ class SchemeTests(unittest.TestCase):
         self.assertEqual(pack.read_source("https://example.org/p.json", 100, opener=opener), b'{"a": 1}')
         url, headers, timeout = opener.calls[0]
         self.assertEqual(url, "https://example.org/p.json")
-        self.assertEqual(headers.get("User-agent"), "routineos-pack/0.11.0")
+        self.assertEqual(headers.get("User-agent"), "routineos-pack/0.11.1")
         self.assertEqual(timeout, 20)
         self.assertFalse(any(h.lower() in ("authorization", "cookie") for h in headers))
 

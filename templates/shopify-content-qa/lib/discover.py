@@ -64,6 +64,10 @@ PATH_KIND = [
 SKIP_TAGS = {"script", "style", "noscript", "template", "svg"}
 
 
+# A URL argument is matched against a character allow-list, so only a plain https address is accepted.
+URL_RE = re.compile(r"https://[A-Za-z0-9.-]{1,253}(?::[0-9]{1,5})?(?:/[A-Za-z0-9._~%+/-]{0,300})?(?:\?[A-Za-z0-9._~%+/=-]{0,300})?")
+
+
 def fail(msg):
     print(f"error: {msg}", file=sys.stderr)
     sys.exit(2)
@@ -71,8 +75,8 @@ def fail(msg):
 
 def store_origin(raw):
     parts = urllib.parse.urlsplit(raw.strip())
-    if parts.scheme != "https" or not parts.hostname:
-        fail("--store must be an https URL such as https://your-store.com")
+    if not URL_RE.fullmatch(raw.strip()) or parts.scheme != "https" or not parts.hostname:
+        fail("--store must be a plain https URL such as https://your-store.com")
     return f"https://{parts.hostname.lower()}"
 
 
@@ -487,7 +491,7 @@ def discover(fetcher, origin, max_pages, max_link_checks, seen=None):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0], fromfile_prefix_chars="@")
     ap.add_argument("--store", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-pages", type=int, default=200)
@@ -508,8 +512,8 @@ def main():
     via = None
     if args.via:
         parts = urllib.parse.urlsplit(args.via)
-        if parts.scheme != "https" or not parts.hostname:
-            fail("--via must be an https URL")
+        if not URL_RE.fullmatch(args.via) or parts.scheme != "https" or not parts.hostname:
+            fail("--via must be a plain https URL")
         via = f"https://{parts.hostname.lower()}"
     if args.replay and not os.path.isdir(args.replay):
         fail("--replay must be a folder")

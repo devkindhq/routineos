@@ -15,6 +15,7 @@ template_version = 1
 [[setting]]
 name = "store_url"
 type = "list"
+format = "https_url"
 label = "Store URL (required, first entry is used)"
 example = "https://your-store.com"
 default = []
@@ -31,6 +32,7 @@ cost_note = "direct needs no Worker; worker adds screenshots on your own Cloudfl
 [[setting]]
 name = "worker_url"
 type = "list"
+format = "https_url"
 label = "Worker URL (worker mode only)"
 example = "https://content-qa.example.workers.dev"
 default = []

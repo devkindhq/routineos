@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.1
+
+### Fixed
+
+- List settings are now validated. A list setting can declare `format` (`word`, `https_url`, `ga_property` or `gsc_site`), a character allow-list for each entry that keeps quotes, spaces and shell metacharacters out. Every entry is also limited to 300 characters on one line. The Desk Settings form, the Revert button, the per-item proposal check (`desk_contract`) and `pack validate` apply the same rules; the Desk and `schema.py` keep the format table equal, checked by a test. The `weekly-marketing-report`, `site-compliance-review`, `shopify-content-qa`, `content-calendar`, `support-gap-digest` and `watch` templates set `format` on their list settings.
+- Text setting values no longer go on a shell command line. In `site-compliance-review` and `shopify-content-qa` the prompt writes them to a file with the file tool and passes `@file` (argparse reads one argument per line), and the fetchers `fetch_results.py`, `fetch_shots.py`, `worker_shots.py` and `discover.py` accept only a plain https URL for `--worker`, `--site` and `--store`.
+- Lint: `routineos.py lint` and `pack validate` refuse a `prompt.md` command that puts a quoted setting placeholder or a shell expansion on the command line, and the old "keep the double quotes" instruction.
+
+The "Known issues" entry for 0.11.0 below is resolved by this release. Existing Desks keep their stored values: a value that no longer passes is shown with the error on Save and is not written back by Revert. The hosted demo Desk shows no format checks until it is rebuilt.
+
 ## 0.11.0
 
 ### Added

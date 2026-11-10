@@ -90,7 +90,10 @@ function Recent({ ctx, producer, entries }) {
   var can = canWrite(ctx).ok;
   if (!entries.length) return null;
   function revert(entry) {
-    writeSettings(ctx, "settings/" + producer.id, revertChange(entry.data)).then(
+    var back = revertChange(entry.data);
+    var bad = (Array.isArray(producer.settings) ? producer.settings : []).map((e) => (back[e.name] === undefined || back[e.name] === null ? "" : checkSetting(e, back[e.name]))).filter(Boolean)[0];
+    if (bad) { notifications.show({ message: "Not reverted. " + bad, color: "red" }); return; }
+    writeSettings(ctx, "settings/" + producer.id, back).then(
       () => notifications.show({ message: "Reverted. " + NEXT_RUN_NOTE }),
       (e) => (e && e.partial ? partialToast(e) : failToast(e)));
   }

@@ -16,6 +16,27 @@ export function plainLabel(name) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Named formats for list entries: the same table as LIST_FORMATS in scripts/schema.py (tests/test_list_settings.py keeps them equal).
+// A pattern is matched whole. Character allow-lists that keep quotes, spaces and shell characters out.
+export var LIST_FORMATS = {
+  word: "[a-z][a-z0-9_-]{0,39}",
+  https_url: "https:\\/\\/[A-Za-z0-9.-]{1,253}(?::[0-9]{1,5})?(?:/[A-Za-z0-9._~%+/-]{0,300})?(?:\\?[A-Za-z0-9._~%+/=-]{0,300})?",
+  ga_property: "properties/[0-9]{1,20}",
+  gsc_site: "sc-domain:[A-Za-z0-9.-]{1,253}|https:\\/\\/[A-Za-z0-9.-]{1,253}(?::[0-9]{1,5})?/[A-Za-z0-9._~%+/-]{0,300}",
+};
+export var LIST_ITEM_MAX = 300;
+
+// "" when this entry is allowed in a list, otherwise one plain sentence.
+export function checkListItem(entry, item) {
+  if (typeof item !== "string" || !item.trim()) return "Each entry must be text.";
+  if (item.length > LIST_ITEM_MAX || /[\u0000-\u001f\u007f]/.test(item)) return "Entries are at most " + LIST_ITEM_MAX + " characters, on one line.";
+  var fmt = entry.format;
+  if (fmt && !(Object.prototype.hasOwnProperty.call(LIST_FORMATS, fmt) && new RegExp("^(?:" + LIST_FORMATS[fmt] + ")$").test(item))) {
+    return JSON.stringify(item.slice(0, 40)) + " is not a valid " + String(fmt).replace(/_/g, " ") + ".";
+  }
+  return "";
+}
+
 // Pure: what to draw for one schema entry and the stored value (undefined falls back to the default).
 export function controlSpec(entry, value) {
   var kinds = ["toggle", "number", "choice", "list"];
@@ -42,6 +63,10 @@ export function checkSetting(entry, value) {
     if (spec.max !== null && value > spec.max) return "At most " + spec.max + ".";
   }
   if (spec.kind === "choice" && spec.choices.indexOf(value) === -1) return "Choose one of the listed values.";
+  if (spec.kind === "list") {
+    if (!Array.isArray(value)) return "A list setting takes a list.";
+    for (var i = 0; i < value.length; i++) { var m = checkListItem(entry, value[i]); if (m) return m; }
+  }
   return "";
 }
 

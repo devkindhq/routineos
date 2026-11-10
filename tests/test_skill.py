@@ -299,10 +299,10 @@ class SelfImprovingTests(unittest.TestCase):
     def test_plugin_version_is_0_11_0(self):
         import json
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json"), encoding="utf-8") as fh:
-            self.assertEqual(json.load(fh)["version"], "0.11.0")
-        self.assertIn("## 0.11.0", read(os.path.join(ROOT, "CHANGELOG.md")))
-        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.11\.0$")
-        self.assertIn('VERSION = "0.11.0"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
+            self.assertEqual(json.load(fh)["version"], "0.11.1")
+        self.assertIn("## 0.11.1", read(os.path.join(ROOT, "CHANGELOG.md")))
+        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.11\.1$")
+        self.assertIn('VERSION = "0.11.1"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
 
 
 class TemplateDocsTests(unittest.TestCase):

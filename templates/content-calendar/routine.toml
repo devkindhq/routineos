@@ -23,6 +23,7 @@ cost_note = "each topic adds research per run"
 [[setting]]
 name = "source_feeds"
 type = "list"
+format = "https_url"
 label = "Source feeds"
 default = ["https://example.org/feed.xml"]
 cost_note = "each feed adds at least one page open per run"

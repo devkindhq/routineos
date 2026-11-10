@@ -5,6 +5,7 @@ import App from "../app/App.jsx";
 import { READ_ONLY_NOTE } from "../core/actions.js";
 import { forgetLockPass, hashPin, lockPassed, rememberLockPass } from "../core/lock.js";
 import { DENSITY_KEY, MOTION_KEY, THEME_KEY } from "../core/prefs.js";
+import { checkSetting } from "../core/pages/settings.js";
 import { SETTINGS_SECTIONS } from "../core/router.js";
 import { ReadOnlyError, createStore } from "../core/store.js";
 
@@ -235,4 +236,30 @@ test("modules: the built-in pages carry a Core badge and the view modules do not
   expect(rows.map((r) => r.textContent)).toEqual(["TodayCore", "ApprovalsCore", "RunsCore", "HistoryCore", "SettingsCore"]);
   var board = (await screen.findByLabelText(/Board/)).closest("div");
   expect(within(board.parentElement).queryByText("Core")).toBeNull();
+});
+
+test("checkSetting: a list with a format refuses what the format does not allow, and accepts what it does", () => {
+  var urls = { name: "pages", type: "list", format: "https_url" };
+  expect(checkSetting(urls, ["https://example.org/a?x=1"])).toBe("");
+  ["https://a.example/$(id)", "https://a.example/a b", "http://a.example", 'https://a.example/"; id; "', "https://a.example/\nx", ""].forEach((bad) => {
+    expect(checkSetting(urls, ["https://example.org", bad]), JSON.stringify(bad)).not.toBe("");
+  });
+  expect(checkSetting(urls, "https://example.org")).toBe("A list setting takes a list.");
+  expect(checkSetting({ name: "g", type: "list", format: "ga_property" }, ["properties/12"])).toBe("");
+  expect(checkSetting({ name: "g", type: "list", format: "ga_property" }, ["12"])).not.toBe("");
+  expect(checkSetting({ name: "t", type: "list" }, ["any phrase"])).toBe("");
+  expect(checkSetting({ name: "t", type: "list" }, ["x".repeat(301)])).not.toBe("");
+  expect(checkSetting({ name: "t", type: "list", format: "unknown_name" }, ["x"])).not.toBe("");
+});
+
+test("revert refuses a stored value the setting no longer allows and writes nothing", async () => {
+  var defn = { types: DEFINITION.types, producers: [{ id: "scout", label: "Scout", types: ["roles"], schedule: "0 6 * * *",
+    settings: [{ name: "pages", label: "Pages", type: "list", format: "https_url", default: [] }] }] };
+  var history = { "settingsHistory/scout--1": { data: { producer: "scout", at: "2026-11-01T00:00:00Z", by: "u1",
+    before: { pages: ["https://a.example/$(id)"] }, after: { pages: [] } } } };
+  var store = writable(createStore("static", { docs: Object.assign({ "meta/definition": { data: defn }, "meta/workspace": { data: { name: "W" } } }, OWNER, history) }));
+  await mount("#/settings/routine", store);
+  fireEvent.click(await screen.findByRole("button", { name: "Revert" }));
+  expect(await screen.findByText(/Not reverted\./)).toBeTruthy();
+  expect(store.set).not.toHaveBeenCalled();
 });

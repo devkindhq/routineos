@@ -15,6 +15,7 @@ template_version = 1
 [[setting]]
 name = "site_url"
 type = "list"
+format = "https_url"
 label = "Site URL (required, first entry is used)"
 example = "https://www.example.com"
 default = []
@@ -23,6 +24,7 @@ cost_note = "no extra cost; the run stops with an Inbox message until this is se
 [[setting]]
 name = "sitemap_url"
 type = "list"
+format = "https_url"
 label = "Sitemap URL (first entry; empty means <site>/sitemap.xml)"
 example = "https://www.example.com/sitemap.xml"
 default = []
@@ -31,6 +33,7 @@ cost_note = "no extra cost; the run checks that your Worker reads this sitemap"
 [[setting]]
 name = "worker_url"
 type = "list"
+format = "https_url"
 label = "Review Worker URL (required, first entry is used)"
 example = "https://review.example.com"
 default = []
