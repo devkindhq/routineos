@@ -1,0 +1,1 @@
+function boot() { return lazyOnly(); }

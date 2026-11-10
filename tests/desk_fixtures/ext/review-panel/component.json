@@ -1,0 +1,12 @@
+{
+  "id": "review-panel",
+  "kind": "custom",
+  "slot": "panel",
+  "factory": "component_review_panel",
+  "summary": "Lists the records waiting for review.",
+  "why": "No registry component lists a saved view's records as a short to-review list on the Today page.",
+  "fallback": "same",
+  "since": "0.9.0",
+  "view": { "type": "role", "filters": [] },
+  "title": "To review"
+}

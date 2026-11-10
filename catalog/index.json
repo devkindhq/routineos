@@ -214,6 +214,37 @@
       ]
     },
     {
+      "id": "shopify-content-qa",
+      "version": "1.0.0",
+      "title": "Shopify content QA",
+      "summary": "Checks a Shopify store's public pages each day for missing descriptions, alt text, broken links, placeholder text, SEO gaps and price slips, and tracks what changed. It never edits the store.",
+      "category": "content",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 20 * * *",
+      "path": "shopify-content-qa.json",
+      "bytes": 83883,
+      "sha256": "f861ff23cbd4f1e0345d2f92181303beed9a9958b0c3115f3d52f6437671f1b5",
+      "connectors": [
+        {
+          "id": "storefront",
+          "label": "Your store's public pages",
+          "required": true
+        },
+        {
+          "id": "worker",
+          "label": "Your content QA Worker",
+          "required": false
+        },
+        {
+          "id": "browser",
+          "label": "Cloudflare Browser",
+          "required": false
+        }
+      ],
+      "inspiration": []
+    },
+    {
       "id": "support-gap-digest",
       "version": "1.0.0",
       "title": "Support gap digest",

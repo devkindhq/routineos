@@ -6,7 +6,8 @@ The dashboard is the Desk: one bundled page (`assets/desk/index.html`) shared by
 
 - `routineos.py new <name> --type watch` (or `interactive`) writes `definition.json` and `dashboard/index.html`, the Desk with this workspace's name in its config block.
 - `routineos.py new <name> --from-template jobs-watch` copies a template with its definition and adds the same page.
-- Publish `dashboard/index.html` privately, then run `routineos.py seed <dir> --out <batch-dir>` and apply the batch files in order. Until the seed is applied the page shows the not-set-up state with that one command.
+- To publish as an artifact, run `routineos.py bundle --routine <dir>` and publish `dashboard/index.html`. It is one file with everything inlined, so nothing comes from a CDN and the same file opens locally or by email. `--split` is an alias kept for old scripts: it writes the same one file to `dashboard/artifact/index.html` with a one-entry `files.json` and says split mode is gone.
+- Publish the page privately, then run `routineos.py seed <dir> --out <batch-dir>` and apply the batch files in order. Until the seed is applied the page shows the not-set-up state with that one command.
 
 ## Rules
 
@@ -19,13 +20,14 @@ The dashboard is the Desk: one bundled page (`assets/desk/index.html`) shared by
 
 ## Pages
 
-- Shell: a sidebar (Today, Inbox, Approvals, each type with its saved views, History, Settings; each entry with an icon, from the definition's `icon` or a default; full or slim (icons only) at 900px and up, a drawer under it), a top bar with search, the notifications bell, density and theme, and a bottom nav on phones (icon over label). Ctrl or Cmd K opens the command palette; `?` lists the shortcuts.
+- Shell: a sidebar (Today, Inbox, Approvals, each type with its saved views, History, Settings; each entry with an icon, from the definition's `icon` or a default; full or slim (icons only) at 900px and up, a drawer under it), a top bar with search, the notifications bell, density and theme, and a bottom nav on phones (icon over label). Ctrl or Cmd K opens the command palette, grouped Go to, Records, Actions and Settings; Records finds up to 20 records by title or key and opens the record. `?` lists the shortcuts. A build with `tour: true` shows a five-step starter tour once per browser; Skip or Done keeps it hidden, and the owner can switch it off for everyone.
 - Today: what needs a person now.
 - Inbox: messages with Unread, Done and Snoozed filters, snooze and mark all read; Suggestions is a tab.
 - Approvals: open gates with the draft (editable before Approve), recipients by role and the time left; Reject needs a reason.
-- Browse: each type as a paged list with status chips (Active, Dropped, All), search, filters, saved views, columns, bulk actions with Undo, and export as CSV or JSON. The record page offers Keep, Drop with a reason, Restore, notes, tags and Merge.
+- Browse: each type as a paged list with status chips (Active, Dropped, All), search, filters, saved views, columns, bulk actions with Undo, and export as CSV or JSON. Health chips come from `desk.health` (`?health=`), else the type's first choice field. A row opens the record in a peek. The record page (two panes: main column and a Details rail) offers Keep, Drop with a reason, Restore, notes, tags, Merge, an activity timeline, comments (`comments/`) and image notes (`capture`); see [write contract](write-contract.md).
 - History: runs as a list, a calendar, per-producer health, and Activity (who did what). Old `#/runs` addresses redirect here.
-- Settings: editable values with cost notes, open suggestions inline and Recent changes with Revert. Edits apply from the next run; each run snapshots what it used as `settingsUsed`.
+- Settings: Account (Appearance, Shortcuts, kept in this browser) and Workspace sections: Routine values with cost notes, open suggestions inline and Recent changes with Revert, Routine notifications, Members (derived from who decided, changed a setting or commented, plus the owner), Modules, Saved views, Privacy PIN (owner only: set, change or remove), Starter tour, Export, Settings history and About. Edits apply from the next run; each run snapshots what it used as `settingsUsed`.
+- Workers: the viewer's own Desk id with Copy, each lane with who serves it and Release, and the owner's join settings.
 
 ## Capabilities
 

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "note": "Edit enabled, severity and params to suit the store. Rule ids are fixed; an unknown id stops the check with exit 2. thin_description uses min_words, or min_chars (letters, no spaces) when the description is mostly CJK, kana, Hangul, Thai, Lao, Khmer, Myanmar or Tibetan, which are written without spaces between words.",
+  "rules": [
+    {"id": "page_error", "enabled": true, "severity": "high", "label": "Page does not load"},
+    {"id": "missing_description", "enabled": true, "severity": "high", "label": "Product has no description"},
+    {"id": "thin_description", "enabled": true, "severity": "low", "label": "Product description is thin", "params": {"min_words": 30, "min_chars": 60}},
+    {"id": "missing_alt", "enabled": true, "severity": "medium", "label": "Images without alt text"},
+    {"id": "broken_image", "enabled": true, "severity": "high", "label": "Broken image"},
+    {"id": "broken_link", "enabled": true, "severity": "medium", "label": "Broken link to this store"},
+    {"id": "placeholder_text", "enabled": true, "severity": "high", "label": "Placeholder text left on the page",
+     "params": {"phrases": ["lorem ipsum", "[insert", "sample text"], "tokens": ["TODO", "TBC", "TBD", "FIXME"]}},
+    {"id": "missing_seo_title", "enabled": true, "severity": "high", "label": "Missing page title"},
+    {"id": "missing_meta_description", "enabled": true, "severity": "medium", "label": "Missing meta description"},
+    {"id": "duplicate_title", "enabled": true, "severity": "low", "label": "Page title used on more than one page"},
+    {"id": "zero_price", "enabled": true, "severity": "high", "label": "A variant is priced at zero"},
+    {"id": "compare_at_not_above", "enabled": true, "severity": "medium", "label": "Compare-at price is not above the price"},
+    {"id": "unavailable_featured", "enabled": true, "severity": "medium", "label": "Sold-out product linked from the home page"},
+    {"id": "restricted_wording", "enabled": false, "severity": "medium", "label": "Restricted wording (example list, off by default)",
+     "params": {"phrases": ["guaranteed results", "risk free"]}}
+  ]
+}

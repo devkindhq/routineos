@@ -1,15 +1,21 @@
+import contextlib
+import io
 import json
 import re
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
-DESK_TOKENS = ROOT / "skills" / "routineos" / "assets" / "desk" / "src" / "tokens.css"
+DESK_HTML = ROOT / "skills" / "routineos" / "assets" / "desk" / "index.html"
+sys.path.insert(0, str(ROOT / "skills" / "routineos" / "scripts"))
+
+import bundle_desk  # noqa: E402
 GENERATOR = ROOT / "templates" / "jobs-watch" / "demo" / "generate.py"
 EMOJI = re.compile("[" + chr(0x1F000) + "-" + chr(0x1FAFF) + chr(0x2600) + "-" + chr(0x27BF) + chr(0x2B00) + "-" + chr(0x2BFF) + chr(0xFE0F) + "]")
 
@@ -28,6 +34,31 @@ class Collector(HTMLParser):
             self.ids.add(a["id"])
         if tag == "a" and "href" in a:
             self.hrefs.append(a["href"])
+
+
+class SiteDeskTest(unittest.TestCase):
+    """bundle_desk.py writes site/desk.html: the prebuilt Desk with SITE_CONFIG injected. Runs without a real site/."""
+
+    def test_default_run_writes_the_static_desk(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(bundle_desk, "SITE", tmp), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(bundle_desk.main([]), 0)
+            desk = (Path(tmp) / "desk.html").read_text(encoding="utf-8")
+            self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ["desk.html"])
+        found = re.search(r'<script type="application/json" id="desk-config">(.*?)</script>', desk, re.S)
+        self.assertIsNotNone(found)
+        self.assertEqual(json.loads(found.group(1) if found else "{}"),
+                         {"store": "static", "snapshot": "desk-demo.json", "workspace": "Jobs watch demo"})
+        self.assertNotIn(bundle_desk.VERSION_MARK, desk)
+        strip = lambda h: re.sub(r'(id="desk-config">).*?(</script>)', r"\1\2", h, flags=re.S)
+        self.assertEqual(strip(desk), strip(DESK_HTML.read_text(encoding="utf-8")).replace(
+            bundle_desk.VERSION_MARK, bundle_desk.plugin_version()))
+
+    def test_no_site_folder_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(bundle_desk, "SITE", str(Path(tmp) / "site")), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(bundle_desk.main([]), 0)
+            self.assertFalse((Path(tmp) / "site").exists())
 
 
 @unittest.skipUnless((SITE / "index.html").is_file(), "the landing page is not tracked here; site/ is absent")
@@ -84,8 +115,6 @@ class SiteTest(unittest.TestCase):
             self.assertNotIn("first pass", text.lower())
 
     def test_shared_tokens_file(self):
-        # One token file: the Desk source, copied byte for byte to the site by the bundler.
-        self.assertEqual((SITE / "tokens.css").read_bytes(), DESK_TOKENS.read_bytes())
         links = [a["href"] for t, a in self.p.tags if t == "link" and a.get("rel") == "stylesheet"]
         self.assertLess(links.index("tokens.css"), links.index("styles.css"))
         self.assertIsNone(re.search(r"#[0-9a-fA-F]{3,8}\b", self.css), "colours come from tokens.css only")
@@ -105,16 +134,10 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(len(frames), 1)
         self.assertTrue(frames[0].get("title"))
 
-    def test_desk_page_is_the_bundle_on_the_static_adapter(self):
-        desk = (SITE / "desk.html").read_text(encoding="utf-8")
-        found = re.search(r'<script type="application/json" id="desk-config">(.*?)</script>', desk, re.S)
-        self.assertIsNotNone(found)
-        cfg = json.loads(found.group(1) if found else "{}")
-        self.assertEqual(cfg["store"], "static")
-        self.assertEqual(cfg["snapshot"], "desk-demo.json")
-        bundle = (ROOT / "skills" / "routineos" / "assets" / "desk" / "index.html").read_text(encoding="utf-8")
-        strip = lambda h: re.sub(r'(id="desk-config">).*?(</script>)', r"\1\2", h, flags=re.S)
-        self.assertEqual(strip(desk), strip(bundle))
+    def test_desk_page_is_the_prebuilt_on_the_static_adapter(self):
+        want = bundle_desk.inject(DESK_HTML.read_text(encoding="utf-8"), bundle_desk.SITE_CONFIG,
+                                  bundle_desk.plugin_version(), [])
+        self.assertEqual((SITE / "desk.html").read_text(encoding="utf-8"), want)
 
     def test_demo_snapshot_is_generator_output(self):
         with tempfile.TemporaryDirectory() as tmp:

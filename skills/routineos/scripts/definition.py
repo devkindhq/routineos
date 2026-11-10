@@ -13,7 +13,7 @@ VIEW_META_FIELDS = ("lastSeen", "firstSeen", "seenCount", "status", "dropReason"
 VIEW_FILTER_KEYS = ("q", "status", "starred", "tag", "source", "reason", "fields")
 VIEW_STATUSES = ("all", "active", "dropped")
 VIEW_WINDOWS = ("all", "week", "month", "last-month")
-# Icons a type or a view may name for the Desk navigation; each is a symbol in assets/desk/src/icons.js.
+# Icons a type or a view may name for the Desk navigation; each is in ICON_NAMES in assets/desk/core/shared.js.
 NAV_ICONS = ("house", "inbox", "badge-check", "history", "settings", "list", "dot", "building-2", "briefcase", "user",
              "users", "video", "file-text", "mail", "message-square", "calendar", "receipt", "tag", "folder", "newspaper",
              "git-pull-request", "chart-line", "circle-help", "rss", "file-search", "package", "globe", "link")
@@ -29,6 +29,18 @@ KNOWN_LIMITS = ("max_inbox_per_run",)
 # The push rule, gates, cap overrides and send permissions are never learnable, whatever a routine names them.
 # Names are matched with case and separators removed, so PushRule, push-rule and push_rule are one name.
 NEVER_LEARNABLE_RE = re.compile(r"push|gate|send|alert|permission|budget|maxruns|capoverride")
+# Desk view modules (desk.modules in a definition): data only, never code.
+MODULE_KEYS = ("id", "kind", "label", "icon", "view", "fields")
+MODULE_ID_RE = re.compile(r"^[a-z][a-z0-9-]{1,31}$")
+MODULE_VIEW_KEYS = ("type", "filters", "window", "sort", "group", "columns")
+MODULE_LABEL_MAX = 40
+PAGE_IDS = ("today", "approvals", "runs", "workers", "history", "settings", "browse", "entity")
+# v1 pages whose addresses now redirect to a v2 page; a module still cannot take their ids.
+RETIRED_PAGE_IDS = ("inbox", "suggestions", "views")
+CODE_KEYS = ("script", "html", "js", "code", "template", "style")
+# Copy words the Desk never uses; tests/test_desk_bundle.py scans the bundle for the same list.
+BANNED_WORDS = ("ai-powered", "smart", "magic", "effortless", "unlock", "supercharge")
+EM_DASH = chr(0x2014)
 
 
 class DefinitionError(Exception):
@@ -126,7 +138,7 @@ def lint_view(view, types):
     if "icon" in view:
         problems += lint_icon(label, view["icon"])
     tname = view.get("type")
-    if tname not in types:
+    if not isinstance(tname, str) or tname not in types:
         return problems + [f"{label}: undeclared type '{tname}'"]
     known = set(types[tname].get("fields", {})) | set(VIEW_META_FIELDS)
     filters = view.get("filters", {})
@@ -159,6 +171,192 @@ def lint_view(view, types):
     return problems
 
 
+def _code_keys(value, path):
+    """Paths of keys anywhere in value that would carry code: CODE_KEYS or any key ending in Html."""
+    found = []
+    if isinstance(value, dict):
+        for key, sub in value.items():
+            here = f"{path}.{key}"
+            if key in CODE_KEYS or (isinstance(key, str) and key.endswith("Html")):
+                found.append(here)
+            found += _code_keys(sub, here)
+    elif isinstance(value, list):
+        for i, sub in enumerate(value):
+            found += _code_keys(sub, f"{path}[{i}]")
+    return found
+
+
+def copy_problems(label, text):
+    """Problems with Desk copy: banned words and em dashes."""
+    problems = []
+    if EM_DASH in text:
+        problems.append(f"{label}: no em dashes")
+    for word in BANNED_WORDS:
+        if re.search(r"\b" + re.escape(word) + r"\b", text.casefold()):
+            problems.append(f"{label}: '{word}' is not Desk copy")
+    return problems
+
+
+def _lint_scope(label, filters):
+    """filters.tag and filters.source on a module: a non-empty string or a non-empty list of non-empty strings.
+    The Desk drops empty strings from a scope, so an empty one would leave the module unscoped."""
+    problems = []
+    for key in ("tag", "source"):
+        if key not in filters:
+            continue
+        v = filters[key]
+        items = [v] if isinstance(v, str) else v if isinstance(v, list) and v else None
+        if items is None or not all(isinstance(x, str) and x.strip() for x in items):
+            problems.append(f"{label}: filters.{key} must be a non-empty string or a non-empty list of non-empty strings")
+    return problems
+
+
+def _lint_module(m, types):
+    mid = m.get("id")
+    label = f"desk module '{mid}'"
+    if not isinstance(mid, str) or not MODULE_ID_RE.match(mid):
+        return [f"{label}: id must be 2 to 32 lowercase letters, digits and hyphens, starting with a letter"]
+    if never_learnable(mid):
+        return [f"{label}: the id contains a word learning never touches (push, gate, send, alert, permission, "
+                f"budget, maxruns, capoverride); choose another id"]
+    problems = [f"{label}: '{p}' would carry code; modules carry data only" for p in _code_keys(m, "module")]
+    if problems:
+        return problems
+    problems = [f"{label}: unknown key '{k}'" for k in m if k not in MODULE_KEYS]
+    if mid in PAGE_IDS or mid in RETIRED_PAGE_IDS:
+        problems.append(f"{label}: the id is a built-in page; choose another id")
+    if m.get("kind") != "view":
+        problems.append(f"{label}: kind must be view")
+    text = m.get("label")
+    if not isinstance(text, str) or not text.strip():
+        problems.append(f"{label}: needs a label")
+    elif len(text) > MODULE_LABEL_MAX:
+        problems.append(f"{label}: label is over {MODULE_LABEL_MAX} characters")
+    else:
+        problems += copy_problems(label, text)
+    if "icon" in m:
+        problems += lint_icon(label, m["icon"])
+    view = m.get("view")
+    if not isinstance(view, dict):
+        return problems + [f"{label}: view must be an object with a type"]
+    problems += [f"{label}: view key '{k}' is not allowed; a module view has {', '.join(MODULE_VIEW_KEYS)}"
+                 for k in view if k not in MODULE_VIEW_KEYS]
+    filters = view.get("filters", {})
+    if isinstance(filters, dict):
+        problems += _lint_scope(label, filters)
+        filters = {k: v for k, v in filters.items() if k not in ("tag", "source")}
+    problems += [f"{label}: {p}" for p in lint_view(dict(view, id=mid, filters=filters), types)]
+    fields = m.get("fields", {})
+    if not isinstance(fields, dict):
+        return problems + [f"{label}: fields must be an object of field name to component id"]
+    declared = (types.get(view.get("type")) or {}).get("fields", {}) if isinstance(view.get("type"), str) else {}
+    for fname, comp in fields.items():
+        if fname not in declared:
+            problems.append(f"{label}: fields names '{fname}', which is not a field of type '{view.get('type')}'")
+        if not isinstance(comp, str) or not MODULE_ID_RE.match(comp):
+            problems.append(f"{label}: fields.{fname} must be a component id (lowercase letters, digits, hyphens)")
+    return problems
+
+
+HEALTH_LEVELS = ("red", "yellow", "green")
+
+
+def lint_health(health, types):
+    """Problems with desk.health (spec 7c): {<type>: {field, red: [], yellow: [], green: []}}."""
+    if not isinstance(health, dict):
+        return ["desk.health must be an object of type name to {field, red, yellow, green}"]
+    problems = []
+    for tname, rule in health.items():
+        label = f"desk.health.{tname}"
+        if tname not in types:
+            problems.append(f"{label}: '{tname}' is not a declared type")
+            continue
+        if not isinstance(rule, dict):
+            problems.append(f"{label} must be an object {{field, red, yellow, green}}")
+            continue
+        problems += [f"{label}: unknown key '{k}'" for k in rule if k not in ("field",) + HEALTH_LEVELS]
+        if rule.get("field") not in ((types[tname] or {}).get("fields") or {}):
+            problems.append(f"{label}: field '{rule.get('field')}' is not a field of type '{tname}'")
+        seen = {}
+        for level in HEALTH_LEVELS:
+            values = rule.get(level, [])
+            if not isinstance(values, list) or not all(isinstance(v, (str, int, float)) for v in values):
+                problems.append(f"{label}.{level} must be a list of values")
+                continue
+            for v in values:
+                if v in seen and seen[v] != level:
+                    problems.append(f"{label}: value '{v}' is in both {seen[v]} and {level}")
+                seen.setdefault(v, level)
+    return problems
+
+
+# The chips the record page strip knows, in their default order.
+STRIP_CHIPS = ("state", "notes", "decision", "captured", "run", "type", "lastSeen")
+STRIP_MAX = 8
+
+
+def lint_record(record, types):
+    """Problems with desk.record: {strip: {<type>: [{chip: name} | {field: name}, ...]}}."""
+    if not isinstance(record, dict):
+        return ["desk.record must be an object with a strip"]
+    problems = [f"desk.record: unknown key '{k}'" for k in record if k != "strip"]
+    strip = record.get("strip", {})
+    if not isinstance(strip, dict):
+        return problems + ["desk.record.strip must be an object of type name to a list of chips"]
+    for tname, items in strip.items():
+        label = f"desk.record.strip.{tname}"
+        if tname not in types:
+            problems.append(f"{label}: '{tname}' is not a declared type")
+            continue
+        if not isinstance(items, list) or len(items) > STRIP_MAX:
+            problems.append(f"{label} must be a list of at most {STRIP_MAX} chips")
+            continue
+        fields = (types[tname] or {}).get("fields") or {}
+        for i, item in enumerate(items):
+            if not isinstance(item, dict) or len(item) != 1 or next(iter(item)) not in ("chip", "field"):
+                problems.append(f"{label}[{i}] must be an object with one key, chip or field")
+            elif "chip" in item and item["chip"] not in STRIP_CHIPS:
+                problems.append(f"{label}[{i}]: chip '{item['chip']}' is not one of {', '.join(STRIP_CHIPS)}")
+            elif "field" in item and item["field"] not in fields:
+                problems.append(f"{label}[{i}]: field '{item['field']}' is not a field of type '{tname}'")
+    return problems
+
+
+def lint_desk(desk, types):
+    """Problems with a definition's desk block: {modules: [view module, ...], health: {...}, record: {strip}}."""
+    if not isinstance(desk, dict):
+        return ["desk must be an object with a modules list"]
+    problems = [f"desk: unknown key '{k}'" for k in desk if k not in ("modules", "health", "record")]
+    if "health" in desk:
+        problems += lint_health(desk["health"], types)
+    if "record" in desk:
+        problems += lint_record(desk["record"], types)
+    modules = desk.get("modules", [])
+    if not isinstance(modules, list):
+        return problems + ["desk.modules must be a list"]
+    seen, cells = set(), {}
+    for i, m in enumerate(modules):
+        if not isinstance(m, dict):
+            problems.append(f"desk.modules[{i}] must be an object")
+            continue
+        problems += _lint_module(m, types)
+        mid = m.get("id")
+        if isinstance(mid, str):
+            if mid in seen:
+                problems.append(f"desk module '{mid}': declared more than once")
+            seen.add(mid)
+        view, fields = m.get("view"), m.get("fields")
+        if not (isinstance(view, dict) and isinstance(view.get("type"), str) and isinstance(fields, dict)):
+            continue
+        for fname, comp in fields.items():
+            key = (view["type"], fname)
+            if key in cells and cells[key][1] != comp:
+                problems.append(f"desk module '{mid}': field '{fname}' of type '{view['type']}' is shown by "
+                                f"'{cells[key][1]}' in module '{cells[key][0]}'; one field has one component")
+            cells.setdefault(key, (mid, comp))
+    return problems
+
+
 def lint(defn, settings_schema):
     """Problems with one producer's definition.json, given its [[setting]] list."""
     problems = []
@@ -179,6 +377,8 @@ def lint(defn, settings_schema):
             bound |= set(defn["learning"]["limits"])
         for name in sorted(n for n in bound if isinstance(n, str) and never_learnable(n)):
             problems.append(f"learning: {name} is never learnable; remove its binding or turn learning off")
+    if "desk" in defn:
+        problems += lint_desk(defn["desk"], types)
     if defn.get("inbox"):
         cap = [s for s in settings if s.get("name") == "max_inbox_per_run"]
         if not cap or cap[0].get("type") != "number":
@@ -254,7 +454,9 @@ def _tagged(pid, tdef):
 def compile(producers) -> dict:
     """Merge producers [{id, label, schedule, definition, settings, template?}] into meta/definition."""
     problems = []
-    out_producers, types, views = [], {}, []
+    out_producers, types, views, modules, module_owner = [], {}, [], [], {}
+    health, health_owner = {}, {}
+    strips, strip_owner = {}, {}
     for p in producers:
         pid, defn, settings = p["id"], p["definition"], list(p.get("settings", []))
         problems += [f"{pid}: {msg}" for msg in lint(defn, settings)]
@@ -311,6 +513,32 @@ def compile(producers) -> dict:
             cur["producers"].append(pid)
         for view in defn.get("views", []):
             views.append(dict(view, producer=pid, madeBy="definition"))
+        # Only what a producer declares; the default page modules ship with the Desk and are never compiled in.
+        desk = defn.get("desk") if isinstance(defn, dict) else None
+        for m in desk.get("modules", []) if isinstance(desk, dict) and isinstance(desk.get("modules"), list) else []:
+            if not isinstance(m, dict):
+                continue
+            mid = m.get("id")
+            if isinstance(mid, str):
+                if mid in module_owner and module_owner[mid] != pid:
+                    problems.append(f"desk module '{mid}' is declared by {module_owner[mid]} and {pid}")
+                module_owner.setdefault(mid, pid)
+            modules.append(dict(m, producer=pid))
+        rules = desk.get("health") if isinstance(desk, dict) else None
+        for tname, rule in sorted(rules.items()) if isinstance(rules, dict) else []:
+            if tname in health and health[tname] != rule:
+                problems.append(f"desk.health for type '{tname}' differs between {health_owner[tname]} and {pid}; "
+                                f"two producers may share a type's health only with identical mappings")
+            health.setdefault(tname, rule)
+            health_owner.setdefault(tname, pid)
+        record = desk.get("record") if isinstance(desk, dict) else None
+        declared = record.get("strip") if isinstance(record, dict) else None
+        for tname, items in sorted(declared.items()) if isinstance(declared, dict) else []:
+            if tname in strips and strips[tname] != items:
+                problems.append(f"desk.record.strip for type '{tname}' differs between {strip_owner[tname]} and {pid}; "
+                                f"two producers may share a type's strip only with identical lists")
+            strips.setdefault(tname, items)
+            strip_owner.setdefault(tname, pid)
     joins = [(p["id"], p["definition"]["join"]) for p in producers
              if isinstance(p["definition"], dict) and "join" in p["definition"]]
     if len(joins) > 1:
@@ -321,6 +549,12 @@ def compile(producers) -> dict:
     if problems:
         raise DefinitionError(problems)
     body = {"producers": out_producers, "types": types, "views": views}
+    if modules:
+        body["desk"] = {"modules": modules}
+    if health:
+        body.setdefault("desk", {})["health"] = json.loads(json.dumps(health))
+    if strips:
+        body.setdefault("desk", {})["record"] = {"strip": json.loads(json.dumps(strips))}
     digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode("utf-8")).hexdigest()[:12]
     compiled = dict(body, version=digest, schema=1)
     size = doc_bytes(compiled)

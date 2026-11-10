@@ -51,13 +51,27 @@ A setting whose name says it holds who to contact (`recipient`, `approver`, `ema
 
 | Level | Keys |
 |---|---|
-| top | `version`, `label`, `inbox`, `types`, `views`, `learning` |
+| top | `version`, `label`, `inbox`, `types`, `views`, `learning`, `desk` |
 | type | `label`, `plural`, `identity`, `merge`, `fields`, `links`, `settingFilters` |
 | field | `label`, `type`, `summary`, `choices` |
 | setting filter | `setting`, `field` |
 | view | `id`, `type`, `name`, `filters`, `sort`, `columns`, `window`, `group` |
+| desk | `modules` |
+| desk module | `id`, `kind`, `label`, `icon`, `view`, `fields` |
+| module view | `type`, `filters`, `window`, `sort`, `group`, `columns` |
 
 The definition must compile with `definition.compile`, which applies the never-learnable rule (a setting whose name contains `push`, `gate`, `send`, `alert`, `permission`, `budget`, `maxruns` or `capoverride` cannot be bound while learning is on) and the Inbox cap rule.
+
+### `desk`
+
+Optional. `desk.modules` lists the routine's view modules: extra sidebar entries under an entity type, each a fixed
+view over that type. `kind` is `view`. `id` matches `^[a-z][a-z0-9-]{1,31}$`, is unique across the workspace, is
+not a page id and contains no never-learnable word. `label` is required (40 characters at most, no em dashes or
+banned words); `icon` is a nav icon name. `view.type` names a type; `filters.tag` and `filters.source` may be a
+list, matching any value. `fields` maps a field of that type to a component id that draws its cell. No key named
+`script`, `html`, `js`, `code`, `template` or `style`, or ending in `Html`, is allowed at any depth. A pack never
+carries page code: modules are data, and the Desk draws them. A definition without `desk` compiles exactly as before.
+`routineos desk module add view <id> --routine <dir> --type <type>` adds one; `routineos desk lint` checks them.
 
 ## `stages`
 

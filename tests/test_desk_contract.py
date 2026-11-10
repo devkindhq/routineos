@@ -1,4 +1,6 @@
+import contextlib
 import copy
+import io
 import json
 import os
 import re
@@ -590,6 +592,209 @@ class GuardTests(unittest.TestCase):
 
     def test_guard_allows_producer_paths(self):
         dc.guard([self.op("entities/company--a"), self.op("runs/r1", if_version=2), self.op("inbox/r1--1")])
+
+
+class CaptureTests(unittest.TestCase):
+    """capture (spec 7b): an image of the artifact's own assets with numbered notes in fractional boxes."""
+    IMAGE = "/assets/" + "a" * 32
+
+    def good(self, **over):
+        cap = {"image": self.IMAGE, "capturedAt": "2026-10-27T22:05:00Z", "width": 1280,
+               "notes": [{"id": "n1", "title": "Salary", "text": "Not posted.", "kind": "warn",
+                          "box": [0.1, 0.2, 0.3, 0.1]}]}
+        cap.update(over)
+        return cap
+
+    def test_note_kinds_are_info_red_warn_ok(self):
+        self.assertEqual(dc.NOTE_KINDS, ("info", "red", "warn", "ok"))
+
+    def test_capture_accepts_warn_and_ok(self):
+        notes = [{"id": "n1", "title": "A", "kind": "warn"}, {"id": "n2", "title": "B", "kind": "ok"}]
+        clean, problems = dc.validate_capture(self.good(notes=notes))
+        self.assertEqual(problems, [])
+        self.assertEqual([n["kind"] for n in clean["notes"]], ["warn", "ok"])
+
+    def test_capture_refuses_yellow_on_write(self):
+        clean, problems = dc.validate_capture(self.good(notes=[{"id": "n1", "title": "A", "kind": "yellow"}]))
+        self.assertTrue(any("kind" in p for p in problems))
+        self.assertNotIn("kind", clean["notes"][0])
+
+    def test_valid_capture_is_kept(self):
+        clean, problems = dc.validate_capture(self.good())
+        self.assertEqual(problems, [])
+        self.assertEqual(clean, self.good())
+
+    def test_absent_or_not_an_object(self):
+        self.assertEqual(dc.validate_capture(None), (None, []))
+        clean, problems = dc.validate_capture("x")
+        self.assertIsNone(clean)
+        self.assertTrue(problems)
+
+    def test_foreign_image_is_dropped_and_logged(self):
+        for url in ("https://evil.example/x.png", "javascript:alert(1)", "/assets/../x", "//cdn.example/a.png"):
+            clean, problems = dc.validate_capture(self.good(image=url))
+            self.assertNotIn("image", clean, url)
+            self.assertEqual(len(clean["notes"]), 1, "notes stay as a list")
+            self.assertTrue(any("image" in p for p in problems), url)
+
+    def test_box_outside_fractions_is_rejected(self):
+        bad = self.good()
+        bad["notes"][0]["box"] = [0.1, 0.2, 1.2, 0.1]
+        clean, problems = dc.validate_capture(bad)
+        self.assertNotIn("box", clean["notes"][0])
+        self.assertTrue(any("box" in p for p in problems))
+        for box in ([0.1, 0.2, 0.3], [True, 0, 0, 0], "0,0,1,1"):
+            bad["notes"][0]["box"] = box
+            self.assertNotIn("box", dc.validate_capture(bad)[0]["notes"][0])
+
+    def test_kind_and_text_caps(self):
+        bad = self.good()
+        bad["notes"][0]["kind"] = "green"
+        bad["notes"][0]["text"] = "x" * 2500
+        clean, problems = dc.validate_capture(bad)
+        self.assertNotIn("kind", clean["notes"][0])
+        self.assertEqual(len(clean["notes"][0]["text"]), 2000)
+        self.assertTrue(problems)
+
+    def test_run_stores_a_clean_capture_on_the_entity(self):
+        store = new_store()
+        rec = role("https://jobs.example/r1")
+        rec["capture"] = self.good(image="https://evil.example/x.png")
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            apply_all(store, run_input("r1", [rec]))
+        self.assertIn("capture.image dropped", log.getvalue())
+        doc = data(store, "entities/role--https-jobs-example-r1")
+        self.assertEqual(doc["capture"]["notes"][0]["title"], "Salary")
+        self.assertNotIn("image", doc["capture"])
+        plain = role("https://jobs.example/r2")
+        apply_all(store, run_input("r2", [plain], at="2026-09-08T22:00:00Z"))
+        self.assertNotIn("capture", data(store, "entities/role--https-jobs-example-r2"))
+
+
+class ProcessedTests(unittest.TestCase):
+    """The run report of processed requests (spec 7a) and the decision note (spec 7g)."""
+
+    GOOD = [{"request": "jobs-watch-20260901--g1", "outcome": "applied", "result": "Introduction sent."},
+            {"request": "jobs-watch-20260825--2", "outcome": "not_applied", "reason": "GB is not a source yet."}]
+
+    def summary(self, **extra):
+        phases = dc.plan_run(compiled(), new_store().snapshot(), run_input("r1", [], **extra))
+        return [op for ph in phases if ph["name"] == "summary" for op in ph["ops"]
+                if op["collection"] == "runs"][0]["data"]
+
+    def test_valid_processed_reaches_the_summary(self):
+        self.assertEqual(self.summary(processed=copy.deepcopy(self.GOOD))["processed"], self.GOOD)
+
+    def test_absent_processed_leaves_the_summary_unchanged(self):
+        doc = self.summary()
+        self.assertNotIn("processed", doc)
+        self.assertEqual(json.dumps(doc, sort_keys=True), json.dumps(self.summary(), sort_keys=True))
+        self.assertEqual(dc.validate_processed(None), (None, []))
+
+    def test_too_many_entries_are_cut_and_logged(self):
+        many = [{"request": f"r-{i}", "outcome": "applied"} for i in range(201)]
+        clean, problems = dc.validate_processed(many)
+        self.assertEqual(len(clean), 200)
+        self.assertTrue(any("200" in p for p in problems))
+
+    def test_bad_outcome_is_dropped(self):
+        clean, problems = dc.validate_processed([{"request": "a", "outcome": "maybe"}, self.GOOD[0]])
+        self.assertEqual(clean, [self.GOOD[0]])
+        self.assertTrue(any("outcome" in p for p in problems))
+        for bad in ("x", [{"outcome": "applied"}], [{"request": 3, "outcome": "applied"}]):
+            self.assertTrue(dc.validate_processed(bad)[1], bad)
+
+    def test_long_strings_are_cut_to_500(self):
+        clean, problems = dc.validate_processed([{"request": "a", "outcome": "not_applied", "reason": "x" * 501}])
+        self.assertEqual(len(clean[0]["reason"]), 500)
+        self.assertTrue(any("reason" in p for p in problems))
+        clean, problems = dc.validate_processed([{"request": "a", "outcome": "applied", "result": "y" * 500}])
+        self.assertEqual(problems, [])
+
+    def test_bad_processed_is_logged_by_the_run(self):
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            doc = self.summary(processed=[{"request": "a", "outcome": "maybe"}])
+        self.assertIn("processed", log.getvalue())
+        self.assertEqual(doc["processed"], [])
+
+    def test_decision_note_cap(self):
+        self.assertEqual(dc.validate_decision({"decision": "approve", "at": "2026-10-28T00:00:00Z"}), [])
+        self.assertEqual(dc.validate_decision({"decision": "approve", "note": "n" * 2000}), [])
+        self.assertTrue(dc.validate_decision({"decision": "approve", "note": "n" * 2001}))
+        self.assertTrue(dc.validate_decision({"decision": "approve", "note": 5}))
+
+
+class RequestQueueTests(unittest.TestCase):
+    """requests/ (Desk v2 queue) is people-owned; a run reports handled requests through processed."""
+
+    def test_processed_accepts_request_outcomes(self):
+        good = [{"request": "req~mxyz~0a1b2c", "outcome": "applied", "result": "Ran once."},
+                {"request": "req~mxyz~3d4e5f", "outcome": "not_applied", "reason": "Daily cap reached."}]
+        clean, problems = dc.validate_processed(copy.deepcopy(good))
+        self.assertEqual((clean, problems), (good, []))
+
+    def test_requests_is_a_human_prefix(self):
+        self.assertIn("requests/", dc.HUMAN_PREFIXES)
+        for op in ("set", "update", "delete"):
+            with self.assertRaises(dc.HumanPathError):
+                dc.guard([{"op": op, "collection": "requests", "doc_id": "x", "data": {}}])
+
+
+class CommentsTests(unittest.TestCase):
+    """comments/ (spec 7d) is a human prefix: routines never write it."""
+
+    def test_comments_is_a_human_prefix(self):
+        self.assertIn("comments/", dc.HUMAN_PREFIXES)
+        for op in ("set", "update", "delete"):
+            with self.assertRaises(dc.HumanPathError):
+                dc.guard([{"op": op, "collection": "comments", "doc_id": "x", "data": {}}])
+
+    def test_comment_id_and_text_cap(self):
+        self.assertEqual(dc.comment_id("role--a", "u_owner", "2026-10-26T09:00:00Z"), "role--a--u_owner--mvp102o0")
+        self.assertEqual(dc.MAX_COMMENT_TEXT, 4000)
+
+
+class LockTests(unittest.TestCase):
+    """meta/lock (spec 7e): the PIN privacy screen's salt and PBKDF2 hash, set by the owner in the Desk page."""
+
+    def good(self, **over):
+        doc = {"salt": "2ed5dc766674ee32f66ec3c45fb2e4c9", "hash": "ab" * 32, "iterations": 310000,
+               "algo": "PBKDF2-SHA-256", "setAt": "2026-10-20T08:00:00Z", "setBy": "u_owner"}
+        doc.update(over)
+        return doc
+
+    def test_valid_lock_passes(self):
+        dc.check_lock(self.good())
+        dc.check_lock(self.good(iterations=100000))
+
+    def test_invalid_locks_are_refused(self):
+        bad = [
+            "not a dict", self.good(salt="zz" * 16), self.good(salt=""), self.good(salt="ab"),
+            self.good(hash="ab" * 31), self.good(hash="AB" * 32), self.good(iterations=99999),
+            self.good(iterations=310000.0), self.good(iterations=True), self.good(algo="SHA-1"),
+            self.good(setAt="yesterday"), self.good(setBy="no one"), self.good(extra=1),
+            self.good(iterations=10 ** 7 + 1),  # a huge count would hang the tab that checks the PIN
+        ]
+        for i, doc in enumerate(bad):
+            with self.assertRaises(dc.ContractError, msg=str(i)):
+                dc.check_lock(doc)
+        missing = self.good()
+        del missing["salt"]
+        with self.assertRaises(dc.ContractError):
+            dc.check_lock(missing)
+
+    def test_guard_checks_a_lock_write(self):
+        dc.guard([{"op": "set", "collection": "meta", "doc_id": "lock", "data": self.good()}])
+        with self.assertRaises(dc.ContractError):
+            dc.guard([{"op": "set", "collection": "meta", "doc_id": "lock", "data": self.good(iterations=10)}])
+        dc.guard([{"op": "delete", "collection": "meta", "doc_id": "lock"}])  # removing the PIN
+
+    def test_lock_fixture_is_valid(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "tests", "desk_fixtures", "lock-demo.json"), encoding="utf-8") as fh:
+            dc.check_lock(json.load(fh)["meta/lock"]["data"])
 
 
 class StoreTests(unittest.TestCase):

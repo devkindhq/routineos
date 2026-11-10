@@ -1,0 +1,84 @@
+// core/paging.js: hybrid paging over a store that has one orderBy, no cursors and no counts (db.d.ts).
+// Lists read a page at a time ordered by one meta field. The next page is a keyset read from the last value
+// shown: `<=` (or `>=`) on that value, dropping the ids already shown at it. When one value fills a whole read,
+// the page walks that value alone in `key` order (unique per type) and then carries on strictly past it, so a
+// tie of any size is neither skipped nor repeated. Full reads (search, field filters, counts, "all matching")
+// walk `key` in reads of 1,000 and de-duplicate by id.
+export var PAGE_SIZE = 100;
+export var FULL_STEP = 1000;
+export var TIE_FIELD = "key";
+export var FULL_READ_MAX = 30; // 25,000 documents per artifact at 1,000 a read, with room to spare
+
+export function rowValue_(row, field) {
+  return row && row.data ? row.data[field] : undefined;
+}
+
+export function withWhere(base, extra) {
+  return ((base && base.where) || []).concat(extra);
+}
+
+// after: null for the first page, else {value, seen: [ids shown at value], mode: "le" | "tie" | "strict", key}.
+export function pageQuery(base, sort, after) {
+  var desc = sort.dir === "desc";
+  if (!after) return { where: withWhere(base, []), orderBy: [sort.field, sort.dir], limit: PAGE_SIZE };
+  if (after.mode === "tie") {
+    var w = [[sort.field, "==", after.value]];
+    if (after.key !== null && after.key !== undefined) w.push([TIE_FIELD, ">", after.key]);
+    return { where: withWhere(base, w), orderBy: [TIE_FIELD, "asc"], limit: PAGE_SIZE };
+  }
+  if (after.mode === "strict") {
+    return { where: withWhere(base, [[sort.field, desc ? "<" : ">", after.value]]), orderBy: [sort.field, sort.dir], limit: PAGE_SIZE };
+  }
+  return {
+    where: withWhere(base, [[sort.field, desc ? "<=" : ">=", after.value]]),
+    orderBy: [sort.field, sort.dir],
+    limit: Math.min(FULL_STEP, PAGE_SIZE + after.seen.length),
+  };
+}
+
+// One page: {rows, after, done}. rows are store.list docs; done means the store has no more.
+export function nextPage(store, coll, base, sort, after) {
+  var q = pageQuery(base, sort, after);
+  return store.list(coll, q).then(function (raw) {
+    var seen = new Set((after && after.seen) || []);
+    var fresh = raw.filter(function (r) { return !seen.has(r.id); });
+    if (after && after.mode === "tie") {
+      var shown = (after.seen || []).concat(fresh.map(function (r) { return r.id; }));
+      if (raw.length < q.limit) return { rows: fresh, after: { value: after.value, seen: [], mode: "strict" }, done: false };
+      return { rows: fresh, after: { value: after.value, seen: shown, mode: "tie", key: rowValue_(raw[raw.length - 1], TIE_FIELD) }, done: false };
+    }
+    var full = raw.length >= q.limit;
+    if (after && after.mode === "le" && full && raw.every(function (r) { return rowValue_(r, sort.field) === after.value; })) {
+      // One value fills the whole read: walk it alone in key order.
+      return nextPage(store, coll, base, sort, { value: after.value, seen: after.seen, mode: "tie", key: null });
+    }
+    if (!raw.length) return { rows: [], after: after, done: true };
+    var last = rowValue_(raw[raw.length - 1], sort.field);
+    var atLast = raw.filter(function (r) { return rowValue_(r, sort.field) === last; }).map(function (r) { return r.id; });
+    return { rows: fresh, after: { value: last, seen: atLast, mode: "le" }, done: !full };
+  });
+}
+
+// Every document matching base, read in key order 1,000 at a time, de-duplicated by id.
+export function fullRead(store, coll, base) {
+  var out = [];
+  var ids = new Set();
+  out.capped = false; // true when all FULL_READ_MAX reads came back full: the store may hold more than was read
+  function step(lastKey, n) {
+    var w = lastKey === null ? [] : [[TIE_FIELD, ">", lastKey]];
+    return store.list(coll, { where: withWhere(base, w), orderBy: [TIE_FIELD, "asc"], limit: FULL_STEP }).then(function (raw) {
+      raw.forEach(function (r) { if (!ids.has(r.id)) { ids.add(r.id); out.push(r); } });
+      if (raw.length < FULL_STEP) return out;
+      if (n + 1 >= FULL_READ_MAX) {
+        // The last allowed read was full: peek one row past it so an exact fit is not flagged as capped.
+        var lk = rowValue_(raw[raw.length - 1], TIE_FIELD);
+        return store.list(coll, { where: withWhere(base, [[TIE_FIELD, ">", lk]]), orderBy: [TIE_FIELD, "asc"], limit: 1 }).then(function (more) {
+          out.capped = more.length > 0;
+          return out;
+        });
+      }
+      return step(rowValue_(raw[raw.length - 1], TIE_FIELD), n + 1);
+    });
+  }
+  return step(null, 0);
+}

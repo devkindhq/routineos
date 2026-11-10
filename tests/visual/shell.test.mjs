@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const SRC = "../../skills/routineos/assets/desk/src/";
-const { createStore, ReadOnlyError, NoDbError } = require(SRC + "store.js");
-const { route } = require(SRC + "router.js");
+const CORE = "../../skills/routineos/assets/desk/core/";
+const { createStore, ReadOnlyError, NoDbError } = require(CORE + "store.js");
+const { route } = require(CORE + "router.js");
 
 const SNAPSHOT = {
   "meta/definition": { version: 1, data: { version: "v1", types: {} } },
@@ -154,13 +154,12 @@ test("viewer is the awaited user id, or null that disables per-viewer state", as
 test("router parses the spec s8 hash routes", () => {
   assert.deepEqual(route(""), { page: "today", params: {} });
   assert.deepEqual(route("#/today"), { page: "today", params: {} });
-  assert.deepEqual(route("#/inbox"), { page: "inbox", params: {} });
+  assert.deepEqual(route("#/approvals"), { page: "approvals", params: {} });
   assert.deepEqual(route("#/browse/company"), { page: "browse", params: { type: "company" } });
   assert.deepEqual(route("#/entity/company/acme-co"), { page: "entity", params: { type: "company", key: "acme-co" } });
-  assert.deepEqual(route("#/views"), { page: "views", params: {} });
-  assert.deepEqual(route("#/runs"), { page: "history", params: {}, redirect: "#/history" });
-  assert.deepEqual(route("#/runs/r%201"), { page: "run", params: { id: "r 1" }, redirect: "#/history/r%201" });
-  assert.deepEqual(route("#/settings"), { page: "settings", params: {} });
+  assert.deepEqual(route("#/runs"), { page: "runs", params: {} });
+  assert.deepEqual(route("#/runs/r%201"), { page: "run", params: { id: "r 1" } });
+  assert.deepEqual(route("#/settings"), { page: "settings", params: { section: "appearance" } });
   assert.deepEqual(route("#/nowhere"), { page: "today", params: {} });
   assert.deepEqual(route("#/browse"), { page: "today", params: {} });
 });
@@ -181,8 +180,10 @@ test("profiles: the static store and a null user namespace resolve {}, a live on
   assert.deepEqual(asked, ["u_1"]);
 });
 
-// Task 16: the sidebar model, keyboard shortcuts and the command palette (src/palette.js).
-const { navModel, bottomModel, shortcutFor, isTyping, paletteCommands, matchCommands } = require(SRC + "palette.js");
+// Task 16: the sidebar model, keyboard shortcuts and the command palette (core/palette.js).
+const { navModel, navFlat, bottomModel, shortcutFor, isTyping, paletteCommands, matchCommands, searchAllCommand } = require(CORE + "palette.js");
+// The grouped nav as one list of top entries, Settings last.
+const flatNav = (...a) => navFlat(navModel(...a));
 
 const NAV_DEF = {
   types: { role: { label: "Role", plural: "Roles" }, company: { label: "Company", plural: "Companies" }, contact: { label: "Contact", plural: "Contacts" } },
@@ -194,9 +195,9 @@ const NAV_VIEWS = [
   { id: "v-new", data: { type: "role", name: "Proposed one", state: "proposed" } },
 ];
 
-test("navModel: Today, Inbox, Approvals, one entry per type with its views, then History and Settings", () => {
-  const nav = navModel(NAV_DEF, NAV_VIEWS, new Set(["v-zed"]));
-  assert.deepEqual(nav.map((n) => n.id), ["today", "inbox", "approvals", "type:company", "type:contact", "type:role", "history", "settings"]);
+test("navModel: Today, Approvals, Runs, History, one entry per type (definition order) with its views, then Settings", () => {
+  const nav = flatNav(NAV_DEF, NAV_VIEWS, new Set(["v-zed"]));
+  assert.deepEqual(nav.map((n) => n.id), ["today", "approvals", "runs", "history", "type:role", "type:company", "type:contact", "settings"]);
   const role = nav.find((n) => n.id === "type:role");
   assert.equal(role.label, "Roles");
   assert.equal(role.href, "#/browse/role");
@@ -206,30 +207,30 @@ test("navModel: Today, Inbox, Approvals, one entry per type with its views, then
   assert.equal(role.children[1].href, "#/browse/role?view=au-roles");
   assert.equal(nav.find((n) => n.id === "type:contact").children.length, 0);
   assert.equal(nav[0].href, "#/today");
-  assert.equal(nav[6].href, "#/history");
+  assert.equal(nav[3].href, "#/history");
 });
 
 test("navModel copes with no definition, no views and no pins", () => {
-  assert.deepEqual(navModel(null, null, null).map((n) => n.id), ["today", "inbox", "approvals", "history", "settings"]);
+  assert.deepEqual(flatNav(null, null, null).map((n) => n.id), ["today", "approvals", "runs", "history", "settings"]);
 });
 
 test("navModel survives a shared view whose name is not a string", () => {
   const forged = [{ id: "v-num", data: { type: "role", name: 7 } }, { id: "v-obj", data: { type: "role", name: { x: 1 } } }];
-  const role = navModel(NAV_DEF, NAV_VIEWS.concat(forged), null).find((n) => n.id === "type:role");
+  const role = flatNav(NAV_DEF, NAV_VIEWS.concat(forged), null).find((n) => n.id === "type:role");
   assert.equal(role.children.length, 4);
   role.children.forEach((c) => assert.equal(typeof c.label, "string"));
 });
 
 test("navModel: page icons, list and dot defaults, and a named icon only when the icon set has it", () => {
-  const plain = navModel(NAV_DEF, NAV_VIEWS, null);
-  assert.deepEqual(plain.map((n) => n.icon), ["house", "inbox", "badge-check", "list", "list", "list", "history", "settings"]);
+  const plain = flatNav(NAV_DEF, NAV_VIEWS, null);
+  assert.deepEqual(plain.map((n) => n.icon), ["house", "badge-check", "chart-line", "history", "list", "list", "list", "settings"]);
   plain.find((n) => n.id === "type:role").children.forEach((c) => assert.equal(c.icon, "dot"));
   const def = { types: { role: { label: "Role", plural: "Roles", icon: "briefcase" }, company: { label: "Company", plural: "Companies", icon: "sparkles" } },
     views: [{ id: "au-roles", type: "role", name: "AU roles", icon: "globe" }] };
   const views = [{ id: "v-x", data: { type: "role", name: "X", icon: 7 } }];
   globalThis.ICONS = { briefcase: [], globe: [] };
   try {
-    const nav = navModel(def, views, null);
+    const nav = flatNav(def, views, null);
     const role = nav.find((n) => n.id === "type:role");
     assert.equal(role.icon, "briefcase");
     // an icon the bundle does not carry falls back, so a stale or forged definition never breaks the rail
@@ -240,16 +241,16 @@ test("navModel: page icons, list and dot defaults, and a named icon only when th
   }
 });
 
-test("bottomModel: Today, Inbox, the first type, History, Settings; no type leaves four", () => {
-  assert.deepEqual(bottomModel(navModel(NAV_DEF, [], null)).map((n) => n.label), ["Today", "Inbox", "Companies", "History", "Settings"]);
-  assert.deepEqual(bottomModel(navModel(null, [], null)).map((n) => n.label), ["Today", "Inbox", "History", "Settings"]);
+test("bottomModel: Today, Approvals, the first type, History, More; no type leaves four", () => {
+  assert.deepEqual(bottomModel(navModel(NAV_DEF, [], null)).map((n) => n.label), ["Today", "Approvals", "Roles", "History", "More"]);
+  assert.deepEqual(bottomModel(navModel(null, [], null)).map((n) => n.label), ["Today", "Approvals", "History", "More"]);
 });
 
 test("shortcutFor: g sequences go to pages and to types whose first letter is unambiguous", () => {
   const types = [{ id: "role", plural: "Roles" }, { id: "company", plural: "Companies" }, { id: "contact", plural: "Contacts" }, { id: "thing", plural: "Things" }];
   assert.deepEqual(shortcutFor(["g"], types), { pending: true });
   assert.deepEqual(shortcutFor(["g", "t"], types), { go: "#/today" });
-  assert.deepEqual(shortcutFor(["g", "i"], types), { go: "#/inbox" });
+  assert.deepEqual(shortcutFor(["g", "i"], types), { go: "#/approvals" });
   assert.deepEqual(shortcutFor(["g", "a"], types), { go: "#/approvals" });
   assert.deepEqual(shortcutFor(["g", "h"], types), { go: "#/history" });
   assert.deepEqual(shortcutFor(["g", "s"], types), { go: "#/settings" });
@@ -279,6 +280,10 @@ test("isTyping: text fields and editable content, not checkboxes or buttons", ()
   assert.equal(isTyping({ tagName: "INPUT", type: "checkbox" }), false);
   assert.equal(isTyping({ tagName: "BUTTON" }), false);
   assert.equal(isTyping(null), false);
+  // The Desk renders no WA- elements; a bare custom tag is not a text field, but one inside a shadow root of an editable host is.
+  assert.equal(isTyping({ tagName: "WA-INPUT" }), false);
+  const host = { tagName: "DIV", isContentEditable: true };
+  assert.equal(isTyping({ tagName: "SPAN", getRootNode: () => ({ host }) }), true);
 });
 
 test("paletteCommands lists pages, types and views, then the extra commands; matchCommands needs every word", () => {
@@ -293,4 +298,23 @@ test("paletteCommands lists pages, types and views, then the extra commands; mat
   assert.deepEqual(matchCommands(cmds, "  THEME ").map((c) => c.label), ["Toggle theme"]);
   assert.equal(matchCommands(cmds, "").length, cmds.length);
   assert.deepEqual(matchCommands(cmds, "nothing like this"), []);
+});
+
+test("navModel omits counts that are not known", () => {
+  const { navModel } = require(CORE + "palette.js");
+  const def = { types: { page: { label: "Page", plural: "Pages", fields: {} } } };
+  const find = (nav) => nav.groups.find((g) => g.id === "lists").items.find((i) => i.id === "type:page");
+  assert.equal(find(navModel(def, [], null, null)).count, undefined);
+  assert.equal(find(navModel(def, [], null, null, null, {})).count, undefined);
+  assert.equal(find(navModel(def, [], null, null, null, { page: 1378 })).count, 1378);
+});
+
+test("search-all row only for non-empty text", () => {
+  assert.equal(searchAllCommand("", "role"), null);
+  assert.equal(searchAllCommand("   ", "role"), null);
+  assert.equal(searchAllCommand("acme", null), null);
+  const c = searchAllCommand("  acme co ", "role");
+  assert.equal(c.id, "search-all");
+  assert.equal(c.label, "Search all records for acme co");
+  assert.equal(c.href, "#/browse/role?q=acme%20co");
 });

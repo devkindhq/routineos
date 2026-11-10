@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "modules": [
+    {
+      "id": "today",
+      "kind": "page",
+      "label": "Today",
+      "route": "#/today",
+      "nav": "head",
+      "current": "today",
+      "icon": "house"
+    },
+    {
+      "id": "approvals",
+      "kind": "page",
+      "label": "Approvals",
+      "route": "#/approvals",
+      "nav": "head",
+      "current": "approvals",
+      "icon": "badge-check"
+    },
+    {
+      "id": "runs",
+      "kind": "page",
+      "label": "Runs",
+      "route": "#/runs",
+      "nav": "head",
+      "current": "runs",
+      "icon": "chart-line"
+    },
+    {
+      "id": "history",
+      "kind": "page",
+      "label": "History",
+      "route": "#/history",
+      "nav": "head",
+      "current": "history",
+      "icon": "history"
+    },
+    {
+      "id": "workers",
+      "kind": "page",
+      "label": "Workers",
+      "route": "#/workers",
+      "nav": "join",
+      "current": "workers",
+      "icon": "users"
+    },
+    {
+      "id": "settings",
+      "kind": "page",
+      "label": "Settings",
+      "route": "#/settings",
+      "nav": "tail",
+      "current": "settings",
+      "icon": "settings"
+    },
+    {
+      "id": "browse",
+      "kind": "page",
+      "label": "Browse",
+      "route": "#/browse/<type>",
+      "nav": "type",
+      "current": "type",
+      "icon": "list"
+    },
+    {
+      "id": "entity",
+      "kind": "page",
+      "label": "Record",
+      "route": "#/entity/<type>/<key>",
+      "nav": "none",
+      "current": "type",
+      "icon": null
+    }
+  ]
+}

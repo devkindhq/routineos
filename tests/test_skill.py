@@ -11,6 +11,22 @@ SCAN_EXT = (".md", ".py", ".toml", ".html")
 SKIP_DIRS = {".git", "__pycache__", "node_modules", "dist", ".blume"}  # last two: docs-site build output
 EM_DASH = chr(0x2014)
 ALLOWED_EMAIL = "noreply@anthropic.com"  # commit trailer in docs
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+SLACK_ID = re.compile(r"U[A-Z0-9]{8,}")
+# Words in the built Desk that look like a Slack user id: React's transition state constant.
+ALLOWED_CAPS = ("UNMOUNTED",)
+
+
+def strip_allowed(text):
+    """Text with the allowed address removed, ready for the email search."""
+    return text.replace(ALLOWED_EMAIL, "")
+
+
+def strip_caps(text):
+    """Text with the allowed capital words removed, ready for the Slack id search."""
+    for word in ALLOWED_CAPS:
+        text = re.sub(r"\b" + word + r"\b", "", text)
+    return text
 
 
 def repo_files():
@@ -48,14 +64,28 @@ class SkillTests(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(SKILL_DIR, rel)), rel)
 
     def test_no_em_dash_email_or_slack_id(self):
-        email = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
-        slack = re.compile(r"U[A-Z0-9]{8,}")
         for path in repo_files():
             text = read(path)
             rel = os.path.relpath(path, ROOT)
             self.assertNotIn(EM_DASH, text, f"em dash in {rel}")
-            self.assertIsNone(email.search(text.replace(ALLOWED_EMAIL, "")), f"email pattern in {rel}")
-            self.assertIsNone(slack.search(text), f"slack id pattern in {rel}")
+            self.assertIsNone(EMAIL.search(strip_allowed(text)), f"email pattern in {rel}")
+            self.assertIsNone(SLACK_ID.search(strip_caps(text)), f"slack id pattern in {rel}")
+
+    def test_allowed_caps_do_not_hide_a_slack_id(self):
+        self.assertIsNone(SLACK_ID.search(strip_caps('status = "UNMOUNTED"')))
+        uid = "U" + "0123ABCD9"  # built here so this file passes its own scan
+        self.assertIsNotNone(SLACK_ID.search(strip_caps("UNMOUNTED " + uid)))
+        self.assertIsNotNone(SLACK_ID.search(strip_caps("UNMOUNTED" + "X1")))
+
+    def test_desk_publish_docs_name_the_single_file(self):
+        step = [l for l in read(SKILL).splitlines() if l.startswith("8. **Desk**")][0]
+        self.assertIn("one file, `dashboard/index.html`", step)
+        self.assertIn("`--split` is an alias", step)
+        self.assertNotIn("lazy", step)
+        dash = ref("dashboard.md")
+        self.assertIn("publish `dashboard/index.html`", dash)
+        self.assertIn("`--split` is an alias", dash)
+        self.assertNotIn("Pages load on demand", dash)
 
     def test_long_references_have_toc(self):
         refdir = os.path.join(SKILL_DIR, "references")
@@ -266,11 +296,13 @@ class SelfImprovingTests(unittest.TestCase):
     def test_operate_points_to_improve(self):
         self.assertIn("](improve.md)", ref("operate.md"))
 
-    def test_plugin_version_is_0_8_0(self):
+    def test_plugin_version_is_0_9_0(self):
         import json
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json"), encoding="utf-8") as fh:
-            self.assertEqual(json.load(fh)["version"], "0.8.1")
-        self.assertIn("## 0.8.1", read(os.path.join(ROOT, "CHANGELOG.md")))
+            self.assertEqual(json.load(fh)["version"], "0.9.0")
+        self.assertIn("## 0.9.0", read(os.path.join(ROOT, "CHANGELOG.md")))
+        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.9\.0$")
+        self.assertIn('VERSION = "0.9.0"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
 
 
 class TemplateDocsTests(unittest.TestCase):

@@ -1,0 +1,283 @@
+{
+  "version": 1,
+  "label": "Shopify content QA",
+  "inbox": true,
+  "types": {
+    "page": {
+      "label": "Page",
+      "plural": "Pages",
+      "icon": "file-text",
+      "identity": "field:id",
+      "merge": "merge",
+      "fields": {
+        "id": {
+          "label": "Page id",
+          "type": "text"
+        },
+        "url": {
+          "label": "URL",
+          "type": "url",
+          "summary": true
+        },
+        "kind": {
+          "label": "Kind",
+          "type": "choice",
+          "choices": [
+            "home",
+            "product",
+            "collection",
+            "page",
+            "article"
+          ],
+          "summary": true
+        },
+        "title": {
+          "label": "Title",
+          "type": "text",
+          "summary": true
+        },
+        "state": {
+          "label": "Change",
+          "type": "choice",
+          "choices": [
+            "new",
+            "changed",
+            "unchanged",
+            "removed"
+          ],
+          "summary": true
+        },
+        "http_status": {
+          "label": "HTTP status",
+          "type": "number"
+        },
+        "issue_count": {
+          "label": "Issues",
+          "type": "number",
+          "summary": true
+        },
+        "top_severity": {
+          "label": "Worst issue",
+          "type": "text"
+        },
+        "hash": {
+          "label": "Content hash",
+          "type": "text"
+        },
+        "screenshot": {
+          "label": "Screenshot (short-lived link)",
+          "type": "url"
+        }
+      }
+    },
+    "issue": {
+      "label": "Issue",
+      "plural": "Issues",
+      "icon": "file-search",
+      "identity": "field:id",
+      "merge": "merge",
+      "links": [
+        "page"
+      ],
+      "fields": {
+        "id": {
+          "label": "Issue id",
+          "type": "text"
+        },
+        "severity": {
+          "label": "Severity",
+          "type": "choice",
+          "choices": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "summary": true
+        },
+        "label": {
+          "label": "Problem",
+          "type": "text",
+          "summary": true
+        },
+        "rule": {
+          "label": "Rule",
+          "type": "text"
+        },
+        "url": {
+          "label": "Page",
+          "type": "url",
+          "summary": true
+        },
+        "kind": {
+          "label": "Page kind",
+          "type": "text"
+        },
+        "detail": {
+          "label": "Detail",
+          "type": "text",
+          "summary": true
+        },
+        "state": {
+          "label": "State",
+          "type": "choice",
+          "choices": [
+            "new",
+            "open",
+            "resolved"
+          ],
+          "summary": true
+        },
+        "screenshot": {
+          "label": "Screenshot (short-lived link)",
+          "type": "url"
+        },
+        "screenshot_note": {
+          "label": "Screenshot note",
+          "type": "text"
+        }
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "issues-by-severity",
+      "type": "issue",
+      "name": "Issues by severity",
+      "filters": {
+        "status": "active"
+      },
+      "group": "severity",
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "severity",
+        "label",
+        "url",
+        "state"
+      ]
+    },
+    {
+      "id": "high-issues",
+      "type": "issue",
+      "name": "High severity",
+      "filters": {
+        "status": "active",
+        "fields": {
+          "severity": "high"
+        }
+      },
+      "sort": {
+        "field": "firstSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "label",
+        "url",
+        "detail",
+        "state"
+      ]
+    },
+    {
+      "id": "new-issues",
+      "type": "issue",
+      "name": "New this week",
+      "filters": {
+        "status": "active",
+        "fields": {
+          "state": "new"
+        }
+      },
+      "window": "week",
+      "sort": {
+        "field": "firstSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "severity",
+        "label",
+        "url"
+      ]
+    },
+    {
+      "id": "resolved",
+      "type": "issue",
+      "name": "Resolved",
+      "filters": {
+        "status": "all",
+        "fields": {
+          "state": "resolved"
+        }
+      },
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "severity",
+        "label",
+        "url"
+      ]
+    },
+    {
+      "id": "decided",
+      "type": "issue",
+      "name": "Accepted or dismissed",
+      "filters": {
+        "status": "dropped"
+      },
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "severity",
+        "label",
+        "url",
+        "dropReason"
+      ]
+    },
+    {
+      "id": "pages",
+      "type": "page",
+      "name": "Pages",
+      "filters": {
+        "status": "active"
+      },
+      "sort": {
+        "field": "issue_count",
+        "dir": "desc"
+      },
+      "columns": [
+        "kind",
+        "title",
+        "state",
+        "issue_count"
+      ]
+    },
+    {
+      "id": "changed-pages",
+      "type": "page",
+      "name": "Changed pages",
+      "filters": {
+        "status": "active",
+        "fields": {
+          "state": "changed"
+        }
+      },
+      "sort": {
+        "field": "lastSeen",
+        "dir": "desc"
+      },
+      "columns": [
+        "kind",
+        "title",
+        "url"
+      ]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

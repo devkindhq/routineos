@@ -1,0 +1,453 @@
+{
+  "profile": {
+    "device": "Pixel 7",
+    "cpuRate": 4,
+    "latency": 150,
+    "down": 200000,
+    "up": 93750
+  },
+  "chromium": "153.0.8010.12",
+  "machine": "arm64, Apple M4 Pro",
+  "bias": "The local server gzips text and caches static files; the snapshot is a 40-record cut of the v2 fixture and font files are empty, so the times reflect the built code and not the fixture or the fonts.",
+  "modes": {
+    "single": {
+      "samples": [
+        {
+          "mode": "wa",
+          "fcp": 1484,
+          "shell": 1401.7999999523163,
+          "todayUseful": 4946.099999904633,
+          "longTasks": 217,
+          "itemsFirst": 130.59999990463257,
+          "itemsSecond": 91.5,
+          "warm": {
+            "mode": "wa",
+            "fcp": 736,
+            "shell": 721.2000000476837,
+            "todayUseful": 979.2999999523163,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 1124,
+          "shell": 1084,
+          "todayUseful": 4521,
+          "longTasks": 154,
+          "itemsFirst": 112.09999990463257,
+          "itemsSecond": 96.39999985694885,
+          "warm": {
+            "mode": "wa",
+            "fcp": 744,
+            "shell": 720.7999999523163,
+            "todayUseful": 979.3999998569489,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 1124,
+          "shell": 1081.7000000476837,
+          "todayUseful": 4527.200000047684,
+          "longTasks": 145,
+          "itemsFirst": 138.19999980926514,
+          "itemsSecond": 96.70000004768372,
+          "warm": {
+            "mode": "wa",
+            "fcp": 744,
+            "shell": 723.6000001430511,
+            "todayUseful": 976.7999999523163,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 1136,
+          "shell": 1084.3999998569489,
+          "todayUseful": 4534,
+          "longTasks": 155,
+          "itemsFirst": 142.10000014305115,
+          "itemsSecond": 99.09999990463257,
+          "warm": {
+            "mode": "wa",
+            "fcp": 744,
+            "shell": 720.7999999523163,
+            "todayUseful": 988.5,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 1136,
+          "shell": 1095.9000000953674,
+          "todayUseful": 4534.5,
+          "longTasks": 168,
+          "itemsFirst": 136.70000004768372,
+          "itemsSecond": 97.09999990463257,
+          "warm": {
+            "mode": "wa",
+            "fcp": 744,
+            "shell": 723.8000001907349,
+            "todayUseful": 997.7000000476837,
+            "longTasks": 0
+          }
+        }
+      ],
+      "median": {
+        "fcp": 1136,
+        "shell": 1084.4,
+        "todayUseful": 4534,
+        "longTasks": 155,
+        "itemsFirst": 136.7,
+        "itemsSecond": 96.7
+      },
+      "max": {
+        "fcp": 1484,
+        "shell": 1401.8,
+        "todayUseful": 4946.1,
+        "longTasks": 217,
+        "itemsFirst": 142.1,
+        "itemsSecond": 99.1
+      },
+      "warm": {
+        "median": {
+          "fcp": 744,
+          "shell": 721.2,
+          "todayUseful": 979.4,
+          "longTasks": 0,
+          "itemsFirst": null,
+          "itemsSecond": null
+        },
+        "max": {
+          "fcp": 744,
+          "shell": 723.8,
+          "todayUseful": 997.7,
+          "longTasks": 0,
+          "itemsFirst": null,
+          "itemsSecond": null
+        }
+      },
+      "waSamples": 5,
+      "all": {
+        "median": {
+          "fcp": 1136,
+          "shell": 1084.4,
+          "todayUseful": 4534,
+          "longTasks": 155,
+          "itemsFirst": 136.7,
+          "itemsSecond": 96.7
+        },
+        "max": {
+          "fcp": 1484,
+          "shell": 1401.8,
+          "todayUseful": 4946.1,
+          "longTasks": 217,
+          "itemsFirst": 142.1,
+          "itemsSecond": 99.1
+        }
+      }
+    },
+    "split": {
+      "samples": [
+        {
+          "mode": "wa",
+          "fcp": 9408,
+          "shell": 9359.900000095367,
+          "todayUseful": 12883,
+          "longTasks": 124,
+          "itemsFirst": 154.5,
+          "itemsSecond": 97,
+          "warm": {
+            "mode": "wa",
+            "fcp": 204,
+            "shell": 182.79999995231628,
+            "todayUseful": 439.90000009536743,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 876,
+          "shell": 834.4000000953674,
+          "todayUseful": 4381.099999904633,
+          "longTasks": 112,
+          "itemsFirst": 122.69999980926514,
+          "itemsSecond": 93.29999995231628,
+          "warm": {
+            "mode": "wa",
+            "fcp": 192,
+            "shell": 171.90000009536743,
+            "todayUseful": 430.40000009536743,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 876,
+          "shell": 839.4000000953674,
+          "todayUseful": 4362,
+          "longTasks": 127,
+          "itemsFirst": 138.89999985694885,
+          "itemsSecond": 105.5,
+          "warm": {
+            "mode": "wa",
+            "fcp": 204,
+            "shell": 180.40000009536743,
+            "todayUseful": 463.7000000476837,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 876,
+          "shell": 832.4000000953674,
+          "todayUseful": 4317,
+          "longTasks": 90,
+          "itemsFirst": 136.59999990463257,
+          "itemsSecond": 102,
+          "warm": {
+            "mode": "wa",
+            "fcp": 204,
+            "shell": 181.89999985694885,
+            "todayUseful": 453.5,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 880,
+          "shell": 838.7999999523163,
+          "todayUseful": 4319.700000047684,
+          "longTasks": 88,
+          "itemsFirst": 118.5,
+          "itemsSecond": 94.80000019073486,
+          "warm": {
+            "mode": "wa",
+            "fcp": 192,
+            "shell": 173.59999990463257,
+            "todayUseful": 454.59999990463257,
+            "longTasks": 0
+          }
+        }
+      ],
+      "median": {
+        "fcp": 876,
+        "shell": 838.8,
+        "todayUseful": 4362,
+        "longTasks": 112,
+        "itemsFirst": 136.6,
+        "itemsSecond": 97
+      },
+      "max": {
+        "fcp": 9408,
+        "shell": 9359.9,
+        "todayUseful": 12883,
+        "longTasks": 127,
+        "itemsFirst": 154.5,
+        "itemsSecond": 105.5
+      },
+      "warm": {
+        "median": {
+          "fcp": 204,
+          "shell": 180.4,
+          "todayUseful": 453.5,
+          "longTasks": 0,
+          "itemsFirst": null,
+          "itemsSecond": null
+        },
+        "max": {
+          "fcp": 204,
+          "shell": 182.8,
+          "todayUseful": 463.7,
+          "longTasks": 0,
+          "itemsFirst": null,
+          "itemsSecond": null
+        }
+      },
+      "waSamples": 5,
+      "all": {
+        "median": {
+          "fcp": 876,
+          "shell": 838.8,
+          "todayUseful": 4362,
+          "longTasks": 112,
+          "itemsFirst": 136.6,
+          "itemsSecond": 97
+        },
+        "max": {
+          "fcp": 9408,
+          "shell": 9359.9,
+          "todayUseful": 12883,
+          "longTasks": 127,
+          "itemsFirst": 154.5,
+          "itemsSecond": 105.5
+        }
+      }
+    },
+    "splitNoPrefetch": {
+      "samples": [
+        {
+          "mode": "wa",
+          "fcp": 10052,
+          "shell": 10005.799999952316,
+          "todayUseful": 13502.5,
+          "longTasks": 95,
+          "itemsFirst": 445.5,
+          "itemsSecond": 91.5,
+          "warm": {
+            "mode": "wa",
+            "fcp": 192,
+            "shell": 171.39999985694885,
+            "todayUseful": 424.5,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 892,
+          "shell": 839.1000001430511,
+          "todayUseful": 4319.299999952316,
+          "longTasks": 87,
+          "itemsFirst": 445.2000000476837,
+          "itemsSecond": 95.09999990463257,
+          "warm": {
+            "mode": "wa",
+            "fcp": 208,
+            "shell": 175.70000004768372,
+            "todayUseful": 430.60000014305115,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 876,
+          "shell": 838,
+          "todayUseful": 4361.099999904633,
+          "longTasks": 115,
+          "itemsFirst": 435.30000019073486,
+          "itemsSecond": 90.5,
+          "warm": {
+            "mode": "wa",
+            "fcp": 200,
+            "shell": 180.10000014305115,
+            "todayUseful": 439.30000019073486,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 876,
+          "shell": 837.4000000953674,
+          "todayUseful": 4304.100000143051,
+          "longTasks": 86,
+          "itemsFirst": 460.89999985694885,
+          "itemsSecond": 100,
+          "warm": {
+            "mode": "wa",
+            "fcp": 200,
+            "shell": 176.40000009536743,
+            "todayUseful": 437.30000019073486,
+            "longTasks": 0
+          }
+        },
+        {
+          "mode": "wa",
+          "fcp": 872,
+          "shell": 836.6000001430511,
+          "todayUseful": 4338.400000095367,
+          "longTasks": 94,
+          "itemsFirst": 439.89999985694885,
+          "itemsSecond": 103.79999995231628,
+          "warm": {
+            "mode": "wa",
+            "fcp": 200,
+            "shell": 177.59999990463257,
+            "todayUseful": 437.59999990463257,
+            "longTasks": 0
+          }
+        }
+      ],
+      "median": {
+        "fcp": 876,
+        "shell": 838,
+        "todayUseful": 4338.4,
+        "longTasks": 94,
+        "itemsFirst": 445.2,
+        "itemsSecond": 95.1
+      },
+      "max": {
+        "fcp": 10052,
+        "shell": 10005.8,
+        "todayUseful": 13502.5,
+        "longTasks": 115,
+        "itemsFirst": 460.9,
+        "itemsSecond": 103.8
+      },
+      "warm": {
+        "median": {
+          "fcp": 200,
+          "shell": 176.4,
+          "todayUseful": 437.3,
+          "longTasks": 0,
+          "itemsFirst": null,
+          "itemsSecond": null
+        },
+        "max": {
+          "fcp": 208,
+          "shell": 180.1,
+          "todayUseful": 439.3,
+          "longTasks": 0,
+          "itemsFirst": null,
+          "itemsSecond": null
+        }
+      },
+      "waSamples": 5,
+      "all": {
+        "median": {
+          "fcp": 876,
+          "shell": 838,
+          "todayUseful": 4338.4,
+          "longTasks": 94,
+          "itemsFirst": 445.2,
+          "itemsSecond": 95.1
+        },
+        "max": {
+          "fcp": 10052,
+          "shell": 10005.8,
+          "todayUseful": 13502.5,
+          "longTasks": 115,
+          "itemsFirst": 460.9,
+          "itemsSecond": 103.8
+        }
+      }
+    }
+  },
+  "gate": {
+    "todayUseful": {
+      "single": 4534,
+      "split": 4362,
+      "limit": 4760.7,
+      "pass": true
+    },
+    "itemsSecond": {
+      "single": 96.7,
+      "split": 97,
+      "limit": 121.7,
+      "pass": true
+    },
+    "itemsFirst": {
+      "single": 136.7,
+      "split": 136.6,
+      "splitNoPrefetch": 445.2,
+      "saved": 308.6,
+      "limit": 436.7,
+      "pass": true
+    },
+    "waEverySplitSample": true,
+    "waSamples": {
+      "single": 5,
+      "split": 5,
+      "splitNoPrefetch": 5
+    }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "input": {
+    "pins": [
+      "new-roles"
+    ]
+  },
+  "nav": [
+    {
+      "id": "today",
+      "label": "Today",
+      "href": "#/today",
+      "icon": "house",
+      "children": []
+    },
+    {
+      "id": "inbox",
+      "label": "Inbox",
+      "href": "#/inbox",
+      "icon": "inbox",
+      "children": []
+    },
+    {
+      "id": "approvals",
+      "label": "Approvals",
+      "href": "#/approvals",
+      "icon": "badge-check",
+      "children": []
+    },
+    {
+      "id": "type:company",
+      "label": "Companies",
+      "href": "#/browse/company",
+      "icon": "building-2",
+      "children": [
+        {
+          "id": "view:hiring-companies",
+          "label": "Hiring companies",
+          "pinned": false,
+          "icon": "dot",
+          "href": "#/browse/company?view=hiring-companies"
+        }
+      ]
+    },
+    {
+      "id": "type:creator",
+      "label": "Creators",
+      "href": "#/browse/creator",
+      "icon": "user",
+      "children": []
+    },
+    {
+      "id": "type:role",
+      "label": "Roles",
+      "href": "#/browse/role",
+      "icon": "briefcase",
+      "children": [
+        {
+          "id": "view:new-roles",
+          "label": "New roles",
+          "pinned": true,
+          "icon": "dot",
+          "href": "#/browse/role?view=new-roles"
+        },
+        {
+          "id": "view:dropped-roles",
+          "label": "Dropped by settings",
+          "pinned": false,
+          "icon": "dot",
+          "href": "#/browse/role?view=dropped-roles"
+        }
+      ]
+    },
+    {
+      "id": "type:tender",
+      "label": "Tenders",
+      "href": "#/browse/tender",
+      "icon": "file-text",
+      "children": [
+        {
+          "id": "view:open-tenders",
+          "label": "Open tenders",
+          "pinned": false,
+          "icon": "dot",
+          "href": "#/browse/tender?view=open-tenders"
+        }
+      ]
+    },
+    {
+      "id": "type:video",
+      "label": "Videos",
+      "href": "#/browse/video",
+      "icon": "video",
+      "children": [
+        {
+          "id": "view:top-videos",
+          "label": "Top videos",
+          "pinned": false,
+          "icon": "dot",
+          "href": "#/browse/video?view=top-videos"
+        }
+      ]
+    },
+    {
+      "id": "history",
+      "label": "History",
+      "href": "#/history",
+      "icon": "history",
+      "children": []
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "href": "#/settings",
+      "icon": "settings",
+      "children": []
+    }
+  ]
+}

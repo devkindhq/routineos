@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Added
+
+- `ui.markdown(text, {marks, clamp, onlyMarked})` for record sections, panels and pages: text as Markdown elements (headings as `h3` and `h4`, lists, bold, italic, code, quotes, tables), raw HTML shown as text, images as alt text, https links only, optional case-insensitive `mark` highlighting and block-level filtering. The allowed tags and attributes are unchanged; the component lint's `on*` key check now lets the option key `onlyMarked` through. The Desk gzip budget for `single/index.html` rises from 364500 to 364600 bytes.
+
+### Changed
+
+- The Desk is a React and Mantine app, prebuilt with Vite into one committed file (`assets/desk/index.html`) with everything inlined. It makes no network request of its own; only the store reaches the host. Routes, store calls and the custom component contract are unchanged. Pages keep their features but their markup and text are Mantine's, so the 0.8.1 and v2 text goldens describe the old Desk and are no longer compared (`tests/visual/golden/PROVENANCE.md`).
+- Browse behaviour that differs from the classic Desk:
+  - The peek shows the fields, the decision state, the Decision control and the comments. Drop from the peek opens the record page for its reason, and comments are written on the record page.
+  - On a joined Desk only the owner gets Keep, Drop and Restore in the bulk bar, as on the record page and in the peek.
+- `routineos bundle` writes one file. `--split` is kept as an alias: it writes the same file to `dashboard/artifact/` with a one-entry `files.json` and says split mode is gone.
+
+### Removed
+
+- The classic Desk scripts in `assets/desk/src/`.
+
+## 0.9.0
+
+### Added
+
+- Desk icons `desk`, `improve` and `desk-mark`; the sidebar brand block shows the Desk mark.
+
 ### Changed
 
 - The template catalog moved from `site/templates/` to `catalog/` at the repo root: `catalog/index.json`, one `catalog/<id>.json` per pack, and the JSON Schemas in `catalog/schema/`. `pack catalog` writes there.

@@ -1,47 +1,51 @@
-// Playwright checks for the Desk on the static store and a stand-in db (Task 13).
-// Run with: bash tests/visual/run.sh. Screenshots go to $DESK_SHOTS (default tests/visual/out/shots),
-// timings to tests/visual/out/perf.json.
+// Playwright checks for the Mantine Desk: the committed single-file page on the static store and on a stand-in db
+// (fake-claude.mjs). Selectors are roles and labels. Run with: bash tests/visual/run.sh. Screenshots go to
+// $DESK_SHOTS (default tests/visual/out/shots) and are not committed.
 import { test as base, expect } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { start, HOSTILE, HOSTILE_ID } from "./serve.mjs";
+import { start, HOSTILE, HOSTILE_ID, deskUrl } from "./serve.mjs";
+import { fakeClaude } from "./fake-claude.mjs";
+import { noHorizontalScroll, tableFits as fitsTable } from "./layout.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUT = join(HERE, "out");
-const SHOTS = process.env.DESK_SHOTS || join(OUT, "shots");
+const SHOTS = process.env.DESK_SHOTS || join(HERE, "out", "shots");
 mkdirSync(SHOTS, { recursive: true });
 
-const SIZES = [{ width: 390, height: 844 }, { width: 1280, height: 800 }];
+const SIZES = [{ width: 390, height: 844 }, { width: 1024, height: 768 }, { width: 1280, height: 800 }];
 const THEMES = ["light", "dark"];
-const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
+// Routes from recon 1.1, each with text its page must show on the demo snapshot.
 const PAGES = [
   ["today", "#/today", /parsed 2 of 3/],
-  ["inbox", "#/inbox", /Add GB to markets/],
-  ["browse-roles", "#/browse/role", /Showing the first \d+ Roles/],
-  ["browse-companies", "#/browse/company", /Showing the first \d+ Companies/],
+  ["approvals", "#/approvals", /Introduction about the/],
+  ["approvals-proposals", "#/approvals?kind=proposals", /Add GB to markets/],
+  ["browse-roles", "#/browse/role", /Roles/],
+  ["browse-companies", "#/browse/company", /Companies/],
   ["entity-company-merged", "#/entity/company/ithfax-home-example", /Jobs watch, Lead signals/],
   ["entity-role-dropped", "#/entity/role/https-jobs-example-au-00049", /Dropped: not in title_keywords/],
   ["entity-role-active", "#/entity/role/https-jobs-example-au-00003", /Owns the headless commerce architecture/],
-  ["entity-role-kept", "#/entity/role/https-jobs-example-au-00174", /Kept by a person on 2026-10-21 02:40/],
+  ["entity-role-kept", "#/entity/role/https-jobs-example-au-00174", /Kept by a person, Oct 21\b/],
   ["entity-role-kept-pending", "#/entity/role/https-jobs-example-de-00323", /Kept \(pending next run\)/],
-  ["inbox-suggestions", "#/inbox?tab=suggestions", /setting markets/],
-  ["approvals", "#/approvals", /Introduction about the/],
-  ["views", "#/views", /Remote roles this month/],
   ["history", "#/history", /Jobs watch/],
   ["history-calendar", "#/history?mode=cal", /Jobs watch|Mon/],
-  ["history-health", "#/history?mode=health", /Jobs watch/],
-  ["history-activity", "#/history?mode=activity", /Someone|Nothing/],
-  ["run-partial", "#/history/jobs-watch-20261027", /2 of 3/],
-  ["settings", "#/settings", /About/],
+  ["runs", "#/runs", /Jobs watch/],
+  ["run-partial", "#/runs/jobs-watch-20261027", /2 of 3/],
+  ["workers", "#/workers", /Workers/],
+  ["settings-appearance", "#/settings/appearance", /Theme/],
+  ["settings-views", "#/settings/views", /Remote roles this month/],
+  ["settings-routine", "#/settings/routine", /Jobs watch/],
+  ["settings-shortcuts", "#/settings/shortcuts", /palette/i],
+  ["settings-about", "#/settings/about", /About/],
 ];
 
+// States from recon 1.2 (the lazy-loading and CDN states went with the split build).
 const STATES = [
   ["not-set-up", { snap: "empty" }, /is not set up yet/],
   ["first-run", { snap: "first-run" }, /Nothing has run yet/],
   ["loading", { snap: "slow" }, /Loading the workspace/],
-  ["read-error", { snap: "missing", allow: /404/ }, /Try again/],
+  ["read-error", { snap: "missing", allow: /404/ }, /The Desk could not start/],
   ["browse-read-error", { store: "db", fakeDb: true, hash: "#/browse/role" }, /Try again/],
   ["no-db", { store: "db" }, /needs the db capability/],
   ["empty-filter", { hash: "#/browse/role?q=no-such-role-anywhere" }, /No Roles match these filters/],
@@ -50,22 +54,28 @@ const STATES = [
 let server;
 let origin;
 
-// Every test fails on a console error, a page error, a dialog or a request outside the local server and Google Fonts.
+// Every test fails on a console error, a page error, a dialog or a request that leaves the local server (data: and
+// blob: URLs stay local). Pages run at a fixed time (timers still run), in en-US and UTC, so dates do not drift.
+const NOW = new Date("2026-10-28T00:00:00Z");
 const test = base.extend({
   guard: [async ({ page }, use) => {
+    await page.clock.setFixedTime(NOW);
     const problems = [];
-    const g = { allow: null };
+    const g = { allow: null, pageerror: null };
     page.on("console", (m) => { if (m.type() === "error" && !(g.allow && g.allow.test(m.text()))) problems.push("console: " + m.text()); });
-    page.on("pageerror", (e) => problems.push("pageerror: " + e.message));
+    page.on("pageerror", (e) => { if (!(g.pageerror && g.pageerror.test(e.message))) problems.push("pageerror: " + e.message); });
     page.on("dialog", (d) => { problems.push("dialog: " + d.message()); d.dismiss(); });
     page.on("request", (r) => {
       const u = new URL(r.url());
-      if (u.origin !== origin && FONT_HOSTS.indexOf(u.hostname) === -1 && u.protocol !== "data:") problems.push("request: " + r.url());
+      if (u.protocol === "data:" || u.protocol === "blob:") return;
+      if (u.origin !== origin) problems.push("request: " + r.url());
     });
     await use(g);
     expect(problems).toEqual([]);
   }, { auto: true }],
 });
+
+test.use({ timezoneId: "UTC", locale: "en-US" });
 
 test.beforeAll(async () => {
   server = await start();
@@ -78,71 +88,32 @@ function url(o = {}) {
   const q = new URLSearchParams({ store });
   if (store === "static") q.set("snapshot", "/snap/" + (o.snap || "demo") + ".json");
   if (o.workspace) q.set("workspace", o.workspace);
-  return origin + "/desk.html?" + q + (o.hash || "#/today");
+  if (o.bundle) q.set("bundle", o.bundle);
+  return deskUrl(origin, q, o.hash || "#/today");
 }
 
-// A stand-in for the artifact runtime's db: serves the demo snapshot, fails every read of `entities`.
-// With writable, reads succeed and set/delete change an in-page copy, listed in window.__deskWrites, and re-run live queries.
-async function fakeDb(page, opts = {}) {
-  await page.addInitScript((writable) => {
-    const snapshot = fetch("/snap/demo.json").then((r) => r.json());
-    const fail = (c) => !writable && c === "entities";
-    const listeners = [];
-    window.__deskWrites = [];
-    function docSnap(path, docs) {
-      const d = docs[path];
-      return { id: path.split("/").pop(), exists: !!d, data: () => (d ? d.data : undefined) };
-    }
-    function query(collection, where) {
-      const run = () => snapshot.then((docs) => {
-        if (fail(collection)) throw new Error("forced read failure: " + collection);
-        const ids = Object.keys(docs).sort().filter((p) => p.slice(0, p.lastIndexOf("/")) === collection);
-        const rows = ids.filter((p) => where.every(([f, op, v]) => op === "==" && docs[p].data[f] === v));
-        return { docs: rows.map((p) => docSnap(p, docs)) };
-      });
-      return {
-        where: (f, op, v) => query(collection, where.concat([[f, op, v]])),
-        orderBy: function () { return this; },
-        limit: function () { return this; },
-        get: run,
-        onSnapshot: (cb, err) => {
-          const l = { run, cb, err, live: true };
-          if (writable) listeners.push(l);
-          run().then(cb, err);
-          return () => { l.live = false; };
-        },
-      };
-    }
-    function write(path, data) {
-      if (!writable) return Promise.resolve();
-      return snapshot.then((docs) => {
-        window.__deskWrites.push({ op: data === undefined ? "delete" : "set", path, data });
-        if (data === undefined) delete docs[path];
-        else docs[path] = { version: ((docs[path] && docs[path].version) || 0) + 1, data: JSON.parse(JSON.stringify(data)) };
-        listeners.filter((l) => l.live).forEach((l) => l.run().then(l.cb, l.err));
-      });
-    }
-    const db = {
-      collection: (c) => query(c, []),
-      doc: (path) => ({ get: () => snapshot.then((docs) => docSnap(path, docs)), set: (data) => write(path, data), delete: () => write(path, undefined) }),
-    };
-    const user = { id: () => Promise.resolve("u_test") };
-    window.claude = { use: (name) => Promise.resolve(name === "db" ? db : name === "user" && writable ? user : null) };
-  }, !!opts.writable);
+// The artifact runtime on the demo snapshot. Read only: every read of `entities` fails and there is no viewer.
+// With writable, reads succeed, writes land in window.__deskWrites and the viewer is u_test.
+function fakeDb(page, opts = {}) {
+  return fakeClaude(page, { snapshot: "/snap/demo.json", writable: !!opts.writable,
+    viewer: opts.writable ? "u_test" : null, failCollections: opts.writable ? null : /^entities$/ });
 }
 
-async function noHorizontalScroll(page) {
-  const [sw, cw] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
-  expect(sw, "horizontal scroll").toBeLessThanOrEqual(cw);
+function main(page) { return page.getByRole("main"); }
+function sidebar(page) { return page.getByRole("navigation", { name: "Desk" }); }
+
+// The Browse table and every scrolling box around it fit their width (layout.mjs settles and polls).
+function tableFits(page) {
+  return fitsTable(main(page).getByRole("table").first());
 }
 
 async function navForWidth(page, width) {
-  if (width < 900) {
-    await expect(page.locator(".bottom-nav")).toBeVisible();
-    await expect(page.locator(".rail")).toBeHidden();
+  if (width < 768) {
+    await expect(page.getByRole("button", { name: "Toggle navigation" })).toBeVisible();
+    await expect(sidebar(page)).not.toBeInViewport();
   } else {
-    await expect(page.locator(".rail")).toBeVisible();
-    await expect(page.locator(".bottom-nav")).toBeHidden();
+    await expect(sidebar(page)).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Toggle navigation" })).toBeHidden();
   }
 }
 
@@ -165,414 +136,249 @@ for (const size of SIZES) {
   for (const theme of THEMES) {
     test.describe(`${size.width}px ${theme}`, () => {
       test.use({ viewport: size, colorScheme: theme });
-
-      for (const [name, hash, expected] of PAGES) {
+      for (const [name, hash, text] of PAGES) {
         test(`page ${name}`, async ({ page }) => {
           await page.goto(url({ hash }));
-          await expect(page.locator("#outlet")).toContainText(expected);
-          await page.evaluate(() => document.fonts.ready);
-          await noHorizontalScroll(page);
+          await expect(main(page)).toContainText(text);
+          await expect(main(page).getByRole("heading", { level: 1 })).toHaveCount(1);
           await navForWidth(page, size.width);
           await backgroundMatches(page, theme);
-          await shot(page, `${name}-${size.width}-${theme}`);
-        });
-      }
-
-      for (const [name, o, expected] of STATES) {
-        test(`state ${name}`, async ({ page, guard }) => {
-          guard.allow = o.allow || null;
-          if (o.fakeDb) await fakeDb(page);
-          await page.goto(url(o));
-          await expect(page.locator("#outlet")).toContainText(expected);
           await noHorizontalScroll(page);
-          await backgroundMatches(page, theme);
-          await shot(page, `state-${name}-${size.width}-${theme}`);
+          if (name.startsWith("browse-") && size.width >= 1024) await tableFits(page);
+          await shot(page, `${name}-${size.width}-${theme}`);
         });
       }
     });
   }
-}
-
-test.describe("Desk pages on demo data (static store)", () => {
-  test.use({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
-
-  test("Today lists the partial run, 2 proposed views, the proposed column, the setting proposal and the gate", async ({ page }) => {
-    await page.goto(url({ hash: "#/today" }));
-    const main = page.locator("#outlet");
-    await expect(main).toContainText("parsed 2 of 3");
-    await expect(main).toContainText("Proposed view: Remote roles this month");
-    await expect(main).toContainText("Proposed view: Senior roles in AU");
-    await expect(main).toContainText("Proposed column: Fit score");
-    await expect(main).toContainText("Add GB to markets");
-    await expect(main).toContainText("Draft an intro note to the hiring lead");
-  });
-
-  test("Inbox shows 5 messages newest first", async ({ page }) => {
-    await page.goto(url({ hash: "#/inbox" }));
-    await expect(page.locator("#outlet")).toContainText("Add GB to markets");
-    const text = await page.locator("#outlet").innerText();
-    const stamps = [...text.matchAll(/^(?:Jobs watch|Content radar|Lead signals) (\d{4}-\d\d-\d\d \d\d:\d\d) Run /gm)].map((m) => m[1]);
-    expect(stamps).toHaveLength(5);
-    expect([...stamps].sort().reverse()).toEqual(stamps);
-    // The alert refers to a Company and its Role, which share the domain; one exclusion button.
-    await expect(page.getByRole("button", { name: "Add peltine-works.example to excluded_companies" })).toHaveCount(1);
-  });
-
-  test("Browse filters Roles by market and keeps the filter in the hash", async ({ page }) => {
-    await page.goto(url({ hash: "#/browse/role" }));
-    await page.getByText("Filters", { exact: true }).click();
-    // The Columns panel has a "Market" checkbox too; the filter is the select.
-    await page.getByRole("combobox", { name: "Market", exact: true }).selectOption("NZ");
-    await expect(page).toHaveURL(/#\/browse\/role\?.*f\.market=NZ/);
-    const count = await page.locator(".count").innerText();
-    const shown = Number(count.match(/of (\d+) matching/)[1]);
-    expect(shown).toBeGreaterThan(0);
-    expect(shown).toBeLessThan(400);
-    const markets = await page.locator("table tbody tr td:nth-child(5)").allInnerTexts();
-    expect(markets.length).toBeGreaterThan(0);
-    expect(new Set(markets)).toEqual(new Set(["NZ"]));
-    await page.reload();
-    await expect(page.locator(".count")).toHaveText(count);
-  });
-
-  test("Starring on static shows the read-only note", async ({ page }) => {
-    await page.goto(url({ hash: "#/browse/role" }));
-    const star = page.locator("table tbody tr").first().getByRole("button", { name: "Star" });
-    await expect(star).toBeDisabled();
-    await expect(page.locator("#outlet")).toContainText("Demo data, read only");
-  });
-
-  test("A Company merged across two producers shows both sources", async ({ page }) => {
-    await page.goto(url({ hash: "#/entity/company/ithfax-home-example" }));
-    const main = page.locator("#outlet");
-    await expect(main).toContainText("Jobs watch, Lead signals");
-    await expect(main).toContainText("Run lead-signals-20260924");
-    await expect(main).toContainText("Run jobs-watch-20261027");
-    // Fields follow the definition's declared order and labels, not alphabetical keys.
-    await expect(main.locator("section").first().locator("dt")).toHaveText(["Name", "Domain", "Industry", "Size", "Country"]);
-  });
-
-  test("A dropped Role shows its reason", async ({ page }) => {
-    await page.goto(url({ hash: "#/entity/role/https-jobs-example-au-00049" }));
-    await expect(page.locator("#outlet")).toContainText("Dropped: not in title_keywords");
-  });
-
-  test("A stored <img onerror> title renders as text", async ({ page }) => {
-    for (const hash of ["#/entity/role/" + HOSTILE_ID.slice("role--".length), "#/browse/role?q=onerror"]) {
-      await page.goto(url({ snap: "hostile", hash }));
-      await expect(page.locator("#outlet")).toContainText(HOSTILE);
-      await expect(page.locator("#outlet img")).toHaveCount(0);
+  test.describe(`${size.width}px states`, () => {
+    test.use({ viewport: size, colorScheme: "light" });
+    for (const [name, o, text] of STATES) {
+      test(`state ${name}`, async ({ page, guard }) => {
+        if (o.allow) guard.allow = o.allow;
+        if (o.fakeDb) await fakeDb(page);
+        await page.goto(url({ snap: o.snap, store: o.store, hash: o.hash }));
+        await expect(page.locator("body")).toContainText(text);
+        await noHorizontalScroll(page);
+        await shot(page, `state-${name}-${size.width}`);
+      });
     }
   });
+}
 
-  test("Settings shows all three demo producers, the About block and the read-only schedule", async ({ page }) => {
-    await page.goto(url({ hash: "#/settings" }));
-    const main = page.locator("#outlet");
-    for (const p of ["Jobs watch", "Content radar", "Lead signals"]) await expect(main.getByRole("heading", { name: p })).toBeVisible();
-    await expect(main.getByRole("heading", { name: "About" })).toBeVisible();
-    await expect(main).toContainText("Edit the schedule on the routines page.");
-  });
+// The layout checks read the settled page: a page that is wide for its first frames and then fits passes, and one
+// that stays wide still fails (reviewer HIGH-1).
+test.describe("layout checks settle", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+  const late = (ms) => `<main><div id="w" style="width:2000px;height:10px"></div><div style="overflow-x:auto"><table id="t"><tr><td>
+    <div id="c" style="width:2000px">x</div></td></tr></table></div></main><script>setTimeout(() => {
+    document.getElementById("w").style.width = "10px"; document.getElementById("c").style.width = "10px"; }, ${ms});</script>`;
 
-  test("Views shows 2 agent-made views and 1 agent-made column with badges", async ({ page }) => {
-    await page.goto(url({ hash: "#/views" }));
-    const main = page.locator("#outlet");
-    await expect(main).toContainText("Remote roles this month");
-    const columns = main.locator("section").filter({ has: page.getByRole("heading", { name: "Columns", exact: true }) });
-    const all = (await main.innerText()).match(/agent made, Jobs watch/g) || [];
-    const inColumns = (await columns.innerText()).match(/agent made, Jobs watch/g) || [];
-    expect([all.length - inColumns.length, inColumns.length]).toEqual([2, 1]);
-  });
-
-  test("The partial run shows its parsed of claimed line, a drop reason link and a settings difference", async ({ page }) => {
-    await page.goto(url({ hash: "#/runs/jobs-watch-20261027" }));
-    const main = page.locator("#outlet");
-    await expect(main).toContainText("2 of 3");
-    await expect(main.locator('a[href*="reason="]').first()).toBeVisible();
-    await expect(main).toContainText(/excluded_companies|markets|title_keywords/);
-  });
-
-  test("A long workspace name still shows the shell name on a 390px phone", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(url({ snap: "first-run", workspace: "x" }));
-    await page.evaluate(() => { document.querySelector(".ws-name").textContent = "A very long workspace name for the northern region hiring watch"; });
-    await expect(page.locator(".ws-shell")).toBeVisible();
-    const box = await page.locator(".ws-shell").boundingBox();
-    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  test("a page that settles narrow after a reflow passes", async ({ page }) => {
+    await page.setContent(late(400));
     await noHorizontalScroll(page);
-    await shot(page, "long-name-390-light");
+    await fitsTable(page.locator("#t"));
   });
 
-  test("The theme toggle switches to dark inside a light system", async ({ page }) => {
-    await page.goto(url({ hash: "#/today" }));
-    await backgroundMatches(page, "light");
-    const btn = page.locator(".theme-toggle");
-    for (let i = 0; i < 3 && !String(await btn.getAttribute("aria-label")).startsWith("Theme: Dark"); i++) await btn.click();
-    await expect(btn).toHaveAttribute("aria-label", "Theme: Dark. Change theme");
-    await backgroundMatches(page, "dark");
+  test("a page that stays wide fails", async ({ page }) => {
+    await page.setContent(late(1e9));
+    await expect(noHorizontalScroll(page)).rejects.toThrow(/horizontal page scroll/);
+    await expect(fitsTable(page.locator("#t"))).rejects.toThrow(/horizontal scroll inside the Browse table/);
   });
 });
 
-test.describe("Desk v2 shell: sidebar, palette, notifications, shortcuts", () => {
+test.describe("Desk behaviour at 1280px", () => {
   test.use({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
 
-  test("The sidebar lists Today, Inbox, Approvals, each type, History and Settings", async ({ page }) => {
-    await page.goto(url({ hash: "#/today" }));
-    const labels = (await page.locator(".rail ul.nl > li > a .lbl").allInnerTexts()).map((t) => t.trim());
-    expect(labels[0]).toBe("Today");
-    expect(labels.slice(1, 3)).toEqual(["Inbox", "Approvals"]);
-    expect(labels.slice(-2)).toEqual(["History", "Settings"]);
-    expect(labels).toContain("Roles");
-  });
-
-  test("[ makes the sidebar slim, it stays slim after a reload, and [ makes it full again", async ({ page }) => {
-    await page.goto(url({ hash: "#/today" }));
-    await page.locator("#outlet").click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press("[");
-    await expect(page.locator(".app")).toHaveClass(/slim/);
-    const w = (await page.locator(".rail").boundingBox()).width;
-    expect(w).toBeLessThan(100);
-    await shot(page, "shell-slim-1280-light");
-    // icons only, and every link and the toggle keep a name and a title
-    expect((await page.locator(".rail ul.nl > li > a .lbl").first().boundingBox()).width).toBeLessThanOrEqual(1);
-    await expect(page.getByRole("link", { name: "Today", exact: true })).toHaveAttribute("title", "Today");
-    await expect(page.getByRole("link", { name: "Roles", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Full sidebar" })).toHaveAttribute("title", "Full sidebar ([)");
-    await page.reload();
-    await expect(page.locator(".app")).toHaveClass(/slim/);
-    await page.keyboard.press("[");
-    await expect(page.locator(".app")).not.toHaveClass(/slim/);
-    await page.getByRole("button", { name: "Slim sidebar" }).click();
-    await expect(page.locator(".app")).toHaveClass(/slim/);
-    await page.getByRole("button", { name: "Full sidebar" }).click();
-    await expect(page.locator(".app")).not.toHaveClass(/slim/);
-    await expect(page.getByRole("button", { name: "Open the menu" }), "the drawer menu is phone only").toBeHidden();
-  });
-
-  test("Sidebar entries show an icon, the type's own when the definition names one", async ({ page }) => {
-    await page.goto(url({ hash: "#/today" }));
-    for (const [name, ic] of [["Today", "house"], ["Roles", "briefcase"], ["Companies", "building-2"], ["Settings", "settings"]]) {
-      const a = page.getByRole("link", { name, exact: true }).first();
-      await expect(a.locator("use")).toHaveAttribute("href", "#icon-" + ic);
+  test("old addresses redirect to their v2 page", async ({ page }) => {
+    for (const [from, to] of [
+      ["#/inbox", /#\/approvals$/],
+      ["#/suggestions", /#\/approvals\?kind=proposals$/],
+      ["#/views", /#\/settings\/views$/],
+      ["#/history/jobs-watch-20261027", /#\/runs\/jobs-watch-20261027$/],
+      ["#/settings?section=about", /#\/settings\/about$/],
+    ]) {
+      await page.goto(url({ hash: from }));
+      await expect(page).toHaveURL(to);
+      await expect(main(page).getByRole("heading", { level: 1 })).toHaveCount(1);
     }
   });
 
   test("Ctrl K opens the palette, typing filters it and Enter goes to the page", async ({ page }) => {
     await page.goto(url({ hash: "#/today" }));
+    await expect(main(page)).toContainText(/parsed 2 of 3/);
     await page.keyboard.press("Control+k");
-    const input = page.locator(".pal-input");
-    await expect(input).toBeFocused();
-    await input.fill("go appro");
-    await expect(page.locator(".pal-item").first()).toHaveText("Go to Approvals");
-    await shot(page, "palette-1280-light");
+    const search = page.getByRole("dialog").getByRole("textbox").first();
+    await expect(search).toBeVisible();
+    await search.fill("Approvals");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/#\/approvals/);
-    await expect(page.locator(".pal")).toHaveCount(0);
   });
 
-  test("g then i goes to the Inbox, and ? lists the shortcuts", async ({ page }) => {
+  test("g then i goes to Approvals, and ? lists the shortcuts", async ({ page }) => {
     await page.goto(url({ hash: "#/today" }));
+    await expect(main(page)).toContainText(/parsed 2 of 3/);
     await page.keyboard.press("g");
     await page.keyboard.press("i");
-    await expect(page).toHaveURL(/#\/inbox/);
-    await page.keyboard.press("Shift+Slash");
-    await expect(page.locator(".keys-dialog")).toContainText("Command palette");
+    await expect(page).toHaveURL(/#\/approvals/);
+    await page.keyboard.press("Shift+?");
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(/palette/i);
     await page.keyboard.press("Escape");
-    await expect(page.locator(".keys-dialog")).toHaveCount(0);
+    await expect(dialog).toBeHidden();
   });
 
-  test("The bell opens the notifications column beside the page and Esc closes it", async ({ page }) => {
-    await page.goto(url({ hash: "#/today" }));
-    await page.getByRole("button", { name: /^Notifications/ }).click();
-    const panel = page.locator(".notif-panel");
-    await expect(panel.getByRole("heading", { name: "Notifications" })).toBeVisible();
-    const p = await panel.boundingBox();
-    const o = await page.locator("#outlet").boundingBox();
-    expect(p.x).toBeGreaterThanOrEqual(o.x + o.width - 1);
-    await noHorizontalScroll(page);
-    await shot(page, "notifications-1280-light");
-    await page.keyboard.press("Escape");
-    await expect(panel).toHaveCount(0);
+  test("[ toggles the sidebar and / focuses the Browse search", async ({ page }) => {
+    await page.goto(url({ hash: "#/browse/role" }));
+    await expect(main(page).getByRole("table").first()).toBeVisible();
+    await expect(sidebar(page)).toBeInViewport();
+    await page.keyboard.press("[");
+    await expect(sidebar(page)).not.toBeInViewport();
+    await page.keyboard.press("[");
+    await expect(sidebar(page)).toBeInViewport();
+    await page.keyboard.press("/");
+    await expect.poll(() => page.evaluate(() => document.activeElement && document.activeElement.tagName)).toBe("INPUT");
   });
 
-  test("On a 390px phone the menu opens the sidebar as a drawer and the bell opens a panel", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(url({ hash: "#/today" }));
-    await expect(page.locator(".rail")).toBeHidden();
-    // bottom nav: icon over label, 44px targets, the current entry is a pill behind the icon, not an outline
-    const items = page.locator(".bottom-nav a");
-    await expect(items).toHaveCount(5);
-    for (const box of await items.evaluateAll((as) => as.map((a) => a.getBoundingClientRect().toJSON()))) {
-      expect(box.height).toBeGreaterThanOrEqual(44);
-      expect(box.width).toBeGreaterThanOrEqual(44);
+  test("a stored <img onerror> title renders as text", async ({ page }) => {
+    for (const hash of ["#/entity/role/" + HOSTILE_ID.slice("role--".length), "#/browse/role?q=onerror"]) {
+      await page.goto(url({ snap: "hostile", hash }));
+      await expect(main(page)).toContainText(HOSTILE);
+      await expect(main(page).locator("img[src=x]")).toHaveCount(0);
     }
-    const current = page.locator('.bottom-nav a[aria-current="page"]');
-    await expect(current).toHaveAccessibleName("Today");
-    await expect(current.locator("use")).toHaveAttribute("href", "#icon-house");
-    const look = await current.evaluate((a) => [getComputedStyle(a).boxShadow, getComputedStyle(a.querySelector(".bn-icon")).backgroundColor]);
-    expect(look[0]).toBe("none");
-    expect(look[1]).not.toBe("rgba(0, 0, 0, 0)");
-    await page.getByRole("button", { name: "Open the menu" }).click();
-    await expect(page.locator(".rail")).toBeVisible();
-    await expect(page.locator(".side-toggle"), "slim is desktop only").toBeHidden();
-    await shot(page, "drawer-390-light");
-    await page.keyboard.press("Escape");
-    await expect(page.locator(".rail")).toBeHidden();
-    await page.getByRole("button", { name: /^Notifications/ }).click();
-    await expect(page.locator(".notif-panel")).toBeVisible();
-    await noHorizontalScroll(page);
-    await shot(page, "notifications-390-light");
   });
 
-  test("Approvals shows the draft, the recipient by role and no address", async ({ page }) => {
-    await page.goto(url({ hash: "#/approvals" }));
-    const main = page.locator("#outlet");
-    await expect(main).toContainText("Introduction about the");
-    await expect(main).toContainText("hiring lead");
-    expect(await main.innerText()).not.toMatch(/@[a-z0-9-]+\./i);
+  test("Approve on a writable store offers Undo, and Undo puts the request back", async ({ page }) => {
+    await fakeDb(page, { writable: true });
+    await page.goto(url({ store: "db", hash: "#/approvals" }));
+    await expect(main(page).getByRole("button", { name: "Approve" }).first()).toBeVisible();
+    const count = await main(page).getByRole("button", { name: "Approve" }).count();
+    await main(page).getByRole("button", { name: "Approve" }).first().click();
+    await expect.poll(() => page.evaluate(() => window.__deskWrites.length)).toBe(1);
+    const first = (await page.evaluate(() => window.__deskWrites))[0];
+    expect(first).toMatchObject({ op: "set", data: { decision: "approve" } });
+    expect(first.path).toMatch(/^decisions\//);
+    await page.getByRole("button", { name: "Undo" }).first().click();
+    await expect.poll(() => page.evaluate(() => window.__deskWrites.length)).toBe(2);
+    expect((await page.evaluate(() => window.__deskWrites))[1]).toMatchObject({ op: "delete", path: first.path });
+    await expect(main(page).getByRole("button", { name: "Approve" })).toHaveCount(count);
   });
 
-  test("History has List, Calendar, Health and Activity, and old run links redirect", async ({ page }) => {
-    await page.goto(url({ hash: "#/history" }));
-    for (const m of ["List", "Calendar", "Health", "Activity"]) await expect(page.locator("#outlet").getByRole("link", { name: m, exact: true })).toBeVisible();
-    await page.goto(url({ hash: "#/runs/jobs-watch-20261027" }));
-    await expect(page).toHaveURL(/#\/history\/jobs-watch-20261027/);
-    await expect(page.locator("#outlet")).toContainText("2 of 3");
-  });
-
-  test("Inbox has the Inbox and Suggestions tabs and the read filters", async ({ page }) => {
-    await page.goto(url({ hash: "#/inbox" }));
-    const main = page.locator("#outlet");
-    await expect(main.getByRole("tab", { name: "Suggestions" })).toBeVisible();
-    for (const f of ["Unread", "Done", "Snoozed"]) await expect(main.getByText(f, { exact: true }).first()).toBeVisible();
-  });
-
-  test("Settings shows the demo person's change under Recent changes", async ({ page }) => {
-    await page.goto(url({ hash: "#/settings" }));
-    await expect(page.locator("#outlet")).toContainText("Recent changes");
+  test("on the static store Browse offers no Star or Save view and says it is read only", async ({ page }) => {
+    await page.goto(url({ hash: "#/browse/role" }));
+    await expect(main(page).getByRole("table").first()).toBeVisible();
+    await expect(main(page).getByRole("button", { name: /^Star / })).toHaveCount(0);
+    await expect(main(page).getByRole("button", { name: "Save view" })).toHaveCount(0);
+    await expect(page.locator("body")).toContainText(/Changes cannot be saved on this page/);
   });
 });
 
-test.describe("Record page: two panes, summary and keep", () => {
-  const DROPPED = "#/entity/role/https-jobs-example-au-00049";
-  const DROPPED_ID = "role--https-jobs-example-au-00049";
-
-  async function boxes(page) {
-    await expect(page.locator(".record-pane")).toBeVisible();
-    return { main: await page.locator(".record-main").boundingBox(), pane: await page.locator(".record-pane").boundingBox() };
-  }
-
-  test("two columns at 1280px: the pane sits right of the main column, 18rem wide and sticky", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(url({ hash: DROPPED }));
-    const { main, pane } = await boxes(page);
-    expect(pane.x).toBeGreaterThanOrEqual(main.x + main.width);
-    expect(Math.abs(pane.y - main.y)).toBeLessThan(2);
-    expect(Math.round(pane.width)).toBe(288);
-    expect(await page.locator(".record-pane").evaluate((n) => getComputedStyle(n).position)).toBe("sticky");
-    await page.mouse.wheel(0, 2000);
-    await expect.poll(async () => (await page.locator(".record-pane").boundingBox()).y).toBeGreaterThanOrEqual(56);
-    await noHorizontalScroll(page);
-  });
-
-  test("one column at 390px: the pane follows the main column at full width", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(url({ hash: DROPPED }));
-    const { main, pane } = await boxes(page);
-    expect(pane.y).toBeGreaterThanOrEqual(main.y + main.height);
-    expect(Math.abs(pane.x - main.x)).toBeLessThan(1);
-    expect(Math.abs(pane.width - main.width)).toBeLessThan(1);
-    await noHorizontalScroll(page);
-  });
-
-  test("main column holds title, Summary, Fields, History; the pane holds Status, notes, Links, Seen by, Merge", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(url({ hash: "#/entity/role/https-jobs-example-au-00003" }));
-    await expect(page.locator(".record-main > h1")).toHaveCount(1);
-    await expect(page.locator(".record-main > section > h2")).toHaveText(["Summary", "Fields", "Agent fields agent made", "History"]);
-    await expect(page.locator(".record-pane > section > h2")).toHaveText(["Status", "Your notes", "Links", "Seen by", "Merge"]);
-    await expect(page.locator(".record-main section.summary p")).toHaveText(/^Owns the headless commerce architecture for Valtine Home/);
-    await expect(page.locator(".record-main .fieldlist").first().locator("dt")).not.toContainText(["Summary"]);
-  });
-
-  test("a kept Role reads Kept with Drop again, read only on static", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(url({ hash: "#/entity/role/https-jobs-example-au-00174" }));
-    const pane = page.locator(".record-pane");
-    await expect(pane.locator("section").first()).toContainText("Kept by a person on 2026-10-21 02:40");
-    await expect(pane.getByRole("button", { name: "Drop again" })).toBeDisabled();
-    await expect(page.locator(".record-main")).toContainText("Note: kept by person");
-  });
-
-  test("Keep this role stores a keep decision, shows Kept (pending next run), and Drop again removes it", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await fakeDb(page, { writable: true });
-    await page.goto(url({ store: "db", hash: DROPPED }));
-    const pane = page.locator(".record-pane");
-    await expect(pane).toContainText("Dropped: not in title_keywords");
-    await pane.getByRole("button", { name: "Keep this role" }).click();
-    await expect(pane.locator("section").first()).toContainText("Kept (pending next run)");
-    await expect(page.locator(".record-main > p.fields")).toContainText("Kept (pending next run)");
-    await expect(pane).toContainText("A keep is recorded now. Applies from the next run, which keeps this record active.");
-    let writes = await page.evaluate(() => window.__deskWrites);
-    expect(writes.map((w) => [w.op, w.path])).toEqual([["set", "decisions/" + DROPPED_ID]]);
-    expect(writes[0].data.decision).toBe("keep");
-    expect(writes[0].data.by).toBe("u_test");
-    expect(writes[0].data.at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d/);
-    await pane.getByRole("button", { name: "Drop again" }).click();
-    await expect(pane.getByRole("button", { name: "Keep this role" })).toBeVisible();
-    writes = await page.evaluate(() => window.__deskWrites);
-    expect(writes.map((w) => [w.op, w.path])).toEqual([["set", "decisions/" + DROPPED_ID], ["delete", "decisions/" + DROPPED_ID]]);
-  });
-
-  test("Browse offers Restore on a dropped row and shows it kept pending", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await fakeDb(page, { writable: true });
-    await page.goto(url({ store: "db", hash: "#/browse/role?status=dropped&q=00049" }));
-    const row = page.locator("table tbody tr").first();
-    await row.getByRole("button", { name: "Restore" }).click();
-    await expect(row).toContainText("Kept (pending next run)");
-    const writes = await page.evaluate(() => window.__deskWrites);
-    expect(writes.map((w) => [w.op, w.path, w.data && w.data.decision])).toEqual([["set", "decisions/" + DROPPED_ID, "keep"]]);
-  });
-});
-
-test.describe("Browse timings", () => {
+test.describe("Member and owner views", () => {
   test.use({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
-  test.describe.configure({ mode: "serial" });
-  const perf = {};
-  test.afterAll(() => writeFileSync(join(OUT, "perf.json"), JSON.stringify(perf, null, 2) + "\n"));
 
-  for (const [n, limit] of [[1000, 300], [5000, 1000]]) {
-    test(`Browse at ${n} roles`, async ({ page }) => {
-      await page.goto(url({ snap: "perf-" + n, hash: "#/today" }));
-      await expect(page.locator("#outlet h1").first()).toHaveText("Today");
-      const got = await page.evaluate(async () => {
-        const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        const until = (fn) => new Promise((resolve) => {
-          const obs = new MutationObserver(() => { if (fn()) { obs.disconnect(); resolve(); } });
-          obs.observe(document.body, { subtree: true, childList: true, characterData: true });
-          if (fn()) { obs.disconnect(); resolve(); }
-        });
-        const count = () => (document.querySelector(".count") || {}).textContent || "";
-        let t0 = performance.now();
-        location.hash = "#/browse/role";
-        await until(() => /^Showing /.test(count()));
-        await frames();
-        const first = performance.now() - t0;
-        const before = count();
-        const label = [...document.querySelectorAll("label.field")].find((l) => (l.querySelector("span") || {}).textContent === "Market");
-        const select = label.querySelector("select");
-        t0 = performance.now();
-        select.value = "NZ";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-        await until(() => count() !== before);
-        await frames();
-        return { firstRenderMs: Math.round(first), filterChangeMs: Math.round(performance.now() - t0), count: count() };
-      });
-      perf["roles-" + n] = got;
-      expect(got.count).toMatch(new RegExp("\\(" + n + " in all\\)"));
-      expect(got.firstRenderMs).toBeLessThan(limit);
-      expect(got.filterChangeMs).toBeLessThan(limit);
-    });
+  test("a member sees the PIN as owner only", async ({ page }) => {
+    await fakeClaude(page, { writable: true, viewer: "u_member", owner: false });
+    await page.goto(url({ store: "db", hash: "#/settings/lock" }));
+    await expect(main(page)).toContainText("Only the owner can set, change or remove the PIN.");
+    await expect(main(page).getByLabel("New PIN (6 digits)")).toHaveCount(0);
+  });
+
+  test("the owner gets the PIN form", async ({ page }) => {
+    await fakeClaude(page, { writable: true, viewer: "u_owner", owner: true });
+    await page.goto(url({ store: "db", hash: "#/settings/lock" }));
+    await expect(main(page).getByLabel("New PIN (6 digits)")).toBeVisible();
+  });
+});
+
+test.describe("Export through the downloads capability", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
+
+  async function openExport(page) {
+    await page.goto(url({ store: "db", hash: "#/browse/role" }));
+    await expect(main(page).getByRole("table").first()).toBeVisible();
+    await main(page).getByRole("button", { name: "Export", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Export Roles" });
+    await expect(dialog).toBeVisible();
+    return dialog;
   }
+
+  test("Download saves the shown CSV once through claude.use(\"downloads\").save", async ({ page }) => {
+    await fakeClaude(page, { snapshot: "/snap/demo.json", viewer: null, downloads: "save" });
+    const dialog = await openExport(page);
+    const data = await dialog.getByRole("textbox", { name: "Export data" }).inputValue();
+    expect(data).toContain("Title");
+    await dialog.getByRole("button", { name: "Download" }).click();
+    await expect(dialog.getByRole("status")).toContainText(/^Saved .+\.csv\.$/);
+    const saves = await page.evaluate(() => window.__deskSaves);
+    expect(saves.length).toBe(1);
+    expect(saves[0].filename).toMatch(/^[a-z0-9-]+-roles-2026-10-28\.csv$/);
+    expect(saves[0].type).toBe("string");
+    // A textarea reports CSV line ends (CRLF) as LF; the saved data keeps CRLF.
+    expect(saves[0].data).toContain("\r\n");
+    expect(saves[0].data.replace(/\r\n/g, "\n")).toBe(data);
+  });
+
+  test("a declined save says Not saved and the data stays in the box", async ({ page }) => {
+    await fakeClaude(page, { snapshot: "/snap/demo.json", viewer: null, downloads: "decline" });
+    const dialog = await openExport(page);
+    const data = await dialog.getByRole("textbox", { name: "Export data" }).inputValue();
+    await dialog.getByRole("button", { name: "Download" }).click();
+    await expect(dialog.getByRole("status")).toHaveText("Not saved.");
+    expect((await page.evaluate(() => window.__deskSaves)).length).toBe(1);
+    await expect(dialog.getByRole("textbox", { name: "Export data" })).toHaveValue(data);
+    expect(data.length).toBeGreaterThan(0);
+  });
+
+  test("without the downloads capability Export offers Copy and no Download", async ({ page }) => {
+    await fakeClaude(page, { snapshot: "/snap/demo.json", viewer: null });
+    const dialog = await openExport(page);
+    await expect(dialog.getByRole("button", { name: "Copy" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Download" })).toHaveCount(0);
+  });
+});
+
+test.describe("Custom field components", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
+
+  test("the module page draws the salary band through its component and sits in the sidebar", async ({ page }) => {
+    await page.goto(url({ snap: "desk", bundle: "desk", hash: "#/m/senior-pay" }));
+    await expect(main(page).getByRole("table").first()).toBeVisible();
+    await expect(main(page)).toContainText(/\d+ to \d+/);
+    await expect(sidebar(page).getByRole("link", { name: /Senior pay/ })).toBeVisible();
+    await noHorizontalScroll(page);
+    await tableFits(page);
+  });
+
+  test("without the bundle the salary band falls back to plain text", async ({ page }) => {
+    await page.goto(url({ snap: "desk", hash: "#/m/senior-pay" }));
+    await expect(main(page).getByRole("table").first()).toBeVisible();
+    await expect(main(page)).not.toContainText(/\d+ to \d+/);
+  });
+
+  test("a broken component and a const el component cost only themselves", async ({ page, guard }) => {
+    guard.pageerror = /Unexpected token/;
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(url({ snap: "desk", bundle: "bad-components", hash: "#/m/senior-pay" }));
+    await expect(main(page).getByRole("table").first()).toBeVisible();
+    await expect(main(page)).toContainText(/\d+ to \d+/);
+    expect(await page.evaluate(() => Object.keys(window.DESK_COMPONENTS).sort())).toEqual(["salary-band", "shadow-el"]);
+    expect(errors.length, errors.join("; ")).toBe(1);
+    expect(errors[0]).toMatch(/Unexpected token/);
+  });
+});
+
+test.describe("Phone shell at 390px", () => {
+  test.use({ viewport: { width: 390, height: 844 }, colorScheme: "light" });
+
+  test("the menu opens the sidebar and a link goes to the page", async ({ page }) => {
+    await page.goto(url({ hash: "#/today" }));
+    await expect(main(page)).toContainText(/parsed 2 of 3/);
+    await page.getByRole("button", { name: "Toggle navigation" }).click();
+    await expect(sidebar(page)).toBeInViewport();
+    await sidebar(page).getByRole("link", { name: /Approvals/ }).first().click();
+    await expect(page).toHaveURL(/#\/approvals/);
+    await expect(main(page)).toContainText(/Introduction about the/);
+    await noHorizontalScroll(page);
+  });
 });

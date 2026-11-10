@@ -1,0 +1,10 @@
+{
+  "single/css": {
+    "gzip": 41364,
+    "raise_reason": "Desk moved to React and Mantine (spec 2026-11-08-desk-mantine-design)"
+  },
+  "single/index.html": {
+    "gzip": 364600,
+    "raise_reason": "Pan and zoom viewer for image notes: react-zoom-pan-pinch 4.2.0 (about 15 kB gz) plus the viewer component"
+  }
+}

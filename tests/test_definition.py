@@ -116,12 +116,31 @@ class LintTests(unittest.TestCase):
 
     def test_view_meta_fields_match_browse(self):
         # Lint allows exactly the meta fields browse.js can show, so the two cannot drift apart.
-        src = os.path.join(ROOT, "skills", "routineos", "assets", "desk", "src", "pages", "browse.js")
+        src = os.path.join(ROOT, "skills", "routineos", "assets", "desk", "core", "pages", "browse.js")
         with open(src, encoding="utf-8") as fh:
-            found = re.search(r"var BROWSE_META = \{([^}]*)\}", fh.read())
+            found = re.search(r"export var BROWSE_META = \{([^}]*)\}", fh.read())
         self.assertIsNotNone(found)
         meta = found.group(1) if found else ""
         self.assertEqual(set(re.findall(r"(\w+):", meta)), set(definition.VIEW_META_FIELDS))
+
+    def test_nav_icons_are_desk_icons(self):
+        # Every icon a type or view may name is in the Desk's ICON_NAMES and drawn by app/icons.js.
+        desk = os.path.join(ROOT, "skills", "routineos", "assets", "desk")
+        with open(os.path.join(desk, "core", "shared.js"), encoding="utf-8") as fh:
+            names = set(re.findall(r'"([a-z0-9-]+)"', re.search(r"export var ICON_NAMES = \[([^\]]*)\]", fh.read()).group(1)))
+        with open(os.path.join(desk, "app", "icons.js"), encoding="utf-8") as fh:
+            body = re.search(r"export var ICONS = \{(.*?)\};", fh.read(), re.S).group(1)
+        drawn = set(re.findall(r'"?([a-z0-9-]+)"?: Icon', body))
+        self.assertEqual(set(definition.NAV_ICONS) - names, set())
+        self.assertEqual(drawn, names)
+        for name in ("desk", "improve", "desk-mark"):
+            self.assertNotIn(name, definition.NAV_ICONS)
+
+    def test_nav_icons_match_the_pack_schema(self):
+        with open(os.path.join(ROOT, "catalog", "schema", "pack.v1.schema.json"), encoding="utf-8") as fh:
+            pack = json.load(fh)
+        for kind in ("type", "view"):
+            self.assertEqual(pack["$defs"][kind]["properties"]["icon"]["enum"], list(definition.NAV_ICONS))
 
     def test_double_dash_type_name_fails(self):
         d = watch_defn()
@@ -247,6 +266,109 @@ class CompileTests(unittest.TestCase):
         with self.assertRaises(definition.DefinitionError) as cm:
             definition.compile([producer("a", big)])
         self.assertIn("256 KiB", str(cm.exception))
+
+
+def role_defn(health=None):
+    defn = {
+        "version": 1, "label": "Jobs", "inbox": False,
+        "types": {
+            "role": {"label": "Role", "plural": "Roles", "identity": "field:url",
+                     "fields": {"url": {"type": "url"}, "market": {"type": "choice", "choices": ["AU", "GB", "DE"]}}},
+            "company": copy.deepcopy(company_defn()["types"]["company"]),
+        },
+    }
+    if health is not None:
+        defn["desk"] = {"health": health}
+    return defn
+
+
+class HealthTests(unittest.TestCase):
+    """desk.health (spec 7c): a per-type mapping of one field's values to red, yellow and green."""
+    ROLE = {"role": {"field": "market", "red": ["DE"], "yellow": ["GB"], "green": ["AU"]}}
+
+    def lint(self, health):
+        return definition.lint(role_defn(health), [])
+
+    def test_valid_health_lints_clean(self):
+        self.assertEqual(self.lint(self.ROLE), [])
+
+    def test_unknown_type_field_overlap_and_shape(self):
+        self.assertTrue(any("nope" in p for p in self.lint({"nope": {"field": "market", "red": [], "yellow": [], "green": []}})))
+        self.assertTrue(any("salary" in p for p in self.lint({"role": {"field": "salary", "red": [], "yellow": [], "green": []}})))
+        overlap = self.lint({"role": {"field": "market", "red": ["DE"], "yellow": ["DE"], "green": []}})
+        self.assertTrue(any("DE" in p for p in overlap), overlap)
+        self.assertTrue(self.lint({"role": {"field": "market", "red": "DE"}}))
+        self.assertTrue(self.lint({"role": {"field": "market", "red": [], "yellow": [], "green": [], "blue": []}}))
+        self.assertTrue(self.lint([]))
+
+    def test_other_desk_keys_still_rejected(self):
+        defn = role_defn(self.ROLE)
+        defn["desk"]["colours"] = {}
+        self.assertTrue(any("colours" in p for p in definition.lint(defn, [])))
+
+    def test_compile_embeds_health_only_when_declared(self):
+        plain = definition.compile([producer("a", role_defn())])
+        self.assertNotIn("desk", plain)
+        out = definition.compile([producer("a", role_defn(self.ROLE))])
+        self.assertEqual(out["desk"], {"health": self.ROLE})
+
+    def test_identical_mappings_from_two_producers_pass(self):
+        out = definition.compile([producer("a", role_defn(self.ROLE)), producer("b", role_defn(self.ROLE))])
+        self.assertEqual(out["desk"]["health"], self.ROLE)
+
+    def test_different_mappings_for_one_type_fail_naming_both(self):
+        a = {"company": {"field": "name", "red": ["x"], "yellow": [], "green": []}}
+        b = {"company": {"field": "name", "red": ["y"], "yellow": [], "green": []}}
+        with self.assertRaises(definition.DefinitionError) as cm:
+            definition.compile([producer("jobs-watch", role_defn(a)), producer("lead-signals", role_defn(b))])
+        self.assertIn("jobs-watch", str(cm.exception))
+        self.assertIn("lead-signals", str(cm.exception))
+
+
+class RecordStripTests(unittest.TestCase):
+    """desk.record.strip: a per-type list of chips and fields the record page draws in its strip."""
+    STRIP = {"role": [{"chip": "state"}, {"field": "market"}, {"chip": "decision"}]}
+
+    def defn(self, strip):
+        defn = role_defn()
+        defn["desk"] = {"record": {"strip": strip}}
+        return defn
+
+    def lint(self, strip):
+        return definition.lint(self.defn(strip), [])
+
+    def test_valid_strip_lints_clean(self):
+        self.assertEqual(self.lint(self.STRIP), [])
+
+    def test_strip_unknown_field_fails_lint(self):
+        problems = self.lint({"role": [{"field": "salary"}]})
+        self.assertTrue(any("salary" in p for p in problems), problems)
+
+    def test_strip_unknown_chip_type_and_shape_fail_lint(self):
+        self.assertTrue(any("sparkle" in p for p in self.lint({"role": [{"chip": "sparkle"}]})))
+        self.assertTrue(any("nope" in p for p in self.lint({"nope": [{"chip": "state"}]})))
+        self.assertTrue(self.lint({"role": [{"chip": "state", "field": "market"}]}))
+        self.assertTrue(self.lint({"role": [{}]}))
+        self.assertTrue(self.lint({"role": "state"}))
+        self.assertTrue(self.lint({"role": [{"chip": "state"}] * 9}))
+        self.assertTrue(self.lint([]))
+
+    def test_unknown_record_key_fails_lint(self):
+        defn = self.defn(self.STRIP)
+        defn["desk"]["record"]["rail"] = {}
+        self.assertTrue(any("rail" in p for p in definition.lint(defn, [])))
+
+    def test_compile_embeds_strip_only_when_declared(self):
+        out = definition.compile([producer("a", self.defn(self.STRIP))])
+        self.assertEqual(out["desk"], {"record": {"strip": self.STRIP}})
+        self.assertNotIn("desk", definition.compile([producer("a", role_defn())]))
+
+    def test_different_strips_for_one_type_fail_naming_both(self):
+        other = {"role": [{"chip": "run"}]}
+        with self.assertRaises(definition.DefinitionError) as cm:
+            definition.compile([producer("jobs-watch", self.defn(self.STRIP)), producer("lead-signals", self.defn(other))])
+        self.assertIn("jobs-watch", str(cm.exception))
+        self.assertIn("lead-signals", str(cm.exception))
 
 
 class CompileCliTests(unittest.TestCase):

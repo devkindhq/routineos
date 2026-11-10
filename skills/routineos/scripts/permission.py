@@ -182,7 +182,37 @@ def _environment_lines(app, routines, integrations):
     return out, checks
 
 
-def render(app, records):
+_CTRL_RE = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029\u200b-\u200f\u202a-\u202e\u2066-\u2069]")
+
+
+def _clean(value, cap=80):
+    """Text safe to print on the consent screen: control and direction characters become '?', and it is capped."""
+    text = _CTRL_RE.sub("?", str(value))
+    return text if len(text) <= cap else text[:cap] + "..."
+
+
+def desk_extension_lines(rows):
+    """Lines for the permission screen: every custom Desk component and page with the host verbs its manifest
+    declares. A row that failed the lint is printed as INVALID, with no claim taken from its manifest."""
+    out = []
+    for r in rows:
+        if r.get("invalid"):
+            first = _clean(r["problems"][0], 160) if r.get("problems") else "component.json is missing or not an object"
+            out.append(f"- INVALID component folder '{_clean(r['id'])}': it fails the Desk lint and is not shown as "
+                       f"declared ({first}). Do not approve until it is fixed or removed.")
+            continue
+        reads = ", ".join(_clean(x) for x in r["reads"]) or "none"
+        verbs = ", ".join(_clean(x) for x in r["verbs"]) or "none (it cannot write)"
+        on = f" on {', '.join(_clean(t) for t in r['types'])}" if r.get("types") else ""
+        place = f", placement {_clean(r['placement'])}" if r.get("placement") else ""
+        keeps = "; remembers a setting in this browser" if r.get("prefs") else ""
+        out.append(f"- {_clean(r['slot'])} '{_clean(r['id'])}' draws {_clean(r['where'])}{on}{place}{keeps}; "
+                   f"reads (named in its code by a text scan, advisory only): {reads}; writes it declares: {verbs}; "
+                   f"code hash {_clean(r.get('hash', '')[:12])}")
+    return out
+
+
+def render(app, records, desk_rows=None):
     meta = app.get("app") or {}
     out = [f"Permission screen: {meta.get('title', meta.get('id', 'app'))}", ""]
     routines = _routines(app)
@@ -255,6 +285,18 @@ def render(app, records):
     out.append(f"- Kind: {store.get('kind', 'artifact-db')}")
     for c in _dicts(app, "collection"):
         out.append(f"- Collection '{c.get('name', '?')}' written by {c.get('writer', '?')}")
+
+    if desk_rows:
+        out += ["", "Desk components and pages written by an agent"]
+        out += desk_extension_lines(desk_rows)
+        out.append("- You are approving the code itself. It runs inside the Desk page with your rights. The Desk hands it "
+                   "only the verbs it declares, and the lint is a guard against mistakes, not containment: code written "
+                   "to get around the lint can reach more than this list shows, including reading and writing anything "
+                   "you can.")
+        out.append("- decide, comment, saveField, drop and keep write shared decisions, comments and notes on a "
+                   "record that every member of the Desk sees.")
+        out.append("- request writes a Run now or Retry request into requests/ that the routine reads at its next "
+                   "scheduled run; every member of the Desk sees it, and a declared request verb can queue them.")
 
     out += ["", "Budget"]
     budget = app.get("budget") or {}

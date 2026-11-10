@@ -1,0 +1,922 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "id": "button",
+      "kind": "core",
+      "factory": "button",
+      "summary": "A clickable action. One primary per card.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        },
+        "primary": {
+          "type": "bool"
+        },
+        "icon": {
+          "type": "icon"
+        },
+        "iconOnly": {
+          "type": "bool"
+        },
+        "pressed": {
+          "type": "bool"
+        },
+        "disabled": {
+          "type": "bool"
+        },
+        "title": {
+          "type": "text"
+        }
+      },
+      "a11y": "Icon-only buttons need title; it becomes the label and the tooltip.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "badge",
+      "kind": "core",
+      "factory": "badge",
+      "summary": "A short status label. Green only for ok.",
+      "props": {
+        "text": {
+          "type": "text",
+          "required": true
+        },
+        "tone": {
+          "type": "choice",
+          "choices": [
+            "ok",
+            "warn",
+            "fail",
+            "pur",
+            "accent",
+            "neutral"
+          ]
+        }
+      },
+      "a11y": "The text carries the meaning; the tone colour only repeats it.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "agent-badge",
+      "kind": "core",
+      "factory": "agentBadge",
+      "summary": "Marks a record or view that a routine made, with the producer's label.",
+      "props": {
+        "producerLabel": {
+          "type": "text"
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "chip",
+      "kind": "core",
+      "factory": "chip",
+      "summary": "A toggle filter or tag a person can press.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        },
+        "pressed": {
+          "type": "bool"
+        }
+      },
+      "a11y": "The pressed state is exposed with aria-pressed.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "tag",
+      "kind": "core",
+      "summary": "A read-only tag; a tone for status, or a hue picked from its text for values.",
+      "props": {
+        "text": {
+          "type": "text",
+          "required": true
+        },
+        "tone": {
+          "type": "choice",
+          "choices": [
+            "success",
+            "warning",
+            "danger",
+            "neutral"
+          ]
+        },
+        "hue": {
+          "type": "bool"
+        }
+      },
+      "a11y": "The text is the label; colour never carries meaning alone.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "card",
+      "kind": "core",
+      "summary": "A plain bordered box that groups related content.",
+      "props": {
+        "class": {
+          "type": "text"
+        }
+      },
+      "a11y": "No role of its own; the content inside carries the headings.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "section-card",
+      "kind": "core",
+      "summary": "A titled section that opens and closes and remembers that per viewer.",
+      "props": {
+        "id": {
+          "type": "text",
+          "required": true
+        },
+        "title": {
+          "type": "text",
+          "required": true
+        },
+        "count": {
+          "type": "int"
+        },
+        "open": {
+          "type": "bool"
+        },
+        "level": {
+          "type": "choice",
+          "choices": [
+            "2",
+            "3"
+          ]
+        }
+      },
+      "a11y": "The title is a real h2 or h3 inside the summary, so the section shows in the heading outline.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "page-header",
+      "kind": "core",
+      "summary": "The page title, an optional subtitle and the page's actions.",
+      "props": {
+        "title": {
+          "type": "text",
+          "required": true
+        },
+        "subtitle": {
+          "type": "text"
+        }
+      },
+      "a11y": "Holds the page's only h1.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "settings-nav",
+      "kind": "core",
+      "summary": "The Settings sub-nav: sections in Account and Workspace groups, the current one marked.",
+      "props": {
+        "current": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "A nav named Settings sections; each group is a labelled list and the current link carries aria-current.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "stat-tile",
+      "kind": "core",
+      "summary": "One number with its label and change, linking to the list behind it.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        },
+        "value": {
+          "type": "text",
+          "required": true
+        },
+        "delta": {
+          "type": "int"
+        },
+        "href": {
+          "type": "text"
+        }
+      },
+      "a11y": "The label and value read as one link when href is set.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "meter",
+      "kind": "core",
+      "summary": "A stacked bar of counts by status.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "role img with an aria-label that reads every segment's count and label.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "details-list",
+      "kind": "core",
+      "summary": "Label and value rows; the first eight show, the rest behind Show all values.",
+      "props": {
+        "visible": {
+          "type": "int"
+        }
+      },
+      "a11y": "A description list; an empty value reads Empty.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "status-strip",
+      "kind": "core",
+      "summary": "A row of status tags under a record's title.",
+      "props": {},
+      "a11y": "Each tag's text carries its meaning.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "breadcrumb",
+      "kind": "core",
+      "summary": "The path back from a record to its list.",
+      "props": {},
+      "a11y": "A Breadcrumb landmark; the last item has aria-current page.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "time",
+      "kind": "core",
+      "summary": "A moment as a human date in the viewer's locale and zone, with the exact time on hover.",
+      "props": {
+        "iso": {
+          "type": "text",
+          "required": true
+        },
+        "style": {
+          "type": "choice",
+          "choices": [
+            "list",
+            "sentence"
+          ]
+        },
+        "now": {
+          "type": "int"
+        }
+      },
+      "a11y": "A time element whose datetime holds the ISO value and whose title gives the exact moment.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "format-number",
+      "kind": "core",
+      "summary": "A number in the viewer's locale.",
+      "props": {
+        "n": {
+          "type": "int",
+          "required": true
+        },
+        "opts": {
+          "type": "ref"
+        }
+      },
+      "a11y": "Plain text; the number reads as the locale writes it.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "person",
+      "kind": "core",
+      "summary": "An avatar with initials and the person's name; Someone, (you) or Read only when that applies.",
+      "props": {
+        "id": {
+          "type": "text"
+        },
+        "profiles": {
+          "type": "ref",
+          "required": true
+        },
+        "viewer": {
+          "type": "text"
+        },
+        "size": {
+          "type": "choice",
+          "choices": [
+            "s",
+            "m"
+          ]
+        }
+      },
+      "a11y": "The avatar is hidden from assistive tech; the name beside it is the label.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "timeline-row",
+      "kind": "core",
+      "summary": "One event: an icon, a sentence, its time and an optional detail.",
+      "props": {
+        "icon": {
+          "type": "icon",
+          "required": true
+        },
+        "parts": {
+          "type": "ref",
+          "required": true
+        },
+        "at": {
+          "type": "text",
+          "required": true
+        },
+        "detail": {
+          "type": "ref"
+        },
+        "href": {
+          "type": "text"
+        }
+      },
+      "a11y": "The icon is decorative; the sentence is a link or button when the event opens.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "timeline",
+      "kind": "core",
+      "summary": "Events grouped under Today, Yesterday, This week, a month or a year, newest first.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "An ordered list with an aria-label; each group has an h3 heading.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "toast",
+      "kind": "core",
+      "summary": "A short message at the bottom end, with Undo when the action can be reversed.",
+      "props": {
+        "message": {
+          "type": "text",
+          "required": true
+        },
+        "tone": {
+          "type": "choice",
+          "choices": [
+            "success",
+            "danger",
+            "neutral"
+          ]
+        },
+        "undoLabel": {
+          "type": "text"
+        }
+      },
+      "a11y": "A polite live region; danger toasts are alerts and stay until closed; hover or focus pauses the timer.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "confirm-dialog",
+      "kind": "core",
+      "summary": "A yes or no question before a change, with an optional word to type first.",
+      "props": {
+        "title": {
+          "type": "text",
+          "required": true
+        },
+        "body": {
+          "type": "text"
+        },
+        "confirmLabel": {
+          "type": "text",
+          "required": true
+        },
+        "danger": {
+          "type": "bool"
+        },
+        "typeToConfirm": {
+          "type": "text"
+        }
+      },
+      "a11y": "A modal dialog; focus returns to the control that opened it.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "popover",
+      "kind": "core",
+      "summary": "Extra detail beside a trigger, shown on demand.",
+      "props": {
+        "label": {
+          "type": "text"
+        }
+      },
+      "a11y": "The trigger is a button or summary; Esc closes it.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "peek",
+      "kind": "core",
+      "summary": "A side panel over the page for a record or a form; full screen on a phone.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        },
+        "placement": {
+          "type": "choice",
+          "choices": [
+            "end",
+            "start"
+          ],
+          "required": true
+        },
+        "width": {
+          "type": "int"
+        }
+      },
+      "a11y": "A labelled modal dialog with a Close button; Esc closes it.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "offline-banner",
+      "kind": "core",
+      "summary": "Says the connection is down and what still works.",
+      "props": {
+        "reason": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "A status region, so the change is announced once.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "table",
+      "kind": "core",
+      "summary": "A data table of records, one row each.",
+      "props": {
+        "columns": {
+          "type": "text",
+          "required": true
+        },
+        "rows": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "Header cells carry scope col.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "rows",
+      "kind": "core",
+      "summary": "Stacked phone rows: the first field is the title, the rest sit under it.",
+      "props": {
+        "items": {
+          "type": "text",
+          "required": true
+        },
+        "fields": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "input",
+      "kind": "core",
+      "summary": "A text or search field.",
+      "props": {
+        "type": {
+          "type": "text"
+        },
+        "placeholder": {
+          "type": "text"
+        },
+        "aria-label": {
+          "type": "text"
+        }
+      },
+      "a11y": "Give every field a label or aria-label.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "select",
+      "kind": "core",
+      "summary": "A single choice from a list.",
+      "props": {
+        "options": {
+          "type": "text",
+          "required": true
+        },
+        "value": {
+          "type": "text"
+        }
+      },
+      "a11y": "Give every select a label or aria-label.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "checkbox",
+      "kind": "core",
+      "summary": "A checkbox with its label.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        },
+        "checked": {
+          "type": "bool"
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "switch",
+      "kind": "core",
+      "summary": "An on or off setting.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        },
+        "checked": {
+          "type": "bool"
+        }
+      },
+      "a11y": "An input with role switch, named by its label.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "drawer",
+      "kind": "core",
+      "summary": "A panel that slides in from an edge.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        },
+        "placement": {
+          "type": "choice",
+          "choices": [
+            "start",
+            "end"
+          ]
+        }
+      },
+      "a11y": "Labelled by its label; Esc closes it.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "dialog",
+      "kind": "core",
+      "summary": "A modal dialog.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "Labelled by its label; Esc closes it.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "dropdown",
+      "kind": "core",
+      "summary": "A menu of actions behind a trigger button.",
+      "props": {
+        "trigger": {
+          "type": "text",
+          "required": true
+        },
+        "items": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "skeleton",
+      "kind": "core",
+      "summary": "A loading placeholder bar.",
+      "props": {},
+      "a11y": "Hidden from assistive technology.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "callout",
+      "kind": "core",
+      "summary": "A boxed message: neutral for empty, danger for errors.",
+      "props": {
+        "variant": {
+          "type": "choice",
+          "choices": [
+            "neutral",
+            "danger",
+            "warning",
+            "success",
+            "brand"
+          ]
+        }
+      },
+      "a11y": "Announced as a status.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "details",
+      "kind": "core",
+      "summary": "A block that opens to show more, such as evidence.",
+      "props": {
+        "summary": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "tab-group",
+      "kind": "core",
+      "summary": "Tabs over panels, each tab with an optional count; one panel shows at a time.",
+      "props": {
+        "tabs": {
+          "type": "text",
+          "required": true
+        },
+        "active": {
+          "type": "text"
+        }
+      },
+      "a11y": "A tablist of buttons with aria-selected; arrow keys, Home and End move between tabs.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "tooltip",
+      "kind": "core",
+      "summary": "A hint shown on hover or focus of another element.",
+      "props": {
+        "for": {
+          "type": "text",
+          "required": true
+        },
+        "text": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "Shown on hover or focus; the target keeps its own label.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "icon",
+      "kind": "core",
+      "summary": "A Desk icon by name.",
+      "props": {
+        "name": {
+          "type": "icon",
+          "required": true
+        },
+        "label": {
+          "type": "text"
+        }
+      },
+      "a11y": "Decorative without a label.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "empty-state",
+      "kind": "core",
+      "summary": "The empty state for a page or list.",
+      "props": {
+        "kind": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "error-state",
+      "kind": "core",
+      "summary": "A read error with a way to try again.",
+      "props": {
+        "kind": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "loading-state",
+      "kind": "core",
+      "summary": "Placeholder rows while the workspace loads.",
+      "props": {},
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "filter-bar",
+      "kind": "core",
+      "summary": "A row of filter chips.",
+      "props": {},
+      "a11y": "A labelled group.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "pager",
+      "kind": "core",
+      "summary": "Loads the next page of rows.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "today",
+      "kind": "page",
+      "summary": "What needs the viewer now. One primary action per item.",
+      "props": {},
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "approvals",
+      "kind": "page",
+      "summary": "Every request waiting on a person, by kind, in Waiting, Queued and Done: decide, add a note or undo.",
+      "props": {},
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "workers",
+      "kind": "page",
+      "summary": "One row per lane on the Desk's join card. Shown only when a join card exists.",
+      "props": {},
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "runs",
+      "kind": "page",
+      "summary": "Run health: next run, captured items, partial and late runs, and every run by producer, with a peek.",
+      "props": {},
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "history",
+      "kind": "page",
+      "summary": "One timeline of runs, decisions, settings changes, comments, merges and views, with a run calendar.",
+      "props": {},
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "settings",
+      "kind": "page",
+      "summary": "Per-producer settings, workspace choices and About. Settings are human-owned.",
+      "props": {},
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "browse",
+      "kind": "page",
+      "summary": "One list per entity type, with filters in the link so back and shared links work.",
+      "props": {
+        "type": {
+          "type": "ref",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "entity",
+      "kind": "page",
+      "summary": "One record: fields, per source values, sighting history, links, notes and hand merge.",
+      "props": {
+        "type": {
+          "type": "ref",
+          "required": true
+        },
+        "key": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.9.0"
+    },
+    {
+      "id": "textarea",
+      "kind": "core",
+      "summary": "A multi-line text field with a label.",
+      "props": {
+        "label": {
+          "type": "text",
+          "required": true
+        },
+        "name": {
+          "type": "text"
+        },
+        "rows": {
+          "type": "int"
+        }
+      },
+      "a11y": "The label names the field.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "copy-button",
+      "kind": "core",
+      "summary": "Copies a value to the clipboard and says Copied.",
+      "props": {
+        "value": {
+          "type": "text",
+          "required": true
+        },
+        "label": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "The label names the button; the result is announced by the copy button or a toast.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "segmented",
+      "kind": "core",
+      "summary": "One choice from a few, drawn as joined buttons.",
+      "props": {
+        "name": {
+          "type": "text",
+          "required": true
+        },
+        "value": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "A radio group named by its label or legend; arrow keys move between choices.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "pagination",
+      "kind": "core",
+      "summary": "Moves between pages of a long list.",
+      "props": {
+        "page": {
+          "type": "int",
+          "required": true
+        },
+        "pages": {
+          "type": "int",
+          "required": true
+        }
+      },
+      "a11y": "A nav named Pagination; Previous and Next are disabled at the ends.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "comment-thread",
+      "kind": "core",
+      "summary": "A record's comments, oldest first, with a composer; edit and delete on your own for 15 minutes.",
+      "props": {
+        "viewer": {
+          "type": "text"
+        }
+      },
+      "a11y": "Each comment names its author and time; the composer is a labelled textarea, and Cmd or Ctrl Enter posts.",
+      "since": "0.9.0"
+    },
+    {
+      "id": "image-notes",
+      "kind": "core",
+      "summary": "Numbered marks over a captured page image, then the notes as a numbered list.",
+      "props": {
+        "showNotes": {
+          "type": "bool"
+        }
+      },
+      "a11y": "The number, not the colour, ties a mark to its note; the image has alt text and the notes are a list.",
+      "since": "0.9.0"
+    }
+  ]
+}

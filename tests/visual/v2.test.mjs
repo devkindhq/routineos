@@ -4,10 +4,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
-const SRC = "../../skills/routineos/assets/desk/src/";
-const actions = require(SRC + "actions.js");
+const CORE = "../../skills/routineos/assets/desk/core/";
+const actions = require(CORE + "actions.js");
 
 const doc = (id, data) => ({ id, data });
 
@@ -85,25 +86,60 @@ export { fakeStore, doc };
 
 // ---------- Task 2: routes ----------
 
-const { route } = require(SRC + "router.js");
+const { route } = require(CORE + "router.js");
 
-test("v2 routes: approvals, history modes, run detail under history", () => {
+test("v2 routes: approvals, history modes, runs and the per-run page", () => {
   assert.deepEqual(route("#/approvals"), { page: "approvals", params: {} });
   assert.deepEqual(route("#/history"), { page: "history", params: {} });
   assert.deepEqual(route("#/history?mode=cal"), { page: "history", params: { query: { mode: "cal" } } });
-  assert.deepEqual(route("#/history/r1"), { page: "run", params: { id: "r1" } });
-  assert.deepEqual(route("#/suggestions"), { page: "suggestions", params: {} });
-  assert.deepEqual(route("#/inbox?tab=suggestions"), { page: "inbox", params: { query: { tab: "suggestions" } } });
+  assert.deepEqual(route("#/runs"), { page: "runs", params: {} });
+  assert.deepEqual(route("#/runs/r1"), { page: "run", params: { id: "r1" } });
+  assert.deepEqual(route("#/runs/r%201?x=1"), { page: "run", params: { id: "r 1", query: { x: "1" } } });
 });
 
-test("old run routes redirect to their History equivalents", () => {
-  assert.deepEqual(route("#/runs"), { page: "history", params: {}, redirect: "#/history" });
-  assert.deepEqual(route("#/runs/r1"), { page: "run", params: { id: "r1" }, redirect: "#/history/r1" });
+// Package 2 (spec 4.4 and Review Focus 5): one row per redirect, queries kept, path-form settings.
+test("old addresses redirect to the v2 routes and keep their queries", () => {
+  const rows = [
+    ["#/inbox", "#/approvals", "approvals"],
+    ["#/inbox?tab=suggestions", "#/approvals?kind=proposals", "approvals"],
+    ["#/inbox?tab=suggestions&r=x1", "#/approvals?kind=proposals&r=x1", "approvals"],
+    ["#/suggestions", "#/approvals?kind=proposals", "approvals"],
+    ["#/views", "#/settings/views", "settings"],
+    ["#/history/jobs-watch-20261027", "#/runs/jobs-watch-20261027", "run"],
+    ["#/history/jobs-watch-20261027?x=1", "#/runs/jobs-watch-20261027?x=1", "run"],
+    ["#/settings?section=routine", "#/settings/routine", "settings"],
+    ["#/settings?section=notifications&x=2", "#/settings/notifications?x=2", "settings"],
+  ];
+  for (const [from, to, page] of rows) {
+    const r = route(from);
+    assert.equal(r.redirect, to, from);
+    assert.equal(r.page, page, from);
+    // the target itself is final: no second redirect
+    assert.equal(route(to).redirect, undefined, to);
+  }
+  assert.deepEqual(route("#/history/jobs-watch-20261027?x=1").params, { id: "jobs-watch-20261027", query: { x: "1" } });
+});
+
+test("settings sections are path form; unknown and missing sections are appearance", () => {
+  assert.deepEqual(route("#/settings"), { page: "settings", params: { section: "appearance" } });
+  assert.deepEqual(route("#/settings/members"), { page: "settings", params: { section: "members" } });
+  assert.deepEqual(route("#/settings/nope"), { page: "settings", params: { section: "appearance" } });
+  assert.equal(route("#/settings/nope").redirect, undefined);
+  const { SETTINGS_SECTIONS } = require(CORE + "router.js");
+  assert.deepEqual(SETTINGS_SECTIONS, ["appearance", "notifications", "shortcuts", "routine", "routine-notifications", "members",
+    "modules", "views", "tour", "lock", "export", "history", "about"]);
+  for (const s of SETTINGS_SECTIONS) assert.equal(route("#/settings/" + s).params.section, s);
+});
+
+test("approvals: ?t= is an alias of ?tab=, and ?tab= wins when both are given", () => {
+  assert.equal(route("#/approvals?t=queued").params.query.tab, "queued");
+  assert.equal(route("#/approvals?t=queued&tab=done").params.query.tab, "done");
+  assert.equal(route("#/approvals?t=queued").redirect, undefined);
 });
 
 // ---------- Task 3: hybrid paging ----------
 
-const paging = require(SRC + "paging.js");
+const paging = require(CORE + "paging.js");
 
 function entities(n, valueOf) {
   const out = {};
@@ -228,7 +264,7 @@ test("paging: fillPage over shuffled ties with hidden rows keeps 100 to 199 a pa
 
 // ---------- Task 4: drop overlay, refill, restore ----------
 
-const browse = require(SRC + "pages/browse.js");
+const browse = require(CORE + "pages/browse.js");
 
 test("overlayStatus puts a person's drop on top of the stored status until the next run", () => {
   assert.equal(browse.overlayStatus("active", null), "active");
@@ -293,7 +329,9 @@ test("drop writes a decision with reason; restore undoes a person's drop and kee
 
 // ---------- Task 6: merge field choices ----------
 
-const entity = require(SRC + "pages/entity.js");
+const entity = require(CORE + "pages/entity.js");
+// entity.js calls the record helpers that moved to shared.js (spec 7.3) as globals, as in the bundle.
+Object.assign(globalThis, require(CORE + "shared.js"));
 
 test("mergeChoices lists only the declared fields whose values differ, defaulting to the kept record", () => {
   const t = { fields: { title: { label: "Title" }, country: { label: "Country" }, pay: { label: "Pay" } }, order: ["title", "country", "pay"] };
@@ -320,7 +358,7 @@ test("keepState reads a person's drop decision: pending until the run, then drop
 
 // bulk.js reads isQuota and QUOTA_NOTE as page globals, as the bundle provides them.
 Object.assign(globalThis, { isQuota: actions.isQuota, QUOTA_NOTE: actions.QUOTA_NOTE });
-const bulk = require(SRC + "bulk.js");
+const bulk = require(CORE + "bulk.js");
 
 test("checkScope refuses more than 1,000 records with the reason, and nothing", () => {
   assert.equal(bulk.BULK_CAP, 1000);
@@ -372,7 +410,7 @@ test("rangeSelect selects every id between the anchor and the target, either dir
 
 // ---------- Task 8: views ownership, duplicate, pin, modified ----------
 
-const views = require(SRC + "pages/views.js");
+const views = require(CORE + "pages/settings.js");
 
 test("canEditView: the creator, or anyone for agent, definition and pre-v2 views", () => {
   assert.equal(views.canEditView({ madeBy: "u_1" }, "u_1"), true);
@@ -423,17 +461,6 @@ test("a pin is per viewer under data/users/<viewer>/state/pin/<viewId>", () => {
 
 // ---------- Task 9: inbox snooze, mark all read, Suggestions tab ----------
 
-const inbox = require(SRC + "pages/inbox.js");
-
-test("snoozeUntil: 1, 3 and 7 days from now, or the start of a chosen local date", () => {
-  const now = new Date("2026-10-30T09:00:00Z");
-  assert.equal(inbox.snoozeUntil("1d", now), "2026-10-31T09:00:00.000Z");
-  assert.equal(inbox.snoozeUntil("3d", now), "2026-11-02T09:00:00.000Z");
-  assert.equal(inbox.snoozeUntil("7d", now), "2026-11-06T09:00:00.000Z");
-  assert.equal(inbox.snoozeUntil("2026-11-10", now), new Date(2026, 10, 10).toISOString());
-  assert.equal(inbox.snoozeUntil("2026-10-01", now), null);
-  assert.equal(inbox.snoozeUntil("soon", now), null);
-});
 
 test("snoozeItem writes the viewer's snooze doc {until, at, by}", async () => {
   const store = fakeStore({});
@@ -445,31 +472,10 @@ test("snoozeItem writes the viewer's snooze doc {until, at, by}", async () => {
   assert.ok(d.at);
 });
 
-test("inboxList hides items snoozed into the future, shows them under Snoozed, and brings them back once due", () => {
-  const msgs = [doc("m1", { createdAt: "2026-10-03" }), doc("m2", { createdAt: "2026-10-02" }), doc("m3", { createdAt: "2026-10-01" })];
-  const st = { read: new Set(), done: new Set(), snooze: new Map([["m1", "2026-10-31T00:00:00Z"], ["m2", "2026-10-29T00:00:00Z"]]) };
-  const now = "2026-10-30T09:00:00Z";
-  assert.deepEqual(inbox.inboxList(msgs, st, "all", now).map((m) => m.id), ["m2", "m3"]);
-  assert.deepEqual(inbox.inboxList(msgs, st, "unread", now).map((m) => m.id), ["m2", "m3"]);
-  assert.deepEqual(inbox.inboxList(msgs, st, "snoozed", now).map((m) => m.id), ["m1"]);
-  assert.deepEqual(inbox.inboxList(msgs, null, "all", now).map((m) => m.id), ["m1", "m2", "m3"]);
-});
-
-test("unreadIds lists what Mark all read would write: shown, not read, not done", () => {
-  const shown = [doc("m1", {}), doc("m2", {}), doc("m3", {})];
-  assert.deepEqual(inbox.unreadIds(shown, { read: new Set(["m2"]), done: new Set(["m3"]) }), ["m1"]);
-});
-
-test("the inbox route reads its tab from the query", () => {
-  assert.equal(inbox.inboxTab({ query: { tab: "suggestions" } }), "suggestions");
-  assert.equal(inbox.inboxTab({}), "inbox");
-  assert.equal(inbox.inboxTab({ query: { tab: "nope" } }), "inbox");
-});
-
 // ---------- Task 10: approvals ----------
 
 Object.assign(globalThis, { decide: actions.decide });
-const approvals = require(SRC + "pages/approvals.js");
+const approvals = require(CORE + "pages/approvals.js");
 
 test("timeLeft counts down from createdAt plus timeoutHours", () => {
   const g = { createdAt: "2026-10-30T00:00:00Z", timeoutHours: 48 };
@@ -477,20 +483,6 @@ test("timeLeft counts down from createdAt plus timeoutHours", () => {
   assert.equal(approvals.timeLeft(g, Date.parse("2026-11-01T00:00:00Z")).label, "Expired");
   assert.equal(approvals.timeLeft(g, Date.parse("2026-10-31T23:15:00Z")).label, "45m left");
   assert.equal(approvals.timeLeft({ createdAt: "2026-10-30T00:00:00Z" }, 0).label, "No timeout");
-});
-
-test("approvalLists: pending gates without a decision wait, soonest timeout first; the rest are decided, newest first", () => {
-  const pending = [
-    doc("r1--g1", { status: "pending", createdAt: "2026-10-28T00:00:00Z", timeoutHours: 48 }),
-    doc("r2--g1", { status: "pending", createdAt: "2026-10-29T00:00:00Z", timeoutHours: 12 }),
-    doc("r3--g1", { status: "pending", createdAt: "2026-10-27T00:00:00Z", timeoutHours: 48 }),
-    doc("r0--g1", { status: "approved", outcome: "approve", createdAt: "2026-10-20T00:00:00Z" }),
-  ];
-  const decisions = { "r3--g1": { decision: "reject", reason: "Too early", at: "2026-10-28T10:00:00Z", by: "u_2" } };
-  const l = approvals.approvalLists(pending, decisions, Date.parse("2026-10-29T06:00:00Z"));
-  assert.deepEqual(l.waiting.map((g) => g.id), ["r2--g1", "r1--g1"]);
-  assert.deepEqual(l.decided.map((g) => g.id), ["r3--g1", "r0--g1"]);
-  assert.equal(l.decided[0].decision.reason, "Too early");
 });
 
 test("approveGate records the edited draft only when it differs from the gate's own", async () => {
@@ -522,13 +514,27 @@ test("id-keyed maps: a doc called __proto__ or constructor is just a doc", () =>
   assert.equal(map.r1.decision, "keep");
 });
 
-test("rejectGate needs a reason and records it", async () => {
+test("rejectGate takes an optional reason and records it as the reason and the note", async () => {
   const store = fakeStore({});
   const ctx = { store, viewer: "u_1" };
-  await assert.rejects(approvals.rejectGate(ctx, "r1--g1", "  "), /reason/);
-  await approvals.rejectGate(ctx, "r1--g1", "Too early");
-  assert.equal(store.data.get("decisions/r1--g1").reason, "Too early");
+  await approvals.rejectGate(ctx, "r1--g1", "  ");
   assert.equal(store.data.get("decisions/r1--g1").decision, "reject");
+  assert.equal("reason" in store.data.get("decisions/r1--g1"), false);
+  assert.equal("note" in store.data.get("decisions/r1--g1"), false);
+  await approvals.rejectGate(ctx, "r1--g2", " Too early ");
+  assert.equal(store.data.get("decisions/r1--g2").reason, "Too early");
+  assert.equal(store.data.get("decisions/r1--g2").note, "Too early");
+});
+
+test("approveGate records the person's note, trimmed and capped at 2000 characters", async () => {
+  const store = fakeStore({});
+  const ctx = { store, viewer: "u_1" };
+  await approvals.approveGate(ctx, "r1--g1", {}, null, "  Send after nine  ");
+  assert.equal(store.data.get("decisions/r1--g1").note, "Send after nine");
+  await approvals.approveGate(ctx, "r1--g2", {}, null, "");
+  assert.equal("note" in store.data.get("decisions/r1--g2"), false);
+  await approvals.approveGate(ctx, "r1--g3", {}, null, "x".repeat(2100));
+  assert.equal(store.data.get("decisions/r1--g3").note.length, 2000);
 });
 
 test("recipientLine shows roles only", () => {
@@ -538,24 +544,26 @@ test("recipientLine shows roles only", () => {
 
 // ---------- Task 11: notifications ----------
 
-const runsPage = require(SRC + "pages/runs.js");
-Object.assign(globalThis, { isLate: runsPage.isLate, timeLeft: approvals.timeLeft });
-const notify = require(SRC + "notify.js");
+const scheduleJs = require(CORE + "schedule.js");
+Object.assign(globalThis, { isLate: scheduleJs.isLate, timeLeft: approvals.timeLeft }, require(CORE + "requests.js"));
+const notify = require(CORE + "notify.js");
 const NOW = Date.parse("2026-10-30T12:00:00Z");
 
-test("notifications: new inbox items, unread from the viewer's read state, older than the window left out", () => {
+test("notifications: match and alert messages, unread from the viewer's read state, older than the window left out", () => {
   const items = notify.deriveNotifications({
     inbox: [doc("r1--1", { kind: "match", title: "Role A", createdAt: "2026-10-30T10:00:00Z" }),
       doc("r1--2", { kind: "alert", title: "Feed down", createdAt: "2026-10-29T10:00:00Z" }),
+      doc("r1--3", { kind: "proposal", title: "Add a market", createdAt: "2026-10-30T10:00:00Z" }),
+      doc("r1--4", { kind: "approval", gate: "r1--g1", title: "Send it", createdAt: "2026-10-30T10:00:00Z" }),
       doc("r0--1", { kind: "match", title: "Old", createdAt: "2026-10-01T10:00:00Z" })],
     read: new Set(["r1--2"]), now: NOW,
   });
   assert.deepEqual(items.map((n) => [n.kind, n.readId, n.unread]), [["inbox", "r1--1", true], ["inbox", "r1--2", false]]);
   assert.equal(items[0].title, "Role A");
-  assert.equal(items[0].href, "#/inbox");
+  assert.equal(items[0].href, "#/today");
 });
 
-test("notifications: a waiting gate, a gate under 6 hours is gate-soon, decided and expired gates left out", () => {
+test("notifications: gates never become bell items; waitingSummary counts them and flags the soonest", () => {
   const pending = [
     doc("r1--g1", { status: "pending", title: "Send digest", createdAt: "2026-10-30T00:00:00Z", timeoutHours: 48 }),
     doc("r1--g2", { status: "pending", title: "Send now", createdAt: "2026-10-29T14:00:00Z", timeoutHours: 24 }),
@@ -563,13 +571,63 @@ test("notifications: a waiting gate, a gate under 6 hours is gate-soon, decided 
     doc("r1--g4", { status: "pending", title: "Expired", createdAt: "2026-10-20T00:00:00Z", timeoutHours: 1 }),
     doc("r1--g5", { status: "expired", title: "Closed", createdAt: "2026-10-30T00:00:00Z" }),
   ];
-  const items = notify.deriveNotifications({ pending, decisions: new Set(["r1--g3"]), now: NOW });
-  const byId = Object.fromEntries(items.map((n) => [n.readId, n]));
-  assert.deepEqual(Object.keys(byId).sort(), ["r1--g1", "soon--r1--g2"]);
-  assert.equal(byId["r1--g1"].kind, "gate");
-  assert.equal(byId["soon--r1--g2"].kind, "gate-soon");
-  assert.match(byId["soon--r1--g2"].title, /2h 00m left/);
-  assert.equal(byId["r1--g1"].href, "#/approvals");
+  const src = { pending, decisions: [doc("r1--g3", { decision: "approve", at: "2026-10-30T01:00:00Z" })], now: NOW };
+  // UX review 7: a request that timed out recently is a "missed" bell item; an old one is not.
+  assert.deepEqual(notify.deriveNotifications(Object.assign({}, src, { decisions: new Set(["r1--g3"]) })).map((n) => [n.kind, n.readId]),
+    [["missed", "missed--r1--g5"]]);
+  assert.deepEqual(notify.waitingSummary(src, NOW), { count: 2, soon: { label: "1 times out in 2 hours" } });
+  assert.deepEqual(notify.waitingSummary({ pending: pending.slice(0, 1) }, NOW), { count: 1, soon: null });
+  assert.deepEqual(notify.waitingSummary({}, NOW), { count: 0, soon: null });
+});
+
+// UX review 4 and 7: one "needs you" number on the bell, and a missed request says so.
+test("bellBadge shows the waiting count, and unread notices only as a dot", () => {
+  assert.deepEqual(notify.bellBadge(4, 3), { text: "4", dot: false, label: "Notifications, 4 need you, 3 unread" });
+  assert.deepEqual(notify.bellBadge(0, 3), { text: "", dot: true, label: "Notifications, 3 unread" });
+  assert.deepEqual(notify.bellBadge(0, 0), { text: "", dot: false, label: "Notifications" });
+});
+
+test("a gate that timed out without a decision is a missed item that links to its card", () => {
+  const pending = [doc("r1--g9", { status: "pending", title: "Send intro", createdAt: "2026-10-28T00:00:00Z", timeoutHours: 48 })];
+  const items = notify.deriveNotifications({ pending, now: NOW });
+  assert.deepEqual(items.map((n) => [n.kind, n.title, n.href, n.at]),
+    [["missed", "Missed: Send intro timed out", "#/approvals?tab=done&r=r1--g9", "2026-10-30T00:00:00.000Z"]]);
+  assert.deepEqual(notify.deriveNotifications({ pending, decisions: new Set(["r1--g9"]), now: NOW }), []);
+});
+
+test("notifications: over the v2 demo the bell and the waiting row never share a decision", () => {
+  const snap = JSON.parse(readFileSync(new URL("../desk_fixtures/v2-demo.json", import.meta.url), "utf8"));
+  const pick = (prefix) => Object.keys(snap).filter((k) => k.startsWith(prefix)).map((k) => doc(k.slice(prefix.length), snap[k].data));
+  const definition = snap["meta/definition"].data;
+  const src = { inbox: pick("inbox/"), pending: pick("pending/"), runs: pick("runs/"), producers: definition.producers || [],
+    decisions: new Set(pick("decisions/").map((d) => d.id)) };
+  const at = Date.parse("2026-10-28T00:00:00Z");
+  const items = notify.deriveNotifications(Object.assign({ now: at }, src));
+  const reqSrc = Object.assign({}, src, { decisions: pick("decisions/"), views: pick("views/"), columns: pick("columns/") });
+  const requests = deriveRequests(reqSrc, "u_owner", at);
+  const readIds = new Set(items.map((n) => n.readId));
+  assert.ok(!requests.some((r) => readIds.has(r.id)), "a request is never also a bell item");
+  assert.ok(items.length > 0);
+  assert.ok(!items.some((n) => n.kind === "gate" || n.kind === "gate-soon"), items.map((n) => n.kind).join());
+  const decisionIds = new Set(src.inbox.filter((m) => m.data.kind === "proposal" || m.data.kind === "approval").map((m) => m.id)
+    .concat(src.pending.map((g) => g.id)));
+  assert.ok(!items.some((n) => decisionIds.has(n.readId)), "no waiting decision is a bell item");
+  assert.equal(notify.waitingSummary(reqSrc, at, "u_owner").count, requests.filter((r) => r.state === "waiting").length);
+  assert.equal(notify.waitingSummary(reqSrc, at, "u_owner").count, 5);
+  const na = items.find((n) => n.kind === "not-applied");
+  assert.equal(na.title, "1 approval could not be applied in run jobs-watch-20261028");
+  assert.equal(na.href, "#/approvals?tab=done&r=jobs-watch-20261008--2");
+});
+
+test("notifications: two not_applied entries in one run make one item linking to Done", () => {
+  const runs = [doc("r9", { producer: "a", status: "ok", startedAt: "2026-10-30T06:00:00Z", processed: [
+    { request: "x--1", outcome: "not_applied", reason: "gone" }, { request: "x--2", outcome: "applied" },
+    { request: "x--3", outcome: "not_applied" }] })];
+  const items = notify.deriveNotifications({ runs, now: NOW }).filter((n) => n.kind === "not-applied");
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "2 approvals could not be applied in run r9");
+  assert.equal(items[0].href, "#/approvals?tab=done");
+  assert.equal(items[0].readId, "na--r9");
 });
 
 test("notifications: failed runs, a late producer and a run that hit the inbox cap", () => {
@@ -587,7 +645,7 @@ test("notifications: failed runs, a late producer and a run that hit the inbox c
   assert.ok(!kinds.some((k) => k.startsWith("run-late:late--r3")), "producer a is on time");
   assert.equal(items.find((n) => n.kind === "run-failed").unread, false);
   assert.match(items.find((n) => n.kind === "cap").title, /4 messages held back/);
-  assert.equal(items.find((n) => n.kind === "run-failed").href, "#/history/r3");
+  assert.equal(items.find((n) => n.kind === "run-failed").href, "#/runs/r3");
 });
 
 test("notifications: newest first, unread count and the unread tab", () => {
@@ -604,9 +662,7 @@ test("notifications: newest first, unread count and the unread tab", () => {
 
 // ---------- Task 12: history and activity ----------
 
-const ui = require(SRC + "ui.js");
-Object.assign(globalThis, { entityHash: ui.entityHash });
-const history = require(SRC + "pages/history.js");
+const history = require(CORE + "pages/history.js");
 
 test("history: runs grouped by UTC day, newest run first within a day", () => {
   const days = history.runsByDay([
@@ -617,12 +673,24 @@ test("history: runs grouped by UTC day, newest run first within a day", () => {
   assert.deepEqual(days["2026-10-30"].map((r) => r.id), ["b", "c"]);
 });
 
-test("history: mode comes from ?mode, list by default, anything else is list", () => {
-  assert.equal(history.historyMode({}), "list");
+test("history: Timeline by default, Calendar from ?mode=cal, and old modes (health, activity, list) fall back to Timeline", () => {
+  assert.equal(history.historyMode({}), "timeline");
   assert.equal(history.historyMode({ query: { mode: "cal" } }), "cal");
-  assert.equal(history.historyMode({ query: { mode: "health" } }), "health");
-  assert.equal(history.historyMode({ query: { mode: "activity" } }), "activity");
-  assert.equal(history.historyMode({ query: { mode: "x" } }), "list");
+  for (const m of ["health", "activity", "list", "x"]) assert.equal(history.historyMode({ query: { mode: m } }), "timeline", m);
+});
+
+test("history events name records where a name is known and carry the record id for the peek (History review H1)", () => {
+  const items = history.historyEvents({
+    names: { "role--a1": "Staff engineer", "role--c": "Platform lead" },
+    comments: [doc("role--a1--u_2--x", { entity: "role--a1", text: "Worth a look", at: "2026-10-29T06:00:00Z", by: "u_2" })],
+    decisions: [doc("role--a1", { decision: "drop", at: "2026-10-30T05:00:00Z", by: "u_2" }), doc("r1--g1", { decision: "approve", at: "2026-10-30T03:00:00Z", by: "u_1" })],
+    merges: [doc("role--b", { into: "role--c", at: "2026-10-30T06:00:00Z", by: "u_2" })],
+  });
+  assert.deepEqual(items.map((i) => [i.text, i.entity || null]), [
+    ["Merged role--b into Platform lead", "role--c"],
+    ["Dropped Staff engineer", "role--a1"],
+    ["Approved r1--g1", null],
+    ["Commented on Staff engineer: Worth a look", "role--a1"]]);
 });
 
 test("history: calendar weeks run Monday to Sunday and end with the week holding today", () => {
@@ -633,8 +701,11 @@ test("history: calendar weeks run Monday to Sunday and end with the week holding
   assert.equal(weeks[0][0], "2026-09-28");
 });
 
-test("activity: people writes from decisions, settings history, merges and views, newest first", () => {
-  const items = history.activityStream({
+test("history events: runs, comments and people writes from decisions, settings history, merges and views, newest first", () => {
+  const items = history.historyEvents({
+    definition: { producers: [{ id: "jobs", label: "Jobs" }] },
+    runs: [doc("jobs-1", { producer: "jobs", status: "partial", startedAt: "2026-10-30T07:00:00Z" })],
+    comments: [doc("role--a1--u_2--x", { entity: "role--a1", text: "Worth a look", at: "2026-10-29T06:00:00Z", by: "u_2" })],
     decisions: [doc("r1--g1", { decision: "approve", at: "2026-10-30T03:00:00Z", by: "u_1" }),
       doc("role--a1", { decision: "drop", at: "2026-10-30T05:00:00Z", by: "u_2", reason: "Too senior" }),
       doc("r1--3", { decision: "dismiss", at: "2026-10-29T05:00:00Z", by: "u_1" }),
@@ -643,8 +714,12 @@ test("activity: people writes from decisions, settings history, merges and views
     merges: [doc("role--b", { into: "role--c", at: "2026-10-30T06:00:00Z", by: "u_2" })],
     views: [doc("v1", { name: "Remote", madeBy: "u_1", createdAt: "2026-10-30T01:00:00Z" }), doc("v2", { name: "Agent", madeBy: "agent", createdAt: "2026-10-30T02:00:00Z" })],
   });
-  assert.deepEqual(items.map((i) => i.kind), ["merge", "decision", "settings", "decision", "view", "decision"]);
-  assert.deepEqual(items.map((i) => i.by), ["u_2", "u_2", "u_1", "u_1", "u_1", "u_1"]);
+  assert.deepEqual(items.map((i) => i.kind), ["run", "merge", "decision", "settings", "decision", "view", "comment", "decision"]);
+  assert.deepEqual(items.map((i) => i.by), [null, "u_2", "u_2", "u_1", "u_1", "u_1", "u_2", "u_1"]);
+  assert.deepEqual([items[0].text, items[0].href], ["Jobs run, partial", "#/runs/jobs-1"]);
+  assert.deepEqual([items[6].text, items[6].href], ["Commented on role--a1: Worth a look", "#/entity/role/a1"]);
+  items.splice(0, 1);
+  items.splice(5, 1);
   assert.equal(items[0].text, "Merged role--b into role--c");
   assert.equal(items[0].href, "#/entity/role/c");
   assert.equal(items[1].text, "Dropped role--a1: Too senior");
@@ -653,7 +728,7 @@ test("activity: people writes from decisions, settings history, merges and views
   assert.equal(items[3].text, "Approved r1--g1");
   assert.equal(items[3].href, "#/approvals");
   assert.equal(items[4].text, "Saved view Remote");
-  assert.equal(items[5].href, "#/inbox");
+  assert.equal(items[5].href, "#/approvals");
 });
 
 test("activity: filter by person and by kind", () => {
@@ -723,7 +798,7 @@ test("a history write that fails after the settings saved says the settings were
 });
 
 test("settingSuggestions: open L1 proposals for one setting of one producer", () => {
-  const settings = require(SRC + "pages/settings.js");
+  const settings = require(CORE + "pages/settings.js");
   const msgs = [
     doc("r1--1", { kind: "proposal", producer: "jobs", proposal: { setting: "title_keywords", op: "add", value: "x" } }),
     doc("r1--2", { kind: "proposal", producer: "jobs", proposal: { setting: "markets", op: "add", value: "NZ" } }),
@@ -741,8 +816,8 @@ test("a partial save's message is shown as is, not as Not saved", () => {
 });
 
 // Task 15: export
-Object.assign(globalThis, { toCsv: require(SRC + "pages/browse.js").toCsv });
-const exporter = require(SRC + "exporter.js");
+Object.assign(globalThis, { toCsv: require(CORE + "pages/browse.js").toCsv });
+const exporter = require(CORE + "exporter.js");
 
 test("exportName: <workspace>-<type plural>-<local YYYY-MM-DD>.<ext>, slugged", () => {
   const d = new Date(2026, 0, 5, 23, 30); // local time
@@ -777,7 +852,7 @@ test("exportScope: the selection when there is one, else the rows on the view", 
 });
 
 test("canDownload: false without the downloads capability, true with it, false on an error", async () => {
-  const { createStore } = require(SRC + "store.js");
+  const { createStore } = require(CORE + "store.js");
   assert.equal(await createStore("static", { docs: [] }).canDownload(), false);
   const mk = (ns) => createStore("db", { claude: { use: (n) => (n === "downloads" ? (ns instanceof Error ? Promise.reject(ns) : Promise.resolve(ns)) : Promise.resolve(null)) } });
   assert.equal(await mk(null).canDownload(), false);
@@ -834,4 +909,395 @@ test("countLine: a full read counts matches; a paged list says how many are show
   assert.equal(browse.countLine({ full: false, shown: 100, done: false }, "Roles"), "Showing the first 100 Roles");
   assert.equal(browse.countLine({ full: false, shown: 37, done: true }, "Roles"), "Showing all 37 Roles");
   assert.equal(browse.countLine({ full: false, shown: 1, done: true }, "Roles"), "Showing all 1 Roles");
+});
+
+// ---------- Package 2: the grouped nav model ----------
+
+const palette2 = require(CORE + "palette.js");
+const GN_DEF = {
+  types: { role: { label: "Role", plural: "Roles" }, company: { label: "Company", plural: "Companies" } },
+  views: [{ id: "au", type: "role", name: "AU roles" }],
+  desk: { modules: [{ id: "big", kind: "view", label: "Big ones", view: { type: "company" } }] },
+};
+
+test("navModel groups Workspace and Lists, types in definition order, Settings on its own", () => {
+  const nav = palette2.navModel(GN_DEF, [], null, null);
+  assert.deepEqual(nav.groups.map((g) => [g.id, g.label]), [["workspace", "Workspace"], ["lists", "Lists"]]);
+  assert.deepEqual(nav.groups[0].items.map((n) => n.id), ["today", "approvals", "runs", "history"]);
+  assert.deepEqual(nav.groups[1].items.map((n) => n.id), ["type:role", "type:company"]);
+  assert.deepEqual(nav.groups[1].items[0].children.map((c) => c.id), ["view:au"]);
+  assert.deepEqual(nav.groups[1].items[1].children.map((c) => c.id), ["module:big"]);
+  assert.equal(nav.settings.id, "settings");
+  assert.equal(nav.settings.href, "#/settings");
+  const runs = nav.groups[0].items[2];
+  assert.deepEqual([runs.label, runs.href], ["Runs", "#/runs"]);
+});
+
+test("navModel: Workers joins Workspace with a join card; a hide list naming retired pages changes nothing", () => {
+  const plain = palette2.navModel(GN_DEF, [], null, null);
+  assert.deepEqual(palette2.navModel(GN_DEF, [], null, null, ["inbox", "suggestions", "views"]), plain);
+  const joined = palette2.navModel(GN_DEF, [], null, { id: "join" });
+  assert.deepEqual(joined.groups[0].items.map((n) => n.id), ["today", "approvals", "runs", "history", "workers"]);
+});
+
+test("navFlat lists every top entry with Settings last; bottomModel and paletteCommands take the grouped model", () => {
+  const nav = palette2.navModel(GN_DEF, [], null, null);
+  assert.deepEqual(palette2.navFlat(nav).map((n) => n.id), ["today", "approvals", "runs", "history", "type:role", "type:company", "settings"]);
+  assert.ok(palette2.paletteCommands(nav, []).some((c) => c.id === "go:runs"));
+  assert.ok(palette2.bottomModel(nav).some((n) => n.id === "type:role"));
+});
+
+// ---------- Package 2: user menu, bottom nav and shortcuts ----------
+
+test("userMenuItems: no viewer leaves out Signed in and Lock; an owner with a lock and the tour gets every entry", () => {
+  const ids = (ctx) => palette2.userMenuItems(ctx).map((i) => i.id);
+  assert.deepEqual(ids({ viewer: null, lock: null }), ["theme", "density", "shortcuts"]);
+  assert.deepEqual(ids({ viewer: "u_owner", owner: { by: "u_owner" }, lock: { hash: "x" }, tour: true }),
+    ["signed-in", "theme", "density", "tour", "shortcuts", "lock"]);
+  const labels = palette2.userMenuItems({ viewer: "u_owner", lock: { hash: "x" }, tour: true }).map((i) => i.label);
+  assert.deepEqual(labels, ["Signed in", "Theme", "Density", "Take the tour", "Keyboard shortcuts", "Lock now"]);
+});
+
+test("viewerRole: Owner when the viewer is meta/owner.by, Member otherwise, null with no viewer", () => {
+  assert.equal(palette2.viewerRole({ viewer: "u_owner", owner: { by: "u_owner" } }), "Owner");
+  assert.equal(palette2.viewerRole({ viewer: "u_member", owner: { by: "u_owner" } }), "Member");
+  assert.equal(palette2.viewerRole({ viewer: "u_member", owner: null }), "Member");
+  assert.equal(palette2.viewerRole({ viewer: null, owner: { by: "u_owner" } }), null);
+});
+
+test("bottomModel: Today, Approvals, the first type, History and More (More has no address)", () => {
+  const b = palette2.bottomModel(palette2.navModel(GN_DEF, [], null, null));
+  assert.deepEqual(b.map((n) => n.id), ["today", "approvals", "type:role", "history", "more"]);
+  assert.equal(b[4].href, undefined);
+  assert.deepEqual(palette2.bottomModel(palette2.navModel(null, [], null, null)).map((n) => n.id), ["today", "approvals", "history", "more"]);
+});
+
+test("shortcutFor: g u is Runs, g i is Approvals, j k o move through and open the list", () => {
+  assert.deepEqual(palette2.shortcutFor(["g", "u"], []), { go: "#/runs" });
+  assert.deepEqual(palette2.shortcutFor(["g", "i"], []), { go: "#/approvals" });
+  assert.deepEqual(palette2.shortcutFor(["g", "r"], [{ id: "role", plural: "Roles" }]), { go: "#/browse/role" });
+  assert.deepEqual(["j", "k", "o"].map((k) => palette2.shortcutFor([k], [])), [{ run: "next" }, { run: "prev" }, { run: "open" }]);
+  const rows = palette2.shortcutRows([]).map((r) => r[0] + " " + r[1]);
+  assert.ok(rows.includes("g u Runs"));
+  assert.ok(rows.includes("g i Approvals"));
+  assert.ok(!rows.some((r) => /Inbox/.test(r)));
+});
+
+// ---------- Task 2.5: peek framework ----------
+
+const peek = require(CORE + "peek.js");
+
+test("peekPosition: index, total and neighbours; a key not in the list has no position", () => {
+  assert.deepEqual(peek.peekPosition(["a", "b", "c"], "b"), { index: 1, total: 3, prev: "a", next: "c" });
+  assert.deepEqual(peek.peekPosition(["a"], "z"), { index: null, total: 1, prev: null, next: null });
+  assert.deepEqual(peek.peekPosition(["a", "b"], "a"), { index: 0, total: 2, prev: null, next: "b" });
+});
+
+test("peekHash and stripPeek set and remove ?peek= and keep the other query keys", () => {
+  assert.equal(peek.peekHash("#/browse/role?view=x", "https://jobs.example/au/1"), "#/browse/role?view=x&peek=" + encodeURIComponent("https://jobs.example/au/1"));
+  assert.equal(peek.peekHash("#/browse/role?peek=a&view=x", "b"), "#/browse/role?view=x&peek=b");
+  assert.equal(peek.stripPeek("#/browse/role?view=x&peek=a"), "#/browse/role?view=x");
+  assert.equal(peek.stripPeek("#/browse/role?peek=a"), "#/browse/role");
+  assert.equal(peek.stripPeek("#/browse/role"), "#/browse/role");
+  assert.equal(peek.peekKey("#/browse/role?view=x&peek=" + encodeURIComponent("a b/c")), "a b/c");
+  assert.equal(peek.peekKey("#/browse/role?view=x"), null);
+});
+
+function fakeHistory(start) {
+  const entries = [start];
+  const listeners = new Set();
+  const env = {
+    entries,
+    history: {
+      pushState: (s, t, url) => { entries.push(url); },
+      replaceState: (s, t, url) => { entries[entries.length - 1] = url; },
+      back: () => { if (entries.length > 1) { entries.pop(); listeners.forEach((fn) => fn({})); } },
+    },
+    getHash: () => entries[entries.length - 1],
+    replaceHash: (h) => { entries[entries.length - 1] = h; },
+    on: (type, fn) => { if (type === "popstate") listeners.add(fn); },
+    off: (type, fn) => { if (type === "popstate") listeners.delete(fn); },
+    listeners,
+  };
+  return env;
+}
+
+// ---- Task 2.6: the PIN privacy screen (spec 5.15, 7e)
+const lock = require(CORE + "lock.js");
+const LOCK_DOC = JSON.parse(readFileSync(new URL("../desk_fixtures/lock-demo.json", import.meta.url), "utf8"))["meta/lock"].data;
+
+test("validPin takes exactly six digits", () => {
+  assert.equal(lock.validPin("246810"), true);
+  for (const bad of ["24681", "2468100", "24681a", " 246810", "", null, 246810]) assert.equal(lock.validPin(bad), false, String(bad));
+});
+
+test("hashPin matches the hash the fixture builder wrote", async () => {
+  assert.equal(await lock.hashPin("246810", LOCK_DOC.salt, LOCK_DOC.iterations), LOCK_DOC.hash);
+  assert.notEqual(await lock.hashPin("246811", LOCK_DOC.salt, LOCK_DOC.iterations), LOCK_DOC.hash);
+});
+
+test("validLock accepts the fixture and refuses a malformed doc", () => {
+  assert.equal(lock.validLock(LOCK_DOC), true);
+  assert.equal(lock.validLock(null), false);
+  assert.equal(lock.validLock({ ...LOCK_DOC, iterations: 10 }), false);
+  assert.equal(lock.validLock({ ...LOCK_DOC, hash: "xyz" }), false);
+  assert.equal(lock.validLock({ ...LOCK_DOC, algo: "SHA-1" }), false);
+  assert.equal(lock.validLock({ ...LOCK_DOC, iterations: 1e7 + 1 }), false);
+  assert.equal(lock.validLock({ ...LOCK_DOC, iterations: 1e7 }), true);
+});
+
+test("the pass lasts the page life when session storage throws, and Lock now forgets it", () => {
+  const prior = Object.getOwnPropertyDescriptor(globalThis, "sessionStorage");
+  Object.defineProperty(globalThis, "sessionStorage", { configurable: true, get() { throw new Error("blocked"); } });
+  try {
+    lock.forgetLockPass();
+    assert.equal(lock.lockPassed(LOCK_DOC.salt), false);
+    lock.rememberLockPass(LOCK_DOC.salt);
+    assert.equal(lock.lockPassed(LOCK_DOC.salt), true);
+    lock.forgetLockPass();
+    assert.equal(lock.lockPassed(LOCK_DOC.salt), false);
+  } finally {
+    if (prior) Object.defineProperty(globalThis, "sessionStorage", prior); else delete globalThis.sessionStorage;
+  }
+});
+
+test("a pass is read back from session storage", () => {
+  const store = new Map();
+  const prior = Object.getOwnPropertyDescriptor(globalThis, "sessionStorage");
+  Object.defineProperty(globalThis, "sessionStorage", { configurable: true, value: {
+    getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) } });
+  try {
+    lock.forgetLockPass();
+    lock.rememberLockPass(LOCK_DOC.salt);
+    assert.equal(store.get("routineos-desk-unlocked"), LOCK_DOC.salt);
+    lock.forgetLockPass();
+    assert.equal(store.has("routineos-desk-unlocked"), false);
+    store.set("routineos-desk-unlocked", LOCK_DOC.salt);
+    assert.equal(lock.lockPassed(LOCK_DOC.salt), true);
+    store.set("routineos-desk-unlocked", "1");
+    assert.equal(lock.lockPassed(LOCK_DOC.salt), false);
+  } finally {
+    if (prior) Object.defineProperty(globalThis, "sessionStorage", prior); else delete globalThis.sessionStorage;
+    lock.forgetLockPass();
+  }
+});
+
+// ---- Task 2.7: network hooks on the store (spec 5.13)
+const storeMod = require(CORE + "store.js");
+
+test("isNetworkError: offline, fetch TypeError and network codes count; a missing doc does not", () => {
+  const prior = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true } });
+  try {
+    assert.equal(storeMod.isNetworkError(new TypeError("Failed to fetch")), true);
+    assert.equal(storeMod.isNetworkError({ code: "unavailable" }), true);
+    assert.equal(storeMod.isNetworkError(new Error("forced read failure: runs")), false);
+    assert.equal(storeMod.isNetworkError(new TypeError("x is not a function")), false);
+    globalThis.navigator.onLine = false;
+    assert.equal(storeMod.isNetworkError(new Error("anything")), true);
+  } finally {
+    if (prior) Object.defineProperty(globalThis, "navigator", prior); else delete globalThis.navigator;
+  }
+});
+
+test("watchNetwork fires onReadOk after a read and onNetworkError on a dropped call, and unsubscribes", async () => {
+  let failNext = null;
+  const subs = [];
+  const base = {
+    get: () => (failNext ? Promise.reject(failNext) : Promise.resolve({ exists: false })),
+    list: () => Promise.resolve([]),
+    set: () => Promise.reject(new TypeError("Failed to fetch")),
+    del: () => Promise.resolve(),
+    subscribe: (c, cb, q) => { subs.push({ cb, q }); return () => {}; },
+  };
+  const s = storeMod.watchNetwork(base);
+  const seen = [];
+  const offOk = s.onReadOk(() => seen.push("ok"));
+  s.onNetworkError(() => seen.push("down"));
+  await s.get("meta/x");
+  failNext = new TypeError("Failed to fetch");
+  await s.get("meta/x").catch(() => {});
+  failNext = new Error("bad data");
+  await s.get("meta/x").catch(() => {});
+  await s.set("a/b", {}).catch(() => {});
+  let own = 0;
+  s.subscribe("runs", () => {}, { where: [["a", "==", 1]], onError: () => own++ });
+  assert.deepEqual(subs[0].q.where, [["a", "==", 1]]);
+  subs[0].cb([]);
+  subs[0].q.onError(new TypeError("NetworkError when attempting to fetch resource."));
+  assert.equal(own, 1);
+  offOk();
+  await s.list("runs");
+  assert.deepEqual(seen, ["ok", "down", "down", "ok", "down"]);
+});
+
+// ---------- Package 4: per-kind Approvals derivation ----------
+
+Object.assign(globalThis, { human: require(CORE + "dates.js").human });
+const requests = require(CORE + "requests.js");
+const V2 = JSON.parse(readFileSync(new URL("../desk_fixtures/v2-demo.json", import.meta.url), "utf8"));
+const REQ_NOW = Date.parse("2026-10-28T00:00:00Z");
+function v2src(extra = {}) {
+  const pick = (prefix) => Object.keys(V2).filter((k) => k.startsWith(prefix) && k.split("/").length === 2)
+    .map((k) => doc(k.slice(prefix.length), V2[k].data));
+  return Object.assign({ pending: pick("pending/"), inbox: pick("inbox/"), views: pick("views/"), columns: pick("columns/"),
+    decisions: pick("decisions/"), personDecisions: [], runs: pick("runs/") }, extra);
+}
+const GATE = "jobs-watch-20261027--g1";
+
+test("requests: the demo approval message folds into its gate; entity decisions never appear", () => {
+  const list = requests.deriveRequests(v2src(), "u_owner", REQ_NOW);
+  const gates = list.filter((r) => r.group === "gates");
+  assert.deepEqual(gates.map((r) => [r.id, r.kind, r.state, r.message]), [[GATE, "gate", "waiting", "jobs-watch-20261027--1"]]);
+  assert.match(gates[0].title, /Draft an intro note/);
+  assert.equal(gates[0].timeoutAt, "2026-10-29T22:00:00.000Z");
+  assert.ok(!list.some((r) => r.id.startsWith("role--") || r.id === "jobs-watch-20261027--1"));
+  assert.deepEqual(list.map((r) => r.kind).sort(), ["column", "gate", "proposal-l1", "view", "view"]);
+  assert.ok(list.every((r) => r.state === "waiting"));
+});
+
+test("requests: a decided gate is queued until a run starts after the decision, then done", () => {
+  const dec = doc(GATE, { decision: "approve", at: "2026-10-28T00:10:00Z", by: "u_owner" });
+  let gate = requests.deriveRequests(v2src({ decisions: [dec] }), "u_owner", REQ_NOW).find((r) => r.id === GATE);
+  assert.equal(gate.state, "queued");
+  assert.equal(gate.canUndo, true);
+  assert.deepEqual(requests.undoable(gate, v2src().runs), { ok: true });
+  const later = doc("jobs-watch-20261029", { startedAt: "2026-10-29T22:00:00Z", status: "ok" });
+  const runs = v2src().runs.concat([later]);
+  gate = requests.deriveRequests(v2src({ decisions: [dec], runs }), "u_owner", Date.parse("2026-10-30T00:00:00Z")).find((r) => r.id === GATE);
+  assert.equal(gate.state, "done");
+  assert.equal(gate.outcome.key, "unreported");
+  assert.match(gate.outcome.text, /^Decided .*\. The routine did not report on this request\.$/);
+  assert.deepEqual(requests.undoable(gate, runs), { ok: false, runId: "jobs-watch-20261029" });
+});
+
+test("requests: with the v2 run report a gate decided before that run is applied", () => {
+  const dec = doc(GATE, { decision: "approve", at: "2026-10-27T23:00:00Z", by: "u_owner" });
+  const gate = requests.deriveRequests(v2src({ decisions: [dec] }), "u_owner", REQ_NOW).find((r) => r.id === GATE);
+  assert.equal(gate.state, "done");
+  assert.equal(gate.outcome.text, "Applied in run jobs-watch-20261028");
+  assert.equal(gate.outcome.result, "Introduction sent.");
+  assert.deepEqual(requests.undoable(gate, v2src().runs), { ok: false, runId: "jobs-watch-20261028" });
+});
+
+test("requests: a worker gate reads only the viewer's own decision and is never queued or undoable", () => {
+  const pending = [doc("w--g1", { status: "pending", lane: "send--a", producer: "jobs-watch", createdAt: "2026-10-27T00:00:00Z", title: "Send" })];
+  let r = requests.deriveRequests({ pending, decisions: [doc("w--g1", { decision: "approve", at: "2026-10-27T01:00:00Z", by: "u_owner" })] }, "u_owner", REQ_NOW)[0];
+  assert.equal(r.state, "waiting", "a shared decisions/ doc is not a worker gate's decision");
+  assert.equal(r.decisionPath, "people/u_owner/decisions/w--g1");
+  r = requests.deriveRequests({ pending, personDecisions: [doc("w--g1", { decision: "approve", at: "2026-10-27T01:00:00Z", by: "u_owner" })] }, "u_owner", REQ_NOW)[0];
+  assert.equal(r.state, "done");
+  assert.equal(r.canUndo, false);
+  assert.match(r.outcome.text, /^Decided /);
+});
+
+test("requests: L1 accept is done at once; snooze wakes after until; dismiss and archive are done", () => {
+  const P = "jobs-watch-20261008--2";
+  const at = "2026-10-27T23:50:00Z";
+  const find = (decisions, id = P, now = REQ_NOW) => requests.deriveRequests(v2src({ decisions }), "u_owner", now).find((r) => r.id === id);
+  let r = find([doc(P, { decision: "accept", at })]);
+  assert.equal(r.state, "done");
+  assert.equal(r.canUndo, false);
+  assert.match(r.outcome.text, /^Applied to settings /);
+  r = find([doc(P, { decision: "snooze", at, until: "2026-10-27T12:00:00Z" })]);
+  assert.equal(r.state, "waiting");
+  r = find([doc(P, { decision: "snooze", at, until: "2026-11-03T12:00:00Z" })]);
+  assert.equal(r.state, "done");
+  assert.match(r.outcome.text, /^Snoozed until /);
+  assert.equal(find([doc(P, { decision: "dismiss", at })]).outcome.text, "Dismissed");
+  r = find([doc("views--senior-au-roles", { decision: "archive", at })], "views--senior-au-roles");
+  assert.deepEqual([r.state, r.outcome.text, r.decisionPath], ["done", "Archived", "decisions/views--senior-au-roles"]);
+});
+
+test("requests: an L2 proposal snoozed until a past date is waiting and says it changes code", () => {
+  const inbox = [doc("p--1", { kind: "proposal", producer: "jobs-watch", title: "Add a source", createdAt: "2026-10-20T00:00:00Z",
+    proposal: { level: "L2", target: "definition", change: "Add a source" } })];
+  const r = requests.deriveRequests({ inbox, decisions: [doc("p--1", { decision: "snooze", at: "2026-10-20T01:00:00Z", until: "2026-10-27T01:00:00Z" })] }, "u_owner", REQ_NOW)[0];
+  assert.deepEqual([r.kind, r.state, r.note], ["proposal-l23", "waiting", "Changes the routine's code through a pull request"]);
+});
+
+test("requests: an accepted proposal the run did not apply says why", () => {
+  const P = "jobs-watch-20261008--2";
+  const r = requests.deriveRequests(v2src({ decisions: [doc(P, { decision: "accept", at: "2026-10-27T10:00:00Z" })] }), "u_owner", REQ_NOW)
+    .find((x) => x.id === P);
+  assert.equal(r.outcome.text, "Not applied in run jobs-watch-20261028: GB is not in this run's sources yet.");
+});
+
+// Members (spec 5.9): derived from by and updatedBy fields; Owner from meta/owner.by; seed and bad ids skipped.
+test("deriveMembers lists the owner and the member with their newest activity", () => {
+  const { deriveMembers } = require(CORE + "members.js");
+  const docs = JSON.parse(readFileSync(new URL("../desk_fixtures/v2-demo.json", import.meta.url), "utf8"));
+  const out = deriveMembers(docs, docs["meta/owner"].data.by, "u_owner");
+  assert.deepEqual(out, [
+    { id: "u_owner", role: "Owner", lastActive: "2026-10-26T09:10:00Z" },
+    { id: "u_member", role: "Member", lastActive: "2026-10-28T01:22:00.000Z" },
+  ]);
+  assert.ok(!out.some((m) => m.id === "seed"));
+});
+
+test("deriveMembers keeps a viewer with no docs, skips bad ids and ignores meta/join", () => {
+  const { deriveMembers } = require(CORE + "members.js");
+  const docs = {
+    "decisions/a": { data: { by: "seed", at: "2026-10-01T00:00:00Z" } },
+    "decisions/b": { data: { by: "bad id!", at: "2026-10-01T00:00:00Z" } },
+    "comments/c": { data: { by: "u_x", at: "2026-10-02T00:00:00Z" } },
+    "comments/d": { data: { by: "u_x", at: "2026-10-05T00:00:00Z" } },
+    "meta/join": { data: { by: "u_join" } },
+    "entities/e": { data: { by: "u_other" } },
+  };
+  assert.deepEqual(deriveMembers(docs, null, "u_new"), [
+    { id: "u_x", role: "Member", lastActive: "2026-10-05T00:00:00Z" },
+    { id: "u_new", role: "Member", lastActive: null },
+  ]);
+  assert.deepEqual(deriveMembers({}, null, null), []);
+});
+
+// ---- Task 6.4: the owner sets and removes the PIN through actions.js
+test("setLockPin writes a contract meta/lock doc for the owner only", async () => {
+  Object.assign(globalThis, { validPin: lock.validPin, hashPin: lock.hashPin, rememberLockPass: () => {} });
+  const writes = [];
+  const store = { set: (path, data) => { writes.push({ op: "set", path, data }); return Promise.resolve(); },
+    del: (path) => { writes.push({ op: "delete", path }); return Promise.resolve(); } };
+  const owner = { viewer: "u_owner", owner: { by: "u_owner" }, store };
+  const member = { viewer: "u_member", owner: { by: "u_owner" }, store };
+  await assert.rejects(actions.setLockPin(member, "135790"), /only the Desk owner/);
+  await assert.rejects(actions.removeLockPin(member), /only the Desk owner/);
+  await assert.rejects(actions.setLockPin(owner, "12345"), /six digits/);
+  assert.deepEqual(writes, []);
+  const doc = await actions.setLockPin(owner, "135790");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].path, "meta/lock");
+  assert.deepEqual(Object.keys(doc).sort(), ["algo", "hash", "iterations", "salt", "setAt", "setBy"]);
+  assert.equal(doc.iterations, 310000);
+  assert.equal(doc.setBy, "u_owner");
+  assert.match(doc.salt, /^[0-9a-f]{32}$/);
+  assert.match(doc.setAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  assert.equal(lock.validLock(doc), true);
+  assert.equal(await lock.hashPin("135790", doc.salt, doc.iterations), doc.hash);
+  await actions.removeLockPin(owner);
+  assert.deepEqual(writes[1], { op: "delete", path: "meta/lock" });
+});
+
+// ---- Task 6.6: palette record search and the starter tour
+test("searchRecords matches title and key words, case-insensitive, and caps at max", () => {
+  const { searchRecords } = require(CORE + "palette.js");
+  const ents = [];
+  for (let i = 0; i < 30; i++) ents.push({ id: "role--r" + i, data: { type: "role", key: "r" + i, display: { title: "Data Analyst " + i, company: "Northwind" } } });
+  ents.push({ id: "company--acme", data: { type: "company", key: "acme.example", display: { name: "Acme Tools" } } });
+  ents.push({ id: "role--gone", data: { type: "role", key: "gone", status: "dropped", display: { title: "Analyst gone" } } });
+  assert.equal(searchRecords(ents, "analyst").length, 20);
+  assert.equal(searchRecords(ents, "ANALYST 7", 5).map((e) => e.id).join(), "role--r7");
+  assert.deepEqual(searchRecords(ents, "acme.EXAMPLE").map((e) => e.id), ["company--acme"]);
+  assert.deepEqual(searchRecords(ents, "tools acme").map((e) => e.id), ["company--acme"]);
+  assert.deepEqual(searchRecords(ents, "gone"), []);
+  assert.deepEqual(searchRecords(ents, "  "), []);
+  assert.deepEqual(searchRecords(null, "x"), []);
+});
+
+test("deriveNotifications skips docs with no data and treats producer names as plain keys", () => {
+  const at = Date.parse("2026-10-20T10:00:00Z");
+  const run = (id, producer, startedAt, status) => ({ id, data: { producer, startedAt, status } });
+  const items = notify.deriveNotifications({ now: at, inbox: [{ id: "m1", data: null }],
+    runs: [{ id: "r0", data: null }, run("r1", "constructor", "2026-10-20T09:00:00Z", "failed")] });
+  assert.deepEqual(items.map((n) => n.kind), ["run-failed"]);
 });

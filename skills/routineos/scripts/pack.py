@@ -22,7 +22,7 @@ import schema
 
 FORMAT = "routineos.pack.v1"
 CATALOG_FORMAT = "routineos.catalog.v1"
-VERSION = "0.8.1"
+VERSION = "0.9.0"
 USER_AGENT = f"routineos-pack/{VERSION}"
 MAX_PACK_BYTES = 512 * 1024
 MAX_INDEX_BYTES = 1024 * 1024
@@ -51,7 +51,7 @@ ROUTINE_TABLES = {
     "action": ("name", "kind"),
 }
 ARRAY_TABLES = ("setting", "action")
-DEFINITION_KEYS = ("version", "label", "inbox", "types", "views", "learning")
+DEFINITION_KEYS = ("version", "label", "inbox", "types", "views", "learning", "desk")
 TYPE_KEYS = ("label", "plural", "icon", "identity", "merge", "fields", "links", "settingFilters")
 FIELD_KEYS = ("label", "type", "summary", "choices")
 FILTER_KEYS = ("setting", "field")
@@ -70,6 +70,8 @@ COLLECTION_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*(/[a-z0-9_-]+)*\Z")
 # Segments after the first allow upper case so skills/<name>/SKILL.md fits.
 FILE_RE = re.compile(r"^(lib|skills)/[a-z0-9_-]+(/(?!\.\.?/)[A-Za-z0-9_.-]+)*\.(py|md|json|txt)\Z")
 RESERVED_PARTS = ("con", "prn", "aux", "nul", "com1", "lpt1")
+COMPONENT_CODE_MESSAGE = ("packs carry module JSON, not component code; copy the component with "
+                          "`routineos desk component copy` or propose it for the core registry")
 EMAIL_RE = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+\.[\w.-]+")
 SLACK_ID_RE = re.compile(r"\b[UCDGW](?=[A-Z0-9]*[0-9])[A-Z0-9]{8,}\b")
 RECIPIENT_WORDS = ("recipient", "approver", "email", "address", "cc", "bcc", "channel", "phone")
@@ -575,7 +577,9 @@ def _file_problems(p):
     for i, (path, text) in enumerate(files.items()):
         parts = path.split("/")
         stems = [x.split(".")[0].casefold() for x in parts]
-        if not FILE_RE.match(path) or ".." in parts or "." in parts or any(s in RESERVED_PARTS for s in stems):
+        if path.startswith("desk/components/") or path.endswith(".js"):
+            problems.append(f"files[{i}]: {COMPONENT_CODE_MESSAGE}")
+        elif not FILE_RE.match(path) or ".." in parts or "." in parts or any(s in RESERVED_PARTS for s in stems):
             problems.append(f"files[{i}]: path is not allowed; use lib/ or skills/ with a .py, .md, .json or .txt name")
         # On a case-insensitive disk the later file would overwrite the earlier one.
         if path.casefold() in folded:
