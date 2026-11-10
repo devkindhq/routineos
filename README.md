@@ -8,7 +8,9 @@ RoutineOS is the self-improving framework for Claude routines: a free Claude Cod
   <a href="https://routineos.org"><img src=".github/assets/readme/routineos-loop-poster.jpg" alt="RoutineOS in under a minute: a 48 second explainer. Watch it on routineos.org." width="100%"></a>
 </video>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme/desk-dark.webp"><img alt="The RoutineOS Desk for an inbox triage routine. On desktop, the Threads list filtered to mail skipped by settings, each with its drop reason, excluded by skip_from_domains, except one a person kept, pending the next run. On a phone, the Suggestions tab proposes removing fernhill-accounting.example from skip_from_domains, because you kept 6 of its 7 skipped threads." src=".github/assets/readme/desk-light.webp" width="100%"></picture>
+<a href="https://routineos.org/demo/weekly-marketing"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme/desk-dark.webp"><img alt="The RoutineOS Desk for the weekly marketing report routine, shown with demo data. On desktop, the Overview page: six tiles (Sessions 11,611 up 8.5%, Conversions 364 up 7.1%, Revenue $30,580 up 7.8%, Search clicks 6 down 25%, Search impressions 3,891 up 2.2%, Average position 28.7 down 3.7%), each with a small trend line, and below them line charts of sessions by source and search clicks by source. On a phone, the same Overview page with the Refresh button, date and source filters, and the first tiles stacked in one column." src=".github/assets/readme/desk-light.webp" width="100%"></picture></a>
+
+[Try the live demo Desk](https://routineos.org/demo/weekly-marketing), with demo data. It is read only.
 
 - Home: [routineos.org](https://routineos.org)
 - Docs: [docs.routineos.org](https://docs.routineos.org) (source: [devkindhq/routineos-docs](https://github.com/devkindhq/routineos-docs))
@@ -59,7 +61,7 @@ The [Quickstart](https://docs.routineos.org/introduction/quickstart) builds a fu
 
 ## Templates
 
-<picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme/templates-dark.webp"><img alt="A three by three grid of 9 starter templates, each with its name, piloted or unpiloted, its category and type, and a one-line summary. Watch is piloted." src=".github/assets/readme/templates-light.webp" width="100%"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme/templates-dark.webp"><img alt="A grid of 12 starter templates, four across and three down, each with its name, piloted or unpiloted, its category and type, and a short summary. The 3 piloted templates (Jobs watch, Watch, Weekly marketing report) come first, then the 9 unpiloted ones." src=".github/assets/readme/templates-light.webp" width="100%"></picture>
 
 Each template is one pack file listed in `catalog/index.json`. Piloted means a real run checked it. Digest and tracker starters are coming soon.
 
@@ -74,7 +76,7 @@ Each template is one pack file listed in `catalog/index.json`. Piloted means a r
 - site-compliance-review: unpiloted, watch. Reviews a website's pages each day against a rule pack you supply, flags wording that may breach a rule with severity, a screenshot and boxed notes, and tracks decisions. It never changes the site.
 - support-gap-digest: unpiloted, watch. Each week, groups repeated support questions and flags the ones your help pages do not answer yet.
 - watch: piloted, watch. Watches a list of sources for new and changed items and writes one report per run, even in a quiet week.
-- weekly-marketing-report: piloted, watch. Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves.
+- weekly-marketing-report: piloted, watch. Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves. [Live demo Desk](https://routineos.org/demo/weekly-marketing).
 
 ```
 python3 skills/routineos/scripts/routineos.py pack list catalog/index.json
