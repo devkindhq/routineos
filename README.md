@@ -1,8 +1,10 @@
-# RoutineOS: the self-improving framework for Claude routines
+# RoutineOS: self-improving framework for Claude Code routines (scheduled tasks)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-RoutineOS is the self-improving framework for Claude routines: a free Claude Code plugin for the scheduled Claude agents that do recurring work in the cloud. It learns from what it sees and what you decide, proposes each change with its source, and changes nothing until you say yes. It is for anyone who runs the same judgment task every week (triage, a watch, a report, a shortlist), and it gives each routine typed settings, a linter, templates, approval gates and a mobile Desk.
+RoutineOS is a free, MIT-licensed Claude Code plugin and framework for Claude routines, the scheduled Claude agents that do recurring work in the cloud. It gives each routine typed settings, a linter, templates, approval gates and a mobile Desk, and it proposes changes from your keep and drop decisions, applied only on your yes.
+
+Install: `/plugin install routineos --marketplace devkindhq/routineos` (Claude Code 2.1.275 or later). Docs: [docs.routineos.org](https://docs.routineos.org).
 
 <video src="https://github.com/devkindhq/routineos/raw/main/.github/assets/readme/routineos-loop.mp4" poster=".github/assets/readme/routineos-loop-poster.jpg" controls muted playsinline width="100%">
   <a href="https://routineos.org"><img src=".github/assets/readme/routineos-loop-poster.jpg" alt="RoutineOS in under a minute: a 48 second explainer. Watch it on routineos.org." width="100%"></a>
