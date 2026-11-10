@@ -1,3 +1,5 @@
+<p align="center"><img src=".github/assets/readme/logo.svg" alt="RoutineOS logo: a ring of eight coloured segments" width="96" height="96"></p>
+
 # RoutineOS: self-improving framework for Claude Code routines (scheduled tasks)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
