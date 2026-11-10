@@ -29,6 +29,8 @@ def list_item_problem(setting, item):
         return "Each entry must be text."
     if len(item) > LIST_ITEM_MAX or _CONTROL.search(item):
         return f"Entries are at most {LIST_ITEM_MAX} characters, on one line."
+    if item.startswith("@"):
+        return "Entries cannot start with @ (argparse would read the rest as a file of arguments)."
     fmt = setting.get("format")
     if fmt and not re.fullmatch(LIST_FORMATS.get(fmt, r"(?!)"), item):
         return f"{item[:40]!r} is not a valid {fmt.replace('_', ' ')}."
@@ -143,24 +145,51 @@ def _lint_setting(setting):
 
 
 _CODE_SPAN = re.compile(r"`([^`\n]+)`")
-_COMMAND = re.compile(r"^\s*(?:python3?|bash|sh|zsh|curl|wget|node|npx|git)\b")
-_QUOTED_VALUE = re.compile(r"\"[A-Z][A-Z0-9_]{2,}\"|'[A-Z][A-Z0-9_]{2,}'")
+_COMMAND_WORDS = r"(?:python3?|bash|sh|zsh|curl|wget|node|npx|git)\b"
+# A command starts the span, or follows && || ; | , and may be preceded by VAR=value assignments.
+_COMMAND_START = re.compile(r"(?:^|&&|\|\||;|\|)\s*(?:\w+=\S*\s+)*" + _COMMAND_WORDS)
+_QUOTED_VALUE = re.compile(r"\"(?:[A-Za-z_][A-Za-z0-9_]*|\{[^}\"]*\}|<[A-Z][A-Z0-9_]*>)\"|'(?:[A-Za-z_][A-Za-z0-9_]*|\{[^}']*\}|<[A-Z][A-Z0-9_]*>)'")
+_BRACED_VALUE = re.compile(r"\{\{?[A-Za-z_][^}\s]*\}\}?|<[A-Z][A-Z0-9_]*>")
+_BARE_PLACEHOLDER = re.compile(r"(?<![\w-])--?[\w-]+[ =]([A-Z][A-Z0-9_]{2,})(?![\w./-])")
+_PLACEHOLDER_FOR = re.compile(r"`(\w+)` as ([A-Z][A-Z0-9_]{2,})\b")
 _SHELL_EXPANSION = re.compile(r"\$\{|\$\(|\$[A-Za-z_]|`")
+# Bare placeholders the shipped templates use for numbers and today's date; a pack may add its own with
+# "`setting_name` as NAME" (see shell_interpolation_problems).
+_BARE_OK = {"DATE", "DAYS", "PAGES", "RUNS", "CAP", "WORDS", "DELAY", "LINKS", "FLAGAT", "AMOUNT", "SHOTS"}
 
 
-def shell_interpolation_problems(prompt_text):
-    """prompt.md lines that put a setting value inside a shell command: a quoted placeholder such as "WORKER", or a
-    shell expansion. Text values go in a file written with the file tool and are passed as @file; numbers may stay bare."""
-    problems = []
+def _command_lines(prompt_text):
+    """(line number, command text) for every command in an inline code span or a fenced code block."""
+    fenced = False
     for n, line in enumerate(prompt_text.splitlines(), 1):
-        for span in _CODE_SPAN.findall(line):
-            if not _COMMAND.match(span):
-                continue
-            if _QUOTED_VALUE.search(span) or _SHELL_EXPANSION.search(span):
-                problems.append(
-                    f"prompt.md line {n}: a command puts a setting value on the command line ({span[:60]!r}); "
-                    "write text values to a file and pass it as @file"
-                )
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        spans = [line.strip().removeprefix("$ ")] if fenced else _CODE_SPAN.findall(line)
+        for span in spans:
+            m = _COMMAND_START.search(span)
+            if m:
+                yield n, span[m.start():]
+
+
+def shell_interpolation_problems(prompt_text, number_settings=()):
+    """prompt.md lines that put a setting value inside a shell command: a quoted, braced or bare placeholder, or a
+    shell expansion. Text values go in a file written with the file tool and are passed as @file. A bare placeholder
+    is allowed only when the prompt says it stands for a non-list setting (number_settings names them) with
+    "`name` as PLACEHOLDER". Commands are found in inline code, in fenced blocks, and after && ; | or VAR=value."""
+    ok_bare = set(_BARE_OK)
+    for name, ph in _PLACEHOLDER_FOR.findall(prompt_text):
+        if name in number_settings:
+            ok_bare.add(ph)
+    problems = []
+    for n, cmd in _command_lines(prompt_text):
+        bare = [x for x in _BARE_PLACEHOLDER.findall(cmd) if x not in ok_bare]
+        if _QUOTED_VALUE.search(cmd) or _BRACED_VALUE.search(cmd) or _SHELL_EXPANSION.search(cmd) or bare:
+            problems.append(
+                f"prompt.md line {n}: a command puts a setting value on the command line ({cmd[:60]!r}); "
+                "write text values to a file and pass it as @file"
+            )
+    for n, line in enumerate(prompt_text.splitlines(), 1):
         if "Keep the double quotes around every setting value" in line:
             problems.append(f"prompt.md line {n}: quoting does not stop shell expansion; pass text values as @file")
     return problems
@@ -194,5 +223,6 @@ def lint(cfg, prompt_text):
             problems.append(f"prompt.md: missing untrusted-data clause ('{CLAUSE}')")
         if not any(l.startswith("Push rule:") for l in prompt_text.splitlines()):
             problems.append("prompt.md: missing a line starting 'Push rule:'")
-        problems += shell_interpolation_problems(prompt_text)
+        numbers = {x["name"] for x in cfg.get("setting", []) if isinstance(x, dict) and x.get("type") != "list" and "name" in x}
+        problems += shell_interpolation_problems(prompt_text, numbers)
     return problems

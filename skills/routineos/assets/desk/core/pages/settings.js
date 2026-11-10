@@ -30,6 +30,7 @@ export var LIST_ITEM_MAX = 300;
 export function checkListItem(entry, item) {
   if (typeof item !== "string" || !item.trim()) return "Each entry must be text.";
   if (item.length > LIST_ITEM_MAX || /[\u0000-\u001f\u007f]/.test(item)) return "Entries are at most " + LIST_ITEM_MAX + " characters, on one line.";
+  if (item.charAt(0) === "@") return "Entries cannot start with @ (argparse would read the rest as a file of arguments).";
   var fmt = entry.format;
   if (fmt && !(Object.prototype.hasOwnProperty.call(LIST_FORMATS, fmt) && new RegExp("^(?:" + LIST_FORMATS[fmt] + ")$").test(item))) {
     return JSON.stringify(item.slice(0, 40)) + " is not a valid " + String(fmt).replace(/_/g, " ") + ".";

@@ -296,7 +296,7 @@ class SelfImprovingTests(unittest.TestCase):
     def test_operate_points_to_improve(self):
         self.assertIn("](improve.md)", ref("operate.md"))
 
-    def test_plugin_version_is_0_11_0(self):
+    def test_plugin_version_matches_changelog_citation_and_pack(self):
         import json
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json"), encoding="utf-8") as fh:
             self.assertEqual(json.load(fh)["version"], "0.11.1")

@@ -252,6 +252,12 @@ test("checkSetting: a list with a format refuses what the format does not allow,
   expect(checkSetting({ name: "t", type: "list", format: "unknown_name" }, ["x"])).not.toBe("");
 });
 
+test("checkSetting: a list entry starting with @ is refused, with or without a format", () => {
+  expect(checkSetting({ name: "t", type: "list" }, ["@secret.txt"])).toMatch(/@/);
+  expect(checkSetting({ name: "u", type: "list", format: "https_url" }, ["@secret.txt"])).toMatch(/@/);
+  expect(checkSetting({ name: "t", type: "list" }, ["a at b"])).toBe("");
+});
+
 test("revert refuses a stored value the setting no longer allows and writes nothing", async () => {
   var defn = { types: DEFINITION.types, producers: [{ id: "scout", label: "Scout", types: ["roles"], schedule: "0 6 * * *",
     settings: [{ name: "pages", label: "Pages", type: "list", format: "https_url", default: [] }] }] };
