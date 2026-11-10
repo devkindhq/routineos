@@ -214,6 +214,58 @@
       ]
     },
     {
+      "id": "shopify-content-qa",
+      "version": "1.0.0",
+      "title": "Shopify content QA",
+      "summary": "Checks a Shopify store's public pages each day for missing descriptions, alt text, broken links, placeholder text, SEO gaps and price slips, and tracks what changed. It never edits the store.",
+      "category": "content",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 20 * * *",
+      "path": "shopify-content-qa.json",
+      "bytes": 84194,
+      "sha256": "9964d350a1c55f13d73962f059c3c33594e65df4017c62449b5b3dda65a342f4",
+      "connectors": [
+        {
+          "id": "storefront",
+          "label": "Your store's public pages",
+          "required": true
+        },
+        {
+          "id": "worker",
+          "label": "Your content QA Worker",
+          "required": false
+        },
+        {
+          "id": "browser",
+          "label": "Cloudflare Browser",
+          "required": false
+        }
+      ],
+      "inspiration": []
+    },
+    {
+      "id": "site-compliance-review",
+      "version": "1.0.0",
+      "title": "Site compliance review",
+      "summary": "Reviews a website's pages each day against a rule pack you supply, with a Clef model scoring every rule per page as the main verdict, flags wording that may breach a rule with severity, a screenshot and boxed notes, and tracks decisions. It never changes the site.",
+      "category": "content",
+      "maturity": "unpiloted",
+      "type": "watch",
+      "schedule": "0 21 * * *",
+      "path": "site-compliance-review.json",
+      "bytes": 98607,
+      "sha256": "3505d438f86332eadfff8f7a12dec907d9efab7288f55380bf521ea77d9c0dfb",
+      "connectors": [
+        {
+          "id": "worker",
+          "label": "Your review Worker",
+          "required": true
+        }
+      ],
+      "inspiration": []
+    },
+    {
       "id": "support-gap-digest",
       "version": "1.0.0",
       "title": "Support gap digest",
@@ -270,17 +322,22 @@
       "title": "Weekly marketing report",
       "summary": "Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves.",
       "category": "marketing",
-      "maturity": "unpiloted",
+      "maturity": "piloted",
       "type": "watch",
-      "schedule": "0 21 * * 0",
+      "schedule": "0 21 * * 4",
       "path": "weekly-marketing-report.json",
-      "bytes": 15425,
-      "sha256": "d6f753a2d98db8109cdcca3523c3998ad28afb230d130bdfbaab72f0fad3073c",
+      "bytes": 41107,
+      "sha256": "d74b74c160e19b2476bddc45dc447fc2ecd59a0fcab9b2eed19e77118a94ca22",
       "connectors": [
         {
           "id": "analytics",
-          "label": "Analytics and ad platforms",
-          "required": true
+          "label": "Google Analytics (GA4)",
+          "required": false
+        },
+        {
+          "id": "search",
+          "label": "Google Search Console",
+          "required": false
         },
         {
           "id": "web",

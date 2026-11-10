@@ -1,5 +1,7 @@
 # Pack schema reference
 
+Contents: top-level keys, routine, definition, desk, stages, connectors, files, content rules, catalog index, fetching.
+
 A routine pack is one JSON file that holds a whole routine: its settings, definition, prompt, stages, schedule, gates, learning and Desk. This page lists every key. The machine-readable versions are `catalog/schema/pack.v1.schema.json` and `catalog/schema/catalog.v1.schema.json` (JSON Schema draft 2020-12). The code in `skills/routineos/scripts/pack.py` is the source of truth, and a test checks that the schemas match it.
 
 Every object refuses keys it does not know. Duplicate keys at any level are refused. A pack is at most 512 KiB, and a catalog index at most 1 MiB.
@@ -51,13 +53,38 @@ A setting whose name says it holds who to contact (`recipient`, `approver`, `ema
 
 | Level | Keys |
 |---|---|
-| top | `version`, `label`, `inbox`, `types`, `views`, `learning` |
+| top | `version`, `label`, `inbox`, `types`, `views`, `learning`, `desk` |
 | type | `label`, `plural`, `identity`, `merge`, `fields`, `links`, `settingFilters` |
 | field | `label`, `type`, `summary`, `choices` |
 | setting filter | `setting`, `field` |
 | view | `id`, `type`, `name`, `filters`, `sort`, `columns`, `window`, `group` |
+| desk | `modules`, `health`, `record`, `pages` |
+| desk module | `id`, `kind`, `label`, `icon`, `view`, `fields` |
+| module view | `type`, `filters`, `window`, `sort`, `group`, `columns` |
+| desk spec page | `id`, `title`, `nav`, `controls`, `filter`, `blocks` |
+| spec page block | `id`, `kind` (`tile`, `chart`, `table`, `text`), `span`, and per kind: `label`, `title`, `heading`, `text`, `type`, `format`, `sparkline`, `columns`, `link`, `xLabel`, `yLabel`, `target`, `query` |
+| block query | `type`, `where`, `window`, `groupBy`, `x`, `aggregate`, `orderBy`, `limit` |
 
 The definition must compile with `definition.compile`, which applies the never-learnable rule (a setting whose name contains `push`, `gate`, `send`, `alert`, `permission`, `budget`, `maxruns` or `capoverride` cannot be bound while learning is on) and the Inbox cap rule.
+
+### `desk`
+
+Optional. `desk.modules` lists the routine's view modules: extra sidebar entries under an entity type, each a fixed
+view over that type. `kind` is `view`. `id` matches `^[a-z][a-z0-9-]{1,31}$`, is unique across the workspace, is
+not a page id and contains no never-learnable word. `label` is required (40 characters at most, no em dashes or
+banned words); `icon` is a nav icon name. `view.type` names a type; `filters.tag` and `filters.source` may be a
+list, matching any value. `fields` maps a field of that type to a component id that draws its cell. No key named
+`script`, `html`, `js`, `code`, `template` or `style`, or ending in `Html`, is allowed at any depth. A pack never
+carries page code: modules are data, and the Desk draws them. A definition without `desk` compiles exactly as before.
+`routineos desk module add view <id> --routine <dir> --type <type>` adds one; `routineos desk lint` checks them.
+
+`desk.pages` lists spec pages: declarative pages of tiles, charts, tables and text that the Desk draws at
+`#/p/<id>` from entities it has already read. A spec page is data, so the lint refuses the same code keys as
+modules. Each block's `query` names a declared entity `type` and the Desk computes the numbers; the spec carries
+none. `controls` may list `refresh`, `dateRange` and `filter` (the last needs `filter: {field, label}`). Chart
+`type` is one of `sparkline`, `line`, `bar`, `stackedBar`, `shareBar`; `format` is `number`, `percent` or
+`currency`; `span` is `{base, md}`, each 1 to 12. An aggregate over a field needs a number field, except `count`.
+This is not `routine.toml [desk] pages = true`, which turns on code pages. Say "spec page" for `desk.pages`.
 
 ## `stages`
 

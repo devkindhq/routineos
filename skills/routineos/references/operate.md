@@ -36,7 +36,7 @@ For any change: read, classify, threat re-check, apply, verify, record.
 5. Verify with a report-only run; ask the person to check.
 6. Record one line in `CHANGELOG.md`; update `risks.md` and the manifest.
 
-Learned suggestions (a routine with a `learning` block) arrive on the Desk's Suggestions page, one item each, for the person to accept, reject or snooze. The routine still never applies them itself. See [improve](improve.md).
+Learned suggestions (a routine with a `learning` block) arrive on the Desk's Approvals page under Proposals, one item each, for the person to accept, reject or snooze. The routine still never applies them itself. See [improve](improve.md).
 
 Patterns: tune from feedback (aggregate with code, model only explains); add a routine; chain routines through the store; routine as a workflow step (one routine's output reaches another through the store by default; the API trigger is an option [docs] with the token held as a network secret, and calling it from a run is [unverified]); add an integration (connector first, read-only test before any write); change the Desk (publish in a session, not from a run [docs]); move mechanical steps to code with the saving shown; move storage only after an export and a tested connection [unverified].
 

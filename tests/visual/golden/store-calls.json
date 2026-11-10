@@ -1,0 +1,69 @@
+{
+  "approve": {
+    "reads": [],
+    "writes": [
+      "decisions/*"
+    ]
+  },
+  "reject": {
+    "reads": [],
+    "writes": [
+      "decisions/*"
+    ]
+  },
+  "accept": {
+    "reads": [
+      "settings"
+    ],
+    "writes": [
+      "decisions/*",
+      "settings/*"
+    ]
+  },
+  "snooze": {
+    "reads": [],
+    "writes": [
+      "decisions/*"
+    ]
+  },
+  "keep view": {
+    "reads": [],
+    "writes": [
+      "views/*"
+    ]
+  },
+  "save view": {
+    "reads": [],
+    "writes": [
+      "views/*"
+    ]
+  },
+  "pin": {
+    "reads": [],
+    "writes": [
+      "data/users/*/state/pin/*"
+    ]
+  },
+  "star": {
+    "reads": [],
+    "writes": [
+      "userstate/*"
+    ]
+  },
+  "column change": {
+    "reads": [],
+    "writes": [
+      "columns/*"
+    ]
+  },
+  "setting change": {
+    "reads": [
+      "settings",
+      "settingsHistory"
+    ],
+    "writes": [
+      "settings/*",
+      "settingsHistory/*"
+    ]
+  }
+}

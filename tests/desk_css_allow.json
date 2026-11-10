@@ -1,0 +1,7 @@
+[
+  {
+    "path": "app/zoomlock.js",
+    "count": 1,
+    "why": "touch-action pan-x pan-y on the root stops pinch zoom on touch screens; no Mantine prop sets it on the document element"
+  }
+]

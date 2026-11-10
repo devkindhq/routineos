@@ -14,6 +14,7 @@ import appmodel  # noqa: E402
 import bundle_desk  # noqa: E402
 import definition  # noqa: E402
 import desk_contract  # noqa: E402
+import desk_registry  # noqa: E402
 import join_card  # noqa: E402
 import join_flow  # noqa: E402
 import learn  # noqa: E402
@@ -194,9 +195,9 @@ CHANGELOG_TEMPLATE = '''# Changelog: {name}
 '''
 
 SCRIPTS = os.path.dirname(os.path.abspath(__file__))
+SKILL_ROOT = os.path.dirname(SCRIPTS)
 TEMPLATES = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(SCRIPTS))), "templates")
 DESK_HTML = os.path.join(os.path.dirname(SCRIPTS), "assets", "desk", "index.html")
-CONFIG_RE = re.compile(r'(<script type="application/json" id="desk-config">)(.*?)(</script>)', re.S)
 TEMPLATE_FILES = ("routine.toml", "prompt.md", "README.md", "definition.json")
 
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -221,14 +222,45 @@ def _template_files(name):
     return out
 
 
-def desk_page(workspace_name):
-    """The bundled Desk with its config block pointing at the artifact db and naming the workspace."""
+class DeskPageError(Exception):
+    """A routine's custom components failed the lint, so no page was built."""
+
+    def __init__(self, problems):
+        super().__init__("; ".join(problems))
+        self.problems = problems
+
+
+def desk_page(workspace_name, routine_dir=None, tour=None):
+    """The built Desk (assets/desk/index.html) with its config block pointing at the artifact db and naming the
+    workspace, and the plugin version filled in.
+
+    When `routine_dir` has a desk/components/ folder, that routine's components are inserted, sorted by id, after the
+    routine's own component lint passes (DeskPageError otherwise).
+    """
+    comps = []
+    if routine_dir and os.path.isdir(os.path.join(routine_dir, desk_registry.COMPONENTS_DIR)):
+        problems = desk_registry.lint_routine_only(SKILL_ROOT, routine_dir)
+        if problems:
+            raise DeskPageError(problems)
+        stale = desk_registry.unapproved_extensions(routine_dir)
+        if stale:
+            raise DeskPageError([f"component '{i}': not approved, or changed since it was approved; review it and run "
+                                 f"`routineos permissions <dir> --approve`" for i in stale])
+        for c in sorted(desk_registry.custom_components(routine_dir), key=lambda c: c["id"]):
+            comps.append(bundle_desk.component_js(c["id"], c["factory"], _read(os.path.join(c["path"], c["id"] + ".js")), c))
     with open(DESK_HTML, encoding="utf-8") as fh:
         html = fh.read()
-    config = json.dumps({"store": "db", "workspace": workspace_name})
-    # Escaped so no value can close the script block it is written into.
-    config = config.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return CONFIG_RE.sub(lambda m: m.group(1) + config + m.group(3), html, count=1)
+    cfg = {"store": "db", "workspace": workspace_name}
+    if tour is not None:
+        cfg["tour"] = tour
+    return bundle_desk.inject(html, cfg, bundle_desk.plugin_version(), comps)
+
+
+def desk_split_files(workspace_name, routine_dir=None, tour=None):
+    """The artifact folder for a routine: {published path: text}. Split mode is gone, so it is the one page
+    (desk_page's bytes) and files.json listing it."""
+    return {"index.html": desk_page(workspace_name, routine_dir=routine_dir, tour=tour),
+            "files.json": json.dumps(["index.html"]) + "\n"}
 
 
 def _q(text):
@@ -333,7 +365,7 @@ def cmd_new(args):
             files["definition.json"] = json.dumps(dict(DEFINITION_TEMPLATE, label=args.name), indent=2) + "\n"
     try:
         if "definition.json" in files:
-            files["dashboard/index.html"] = desk_page(args.name)
+            files["dashboard/index.html"] = desk_page(args.name, routine_dir=target)
         os.makedirs(target)
         for fname, text in files.items():
             path = os.path.join(target, fname)
@@ -420,6 +452,15 @@ def _routine_problems(d):
     return problems
 
 
+def _in_plugin_repo():
+    """True when run from inside the plugin's own git checkout, where the skill-root registry lint belongs."""
+    repo = os.path.realpath(os.path.dirname(os.path.dirname(SKILL_ROOT)))
+    if not os.path.exists(os.path.join(repo, ".git")):
+        return False
+    here = os.path.realpath(os.getcwd())
+    return here == repo or here.startswith(repo + os.sep)
+
+
 def cmd_lint(args):
     d = args.dir
     if not os.path.isdir(d):
@@ -437,9 +478,236 @@ def cmd_lint(args):
         return fail(str(exc))
     if os.path.isfile(os.path.join(d, "app.toml")):
         problems += _app_problems(d)
+    if _in_plugin_repo():
+        problems += desk_registry.lint(SKILL_ROOT, None if multi else d)
+    elif multi:
+        for rd in routine_dirs(d):
+            label = os.path.relpath(rd, d)
+            problems += [f"{label}: {p}" for p in desk_registry.lint_routine_only(SKILL_ROOT, rd)]
+    else:
+        problems += desk_registry.lint_routine_only(SKILL_ROOT, d)
     if problems:
         for p in problems:
             print(f"FAIL {appmodel.redact(p)}")
+        return 1
+    print("ok: no problems")
+    return 0
+
+
+DESK_DEFAULTS = os.path.join(os.path.dirname(SCRIPTS), "assets", "desk", "modules", "defaults.json")
+
+
+def _desk_definition(routine):
+    """(definition dict, path) of a routine folder; raises DefinitionError."""
+    path = os.path.join(routine, "definition.json")
+    return definition.load(path), path
+
+
+def cmd_desk_components(args):
+    reg = desk_registry.load(SKILL_ROOT, args.routine)
+    if args.json:
+        print(json.dumps(reg, indent=2))
+    elif args.markdown:
+        print(desk_registry.markdown(reg), end="")
+    else:
+        for c in reg.get("components", []):
+            print(f"{c.get('id')}  {c.get('kind')}  {c.get('summary')}")
+    return 0
+
+
+def cmd_desk_modules(args):
+    with open(DESK_DEFAULTS, encoding="utf-8") as fh:
+        modules = json.load(fh)["modules"]
+    if args.routine:
+        try:
+            defn, _ = _desk_definition(args.routine)
+        except definition.DefinitionError as exc:
+            return fail(str(exc))
+        desk = defn.get("desk")
+        if isinstance(desk, dict) and isinstance(desk.get("modules"), list):
+            modules = modules + desk["modules"]
+    if args.json:
+        print(json.dumps(modules, indent=2))
+    else:
+        for m in modules:
+            print(f"{m.get('id')}  {m.get('kind')}  {m.get('label')}")
+    return 0
+
+
+def cmd_desk_module_add(args):
+    try:
+        defn, path = _desk_definition(args.routine)
+    except definition.DefinitionError as exc:
+        return fail(str(exc))
+    module = {"id": args.id, "kind": args.kind, "label": args.label or args.id}
+    if args.icon:
+        module["icon"] = args.icon
+    module["view"] = {"type": args.type}
+    desk = defn.get("desk") if isinstance(defn.get("desk"), dict) else {}
+    modules = desk.get("modules") if isinstance(desk.get("modules"), list) else []
+    new_desk = dict(desk, modules=modules + [module])
+    problems = definition.lint_desk(new_desk, defn.get("types", {}))
+    if problems:
+        for p in problems:
+            print(f"FAIL {p}")
+        return 1
+    defn["desk"] = new_desk
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(json.dumps(defn, indent=2) + "\n")
+    print(f"ok: added view module '{args.id}' to {path}")
+    return 0
+
+
+COMPONENT_STUB = """/* {id}: a field cell component. Build DOM through ui factories; read data from props and ctx.store only. */
+function {factory}(ctx, props, ui) {{
+  var value = props.value === null || props.value === undefined ? "" : String(props.value);
+  return ui.el("span", {{}}, value);
+}}
+"""
+
+
+def cmd_desk_component_new(args):
+    cid = args.id
+    if not desk_registry.ID_RE.match(cid):
+        return fail(f"component id must match {desk_registry.ID_RE.pattern}")
+    if cid in {c.get("id") for c in desk_registry.load(SKILL_ROOT).get("components", [])}:
+        return fail(f"'{cid}' is a core component; use it, or choose another id")
+    target = os.path.join(args.routine, desk_registry.COMPONENTS_DIR, cid)
+    if os.path.exists(target):
+        return fail(f"{target} already exists, refusing to overwrite")
+    factory = desk_registry.factory_name(cid)
+    manifest = {"id": cid, "kind": "custom", "slot": "field-cell", "factory": factory,
+                "summary": f"Draws one field cell as {cid}.", "why": "", "fallback": "same",
+                "since": bundle_desk.plugin_version() or "0.9.0"}
+    try:
+        os.makedirs(target)
+        with open(os.path.join(target, "component.json"), "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(manifest, indent=2) + "\n")
+        with open(os.path.join(target, cid + ".js"), "w", encoding="utf-8") as fh:
+            fh.write(COMPONENT_STUB.format(id=cid, factory=factory))
+    except OSError as exc:
+        return fail(f"cannot create {target}: {exc}")
+    print(f"created {target}; write its why in component.json, then run routineos desk lint --routine {args.routine}")
+    return 0
+
+
+EXT_STUBS = {
+    "section": ("record-section", "a card on the record page"),
+    "panel": ("panel", "a card on Today"),
+    "page": ("page", "its own page"),
+}
+EXT_STUB_JS = """/* {id}: {where}. Read through ctx and props; write only through ctx.actions (decide, comment, saveField, drop, keep). */
+function {factory}(ctx, props, ui) {{
+  return ui.el("div", {{}}, {body});
+}}
+"""
+EXT_BODY = {
+    "record-section": 'ui.el("p", {}, "Record " + props.id)',
+    "panel": 'ui.el("p", {}, props.records.length + " records")',
+    "page": 'ui.el("p", {}, "Hello")',
+}
+
+
+def cmd_desk_scaffold(args):
+    slot, where = EXT_STUBS[args.kind]
+    cid = args.name
+    if not desk_registry.ID_RE.match(cid):
+        return fail(f"name must match {desk_registry.ID_RE.pattern}")
+    if cid in {c.get("id") for c in desk_registry.load(SKILL_ROOT).get("components", [])}:
+        return fail(f"'{cid}' is a core component; choose another name")
+    target = os.path.join(args.routine, desk_registry.COMPONENTS_DIR, cid)
+    if os.path.exists(target):
+        return fail(f"{target} already exists, refusing to overwrite")
+    manifest = {"id": cid, "kind": "custom", "slot": slot, "factory": desk_registry.factory_name(cid),
+                "summary": f"Draws {where}.", "why": "", "fallback": "same",
+                "since": bundle_desk.plugin_version() or "0.9.0"}
+    if slot == "record-section":
+        manifest["types"] = [args.type or ""]
+    elif slot == "panel":
+        manifest["view"] = {"type": args.type or "", "filters": []}
+    manifest["verbs"] = []
+    if slot in ("panel", "page"):
+        manifest["title"] = cid
+    if slot == "page":
+        manifest["nav"] = False
+    try:
+        os.makedirs(target)
+        with open(os.path.join(target, "component.json"), "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(manifest, indent=2) + "\n")
+        with open(os.path.join(target, cid + ".js"), "w", encoding="utf-8") as fh:
+            fh.write(EXT_STUB_JS.format(id=cid, where=where, factory=manifest["factory"], body=EXT_BODY[slot]))
+    except OSError as exc:
+        return fail(f"cannot create {target}: {exc}")
+    print(f"created {target}; write its why in component.json, then run routineos desk lint --routine {args.routine}")
+    if slot == "page":
+        print("a page also needs [desk] pages = true in the routine's routine.toml (not edited for you)")
+    if slot != "page" and not args.type:
+        print("set the entity type in component.json (--type was not given)")
+    return 0
+
+
+def cmd_desk_preview(args):
+    """A static preview of the Desk with this routine's components over a demo snapshot. Reads only: the static
+    store refuses every write, so a verb shows the Desk's read-only message instead of saving."""
+    problems = desk_registry.lint_routine_only(SKILL_ROOT, args.routine)
+    if problems:
+        for p in problems:
+            print(f"FAIL {p}")
+        return 1
+    snap = args.snapshot or os.path.join(args.routine, "demo", "desk-demo.json")
+    if not os.path.isfile(snap):
+        return fail(f"no demo data at {snap}; pass --snapshot FILE")
+    out = args.out or os.path.join(args.routine, "desk-preview")
+    try:
+        comps = [bundle_desk.component_js(c["id"], c["factory"], _read(os.path.join(c["path"], c["id"] + ".js")), c)
+                 for c in sorted(desk_registry.custom_components(args.routine), key=lambda c: c["id"])]
+        with open(DESK_HTML, encoding="utf-8") as fh:
+            html = fh.read()
+        page = bundle_desk.inject(html, {"store": "static", "snapshot": "snapshot.json"}, bundle_desk.plugin_version(), comps)
+        os.makedirs(out, exist_ok=True)
+        with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as fh:
+            fh.write(page)
+        shutil.copyfile(snap, os.path.join(out, "snapshot.json"))
+    except OSError as exc:
+        return fail(f"cannot write the preview: {exc}")
+    print(f"preview written to {out}; serve it with: python3 -m http.server --directory {out}")
+    print("missing: the preview is read-only (a verb shows the read-only message and saves nothing), and it shows your demo snapshot, not live data")
+    return 0
+
+
+def cmd_desk_component_copy(args):
+    src = os.path.join(args.src, desk_registry.COMPONENTS_DIR, args.id)
+    dst = os.path.join(args.to, desk_registry.COMPONENTS_DIR, args.id)
+    if not desk_registry.ID_RE.match(args.id) or not os.path.isdir(src):
+        return fail(f"no component '{args.id}' in {os.path.join(args.src, desk_registry.COMPONENTS_DIR)}")
+    if os.path.exists(dst):
+        return fail(f"{dst} already exists, refusing to overwrite")
+    try:
+        shutil.copytree(src, dst)
+    except OSError as exc:
+        return fail(f"cannot copy into {dst}: {exc}")
+    problems = desk_registry.lint_routine_only(SKILL_ROOT, args.to)
+    if problems:
+        for p in problems:
+            print(f"FAIL {p}")
+        print(f"copied to {dst}; fix the problems above before bundling")
+        return 1
+    print(f"ok: copied {args.id} to {dst}")
+    return 0
+
+
+def cmd_desk_lint(args):
+    problems = desk_registry.lint(SKILL_ROOT, args.routine)
+    if args.routine:
+        try:
+            defn, _ = _desk_definition(args.routine)
+        except definition.DefinitionError as exc:
+            return fail(str(exc))
+        if "desk" in defn:
+            problems += [f"definition.json: {p}" for p in definition.lint_desk(defn["desk"], defn.get("types", {}))]
+    if problems:
+        for p in problems:
+            print(f"FAIL {p}")
         return 1
     print("ok: no problems")
     return 0
@@ -571,7 +839,19 @@ def cmd_permissions(args):
     records, err = _load_registry()
     if err:
         return fail(err)
-    sys.stdout.write(permission.render(app, registry.by_id(records)))
+    rows = []
+    per = {}
+    for rd in routine_dirs(args.dir):
+        per[rd] = desk_registry.extension_rows(rd)
+        rows += per[rd]
+    sys.stdout.write(permission.render(app, registry.by_id(records), rows))
+    if getattr(args, "approve", False):
+        if any(r.get("invalid") for r in rows):
+            return fail("not approved: a component is INVALID")
+        for rd, rrows in per.items():
+            if rrows:
+                desk_registry.write_approvals(rd, rrows)
+        print("approved: the code shown above is recorded by hash; any later change needs a new approval.")
     return 0
 
 
@@ -1196,8 +1476,61 @@ def cmd_learn(args):
     return 0
 
 
+def _workspace_name(routine):
+    """routine.toml [workspace].name, else [routine].name."""
+    cfg = schema.load(os.path.join(routine, "routine.toml"))
+    ws = cfg.get("workspace") if isinstance(cfg.get("workspace"), dict) else {}
+    return ws.get("name") or cfg["routine"]["name"]
+
+
 def cmd_bundle(args):
-    return bundle_desk.main(["--check"] if args.check else [])
+    if args.split and not args.routine:
+        return fail("--split needs --routine")
+    if not args.routine:
+        return bundle_desk.main(["--check"] if args.check else [])
+    if args.check:
+        return fail("--check works on the core bundle only; leave out --routine")
+    if not os.path.isfile(os.path.join(args.routine, "routine.toml")):
+        return fail(f"not a routine folder (no routine.toml): {args.routine}")
+    if args.split:
+        return _bundle_split(args.routine)
+    try:
+        html = desk_page(_workspace_name(args.routine), routine_dir=args.routine)
+    except schema.SchemaError as exc:
+        return fail(str(exc))
+    except DeskPageError as exc:
+        for p in exc.problems:
+            print(f"FAIL {p}")
+        return 1
+    except (bundle_desk.BundleError, OSError) as exc:
+        return fail(str(exc))
+    out = os.path.join(args.routine, "dashboard", "index.html")
+    try:
+        bundle_desk.write_guarded(args.routine, os.path.dirname(out), {"index.html": html})
+    except bundle_desk.BundleError as exc:
+        return fail(str(exc))
+    except OSError as exc:
+        return fail(f"cannot write {out}: {exc}")
+    print(f"ok: wrote {out} ({len(html.encode('utf-8'))} bytes)")
+    return 0
+
+
+def _bundle_split(routine):
+    out = os.path.join(routine, "dashboard", "artifact")
+    try:
+        files = desk_split_files(_workspace_name(routine), routine_dir=routine)
+        bundle_desk.write_guarded(routine, out, files, manifest=True)
+    except schema.SchemaError as exc:
+        return fail(str(exc))
+    except DeskPageError as exc:
+        for p in exc.problems:
+            print(f"FAIL {p}")
+        return 1
+    except (bundle_desk.BundleError, OSError) as exc:
+        return fail(str(exc))
+    print("Split mode is gone; wrote one file.")
+    print(f"ok: wrote {os.path.join(out, 'index.html')}; publish it as the page, root = {out}")
+    return 0
 
 
 def _load_pack(src):
@@ -1243,7 +1576,7 @@ def cmd_pack_install(args):
         return 1
     target = args.dir or p["id"]
     try:
-        written = routine_pack.install(p, target, desk_html=desk_page)
+        written = routine_pack.install(p, target, desk_html=lambda name: desk_page(name, routine_dir=target))
     except FileExistsError as exc:
         return fail(str(exc))
     except (OSError, routine_pack.PackError) as exc:
@@ -1490,12 +1823,59 @@ def main(argv=None):
     l = sub.add_parser("lint", help="check a routine folder")
     l.add_argument("dir")
     l.set_defaults(fn=cmd_lint)
+    dk = sub.add_parser("desk", help="Desk components and modules")
+    dks = dk.add_subparsers(dest="desk_cmd", required=True)
+    dc = dks.add_parser("components", help="list the component registry")
+    dc.add_argument("--routine", help="routine folder (its custom components join the list)")
+    dcf = dc.add_mutually_exclusive_group()
+    dcf.add_argument("--json", action="store_true", help="print the registry as JSON")
+    dcf.add_argument("--markdown", action="store_true", help="print the generated block of desk-components.md")
+    dc.set_defaults(fn=cmd_desk_components)
+    dm = dks.add_parser("modules", help="list the default page modules and a routine's view modules")
+    dm.add_argument("--routine", help="routine folder with a definition.json")
+    dm.add_argument("--json", action="store_true", help="print the modules as JSON")
+    dm.set_defaults(fn=cmd_desk_modules)
+    dmo = dks.add_parser("module", help="add a view module to a routine's definition.json")
+    dmo.add_argument("action", choices=("add",))
+    dmo.add_argument("kind", choices=("view",))
+    dmo.add_argument("id")
+    dmo.add_argument("--routine", required=True, help="routine folder with a definition.json")
+    dmo.add_argument("--type", required=True, help="entity type the view lists")
+    dmo.add_argument("--label", help="sidebar label (default: the id)")
+    dmo.add_argument("--icon", help="a nav icon name")
+    dmo.set_defaults(fn=cmd_desk_module_add)
+    dco = dks.add_parser("component", help="scaffold or copy a routine's custom field cell component")
+    dcos = dco.add_subparsers(dest="component_cmd", required=True)
+    dcn = dcos.add_parser("new", help="scaffold component.json and a stub .js under <routine>/desk/components/<id>")
+    dcn.add_argument("id")
+    dcn.add_argument("--routine", required=True, help="routine folder")
+    dcn.set_defaults(fn=cmd_desk_component_new)
+    dcc = dcos.add_parser("copy", help="copy a custom component between routines and lint the target")
+    dcc.add_argument("id")
+    dcc.add_argument("--from", dest="src", required=True, help="routine folder that has the component")
+    dcc.add_argument("--to", required=True, help="routine folder to copy it into")
+    dcc.set_defaults(fn=cmd_desk_component_copy)
+    dsc = dks.add_parser("scaffold", help="scaffold an agent-written record section, panel or page")
+    dsc.add_argument("kind", choices=tuple(EXT_STUBS))
+    dsc.add_argument("name")
+    dsc.add_argument("--routine", required=True, help="routine folder")
+    dsc.add_argument("--type", help="entity type the section or panel is for")
+    dsc.set_defaults(fn=cmd_desk_scaffold)
+    dpv = dks.add_parser("preview", help="write a read-only static preview of a routine's components over demo data")
+    dpv.add_argument("--routine", required=True, help="routine folder")
+    dpv.add_argument("--snapshot", help="demo snapshot JSON (default: <routine>/demo/desk-demo.json)")
+    dpv.add_argument("--out", help="output folder (default: <routine>/desk-preview)")
+    dpv.set_defaults(fn=cmd_desk_preview)
+    dl = dks.add_parser("lint", help="check the registry, and a routine's desk modules")
+    dl.add_argument("--routine", help="routine folder with a definition.json")
+    dl.set_defaults(fn=cmd_desk_lint)
     d = sub.add_parser("doctor", help="check the environment, and optionally an app folder or a store snapshot")
     d.add_argument("dir", nargs="?")
     d.add_argument("--docs", help="JSON snapshot {path: {version, data}} to check against store limits")
     d.set_defaults(fn=cmd_doctor)
     pm = sub.add_parser("permissions", help="print the permission screen for an app folder")
     pm.add_argument("dir")
+    pm.add_argument("--approve", action="store_true", help="record the shown component code as approved (the owner's act)")
     pm.set_defaults(fn=cmd_permissions)
     pf = sub.add_parser("platform", help="list capability records or check an app's relies_on ids")
     pf.add_argument("action", choices=("list", "check"))
@@ -1578,8 +1958,10 @@ def main(argv=None):
     lr.add_argument("--worker", metavar="LANE_KEY", help="a joined worker's learning: writes workers/<laneKey>--learning only")
     lr.add_argument("--by", help="with --worker: the joiner's user id, as on workers/<laneKey>")
     lr.set_defaults(fn=cmd_learn)
-    b = sub.add_parser("bundle", help="bundle the Desk sources into assets/desk/index.html")
-    b.add_argument("--check", action="store_true", help="exit 1 if the bundle on disk is stale")
+    b = sub.add_parser("bundle", help="check the built Desk, or write a routine's Desk page")
+    b.add_argument("--check", action="store_true", help="exit 1 if assets/desk/index.html is stale")
+    b.add_argument("--routine", help="routine folder: write <DIR>/dashboard/index.html with its custom components")
+    b.add_argument("--split", action="store_true", help="with --routine: write <DIR>/dashboard/artifact/index.html and files.json for artifact publishing")
     b.set_defaults(fn=cmd_bundle)
     pk = sub.add_parser("pack", help="validate, install, export and list routine packs; build the template catalog")
     pks = pk.add_subparsers(dest="pack_cmd", required=True)

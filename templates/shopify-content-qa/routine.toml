@@ -1,0 +1,102 @@
+[routine]
+name = "shopify-content-qa"
+type = "watch"
+schedule = "0 20 * * *"  # UTC, daily; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "shopify-content-qa"
+template_version = 1
+
+[[setting]]
+name = "store_url"
+type = "list"
+label = "Store URL (required, first entry is used)"
+example = "https://your-store.com"
+default = []
+cost_note = "no extra cost; the run stops with an Inbox message until this is set"
+
+[[setting]]
+name = "fetch_mode"
+type = "choice"
+label = "How pages are fetched"
+choices = ["direct", "worker"]
+default = "direct"
+cost_note = "direct needs no Worker; worker adds screenshots on your own Cloudflare account"
+
+[[setting]]
+name = "worker_url"
+type = "list"
+label = "Worker URL (worker mode only)"
+example = "https://content-qa.example.workers.dev"
+default = []
+cost_note = "no extra cost to the routine; the Worker runs on your Cloudflare account"
+
+[[setting]]
+name = "max_pages"
+type = "number"
+label = "Pages read per run"
+default = 200
+min = 1
+max = 2000
+cost_note = "more pages mean a longer run and more requests to the store"
+
+[[setting]]
+name = "request_delay_ms"
+type = "number"
+label = "Pause between requests (ms)"
+default = 1000
+min = 250
+max = 10000
+cost_note = "no extra cost; a longer pause is gentler on the store and makes the run longer"
+
+[[setting]]
+name = "max_link_checks"
+type = "number"
+label = "Links and images checked per run"
+default = 100
+min = 0
+max = 1000
+cost_note = "each check is one request to the store"
+
+[[setting]]
+name = "thin_description_words"
+type = "number"
+label = "Thin description under (words)"
+default = 30
+min = 1
+max = 1000
+cost_note = "no extra cost; a higher value means more flags"
+
+[[setting]]
+name = "restricted_phrases"
+type = "list"
+label = "Restricted phrases"
+example = "risk free"
+default = []
+cost_note = "no extra cost; empty keeps the restricted wording check off"
+
+[[setting]]
+name = "max_screenshots"
+type = "number"
+label = "Screenshots per run"
+default = 0
+min = 0
+max = 50
+cost_note = "0 is off; each screenshot uses browser time on your Cloudflare account"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 10
+min = 0
+max = 30
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = false

@@ -62,7 +62,10 @@ Commands run as `python3 skills/routineos/scripts/routineos.py <cmd>`.
 5. **Platform check**: `platform check <dir>` prints each capability id in `[risks].relies_on` with its registry status, marks stale records, and exits non-zero on conflict or broken (shown on the permission screen; the person decides). `platform list` shows the registry.
 6. **Permission screen**: `permissions <dir>` prints every app, host, connector, schedule, secret name, cost ceiling and unverified reliance in plain words. Nothing is created until the person says yes.
 7. **Doctor**: `doctor [dir]` checks the environment (Python 3.11 for `tomllib`) and an app folder.
-8. **Desk**: `seed <dir> --out <batch-dir>` plans the one-time setup, `write` plans a run's writes, `learn` plans its learned suggestions, `bundle` builds the Desk. Publish the page privately first.
+8. **Desk**: `seed <dir> --out <batch-dir>` plans the one-time setup, `write` plans a run's writes, `learn` plans its learned suggestions, `bundle` builds the Desk as one file, `dashboard/index.html`, the form to publish (`--split` is an alias that writes the same one file to `dashboard/artifact/`). Publish the page privately first.
+   Before writing any Desk code run `desk components --routine <dir>` and read [desk-components](references/desk-components.md).
+   Order of preference: a default module, then a view module (`desk module add view <id> --routine <dir> --type <type>`), then a spec page (`desk.pages`, data only), then a custom field cell component, then a code page. See [desk-pages](references/desk-pages.md).
+   `desk lint --routine <dir>` checks the registry and the routine's modules; `lint` runs the registry check too.
 9. **Deploy and first run** as in [deploy](references/deploy.md): create the routine, run it once report-only, have the person check the output.
 
 `prompt <gate-email|gate-slack|action-queue|adapter-contract|app-header>` prints a gate, queue, adapter or app header fragment.

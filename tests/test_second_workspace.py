@@ -16,6 +16,7 @@ DESK = os.path.join(ROOT, "skills", "routineos", "assets", "desk", "index.html")
 DEMO = os.path.join(ROOT, "templates", "jobs-watch", "demo", "desk-demo.json")
 sys.path.insert(0, SCRIPTS)
 
+import bundle_desk  # noqa: E402
 import desk_contract as dc  # noqa: E402
 
 NAME = "jobs-nz"
@@ -133,7 +134,7 @@ class SecondWorkspaceTests(unittest.TestCase):
     def test_dashboard_is_the_bundled_desk_with_its_own_config(self):
         config = re.compile(r'(<script type="application/json" id="desk-config">)(.*?)(</script>)', re.S)
         page = self.file(self.ws, "dashboard", "index.html")
-        desk = self.file(DESK)
+        desk = self.file(DESK).replace(bundle_desk.VERSION_MARK, bundle_desk.plugin_version())
         self.assertEqual(config.sub("", page), config.sub("", desk))
         m = config.search(page)
         if m is None:

@@ -12,6 +12,7 @@ CLI = os.path.join(SCRIPTS, "routineos.py")
 FIX = os.path.join(ROOT, "tests", "fixtures")
 sys.path.insert(0, SCRIPTS)
 
+import bundle_desk  # noqa: E402
 import schema  # noqa: E402
 
 
@@ -180,7 +181,8 @@ def read(path):
 
 class NewDashboardTests(unittest.TestCase):
     def test_watch_and_interactive_get_definition_and_desk(self):
-        bundle = read(DESK)
+        # The committed page carries the version mark; the CLI fills in the plugin version (bundle_desk.inject).
+        bundle = read(DESK).replace(bundle_desk.VERSION_MARK, bundle_desk.plugin_version())
         for typ in ("watch", "interactive"):
             with tempfile.TemporaryDirectory() as tmp:
                 target = os.path.join(tmp, "demo")

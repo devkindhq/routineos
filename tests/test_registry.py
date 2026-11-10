@@ -23,6 +23,9 @@ REQUIRED_IDS = {
     "python-isolated-ignores-cwd", "run-merges-status-doc", "seek-bot-challenge-via-browser-connector",
     "run-reads-shared-artifact-db", "run-writes-shared-artifact-db",
     "desk-db-path-rules",
+    "user-can-data-write-commenter",
+    "desk-comments-path-rule",
+    "desk-native-comment-composer",
 }
 
 

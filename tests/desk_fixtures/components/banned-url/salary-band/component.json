@@ -1,0 +1,11 @@
+{
+  "id": "salary-band",
+  "kind": "custom",
+  "slot": "field-cell",
+  "factory": "component_salary_band",
+  "summary": "Shows a min and max range as a short bar with labels.",
+  "why": "No registry component shows a numeric range; badge and table only show single values.",
+  "wa": [],
+  "fallback": "same",
+  "since": "0.9.0"
+}

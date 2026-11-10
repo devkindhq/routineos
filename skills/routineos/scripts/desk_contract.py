@@ -8,6 +8,7 @@ import copy
 import hashlib
 import json
 import re
+import sys
 import unicodedata
 
 import definition
@@ -25,7 +26,19 @@ DROPPED_NOTE = "dropped by person"
 MAX_PERSON_REASON = 200
 REASON_STRIP = ("Cc", "Cf", "Cs", "Zl", "Zp")
 MAX_CHANGED_LISTED = 20
-HUMAN_PREFIXES = ("settings/", "userstate/", "decisions/", "merges/", "settingsHistory/", "data/users/", "people/")
+HUMAN_PREFIXES = ("settings/", "userstate/", "decisions/", "merges/", "settingsHistory/", "data/users/", "people/",
+                  "comments/", "requests/")
+MAX_COMMENT_TEXT = 4000
+MAX_NOTE_TEXT = 2000
+MAX_NOTE_TITLE = 200
+MAX_NOTES = 50
+MAX_PROCESSED = 200
+MAX_PROCESSED_TEXT = 500
+PROCESSED_OUTCOMES = ("applied", "not_applied")
+MAX_DECISION_NOTE = 2000
+NOTE_KINDS = ("info", "red", "warn", "ok")
+# The artifact's own asset url form (spec 7b): /assets/<32 hex>, optionally with a file extension.
+CAPTURE_IMAGE_RE = re.compile(r"^/(?:assets|_blob)/[0-9a-f]{32}(?:\.[a-z0-9]{1,5})?$")
 CREATE_ONLY_PREFIXES = ("views/", "columns/")
 PRIVATE_PREFIXES = ("userstate/", "data/users/")
 INBOX_KEYS = ("kind", "title", "why", "actions", "proposal", "gate")
@@ -40,10 +53,22 @@ WORKER_GATE_ID_RE = re.compile(
     r"--g[1-9][0-9]*$")
 RUN_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 PERSON_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+# meta/lock (spec 7e): the PIN privacy screen. The Desk page computes it with Web Crypto; it is not access control.
+LOCK_KEYS = {"salt", "hash", "iterations", "algo", "setAt", "setBy"}
+LOCK_MIN_ITERATIONS = 100000
+LOCK_MAX_ITERATIONS = 10000000  # above this, checking the PIN would hang the tab
+LOCK_SALT_RE = re.compile(r"^(?:[0-9a-f]{2}){8,64}$")
+LOCK_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
+ISO_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?Z$")
 # The Desk's db access rules (db.d.ts, contract 0.2.93), declared when the Desk is published. meta/ is written
 # only by the artifact's own owner, so meta/owner cannot be planted by anyone else. people/<id>/ is written only
 # by the person whose user id is <id> (nobody else, the owner included), so the path, not a `by` field anyone
 # could type, says who made a decision there. Worker lane decisions (verified, release, gate approvals) live there.
+# Comments ride the same people/{self} rule, at people/<id>/comments/ (a {self} rule covers its whole subtree, seen
+# live), so Contributor and up comment and the path says who wrote a comment; a `by` field is never believed. There is
+# no comments rule: the platform refuses a `write: "view"` rule at publish, and a {self} segment must be the last one.
+# A Commenter or Viewer therefore writes no shared data at all. Comments an earlier Desk wrote flat at comments/ are
+# read as unverified and never used for identity.
 DESK_DB_RULES = [
     {"path": "meta", "read": "view", "write": "owner"},
     {"path": "people", "read": "view", "write": "self"},
@@ -186,6 +211,144 @@ def _worker_path_ok(op, lk):
     return False
 
 
+def _num(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def validate_capture(value):
+    """An entity's capture (spec 7b) cleaned, and the problems found. Absent gives (None, []).
+
+    A foreign image url, a bad box or kind is dropped from the clean copy (and listed in problems);
+    the notes stay, so the Desk can still show them as a list.
+    """
+    if value is None:
+        return None, []
+    if not isinstance(value, dict):
+        return None, ["capture must be an object"]
+    clean, problems = {}, []
+    image = value.get("image")
+    if image is not None:
+        if isinstance(image, str) and CAPTURE_IMAGE_RE.match(image):
+            clean["image"] = image
+        else:
+            problems.append("capture.image dropped: not an asset url of this artifact")
+    if isinstance(value.get("capturedAt"), str) and ISO_UTC_RE.match(value["capturedAt"]):
+        clean["capturedAt"] = value["capturedAt"]
+    if _whole(value.get("width")) and value["width"] > 0:
+        clean["width"] = value["width"]
+    notes = value.get("notes", [])
+    if not isinstance(notes, list):
+        problems.append("capture.notes must be a list")
+        notes = []
+    clean["notes"] = []
+    for i, note in enumerate(notes[:MAX_NOTES]):
+        if not isinstance(note, dict) or not isinstance(note.get("text", note.get("title")), str):
+            problems.append(f"capture.notes[{i}] dropped: needs a title or text")
+            continue
+        out = {"id": str(note.get("id") or f"n{i + 1}")[:64]}
+        for key, cap in (("title", MAX_NOTE_TITLE), ("text", MAX_NOTE_TEXT)):
+            if isinstance(note.get(key), str):
+                if len(note[key]) > cap:
+                    problems.append(f"capture.notes[{i}].{key} cut to {cap} characters")
+                out[key] = note[key][:cap]
+        if "kind" in note:
+            if note["kind"] in NOTE_KINDS:
+                out["kind"] = note["kind"]
+            else:
+                problems.append(f"capture.notes[{i}].kind dropped: one of {', '.join(NOTE_KINDS)}")
+        if "box" in note:
+            box = note["box"]
+            if isinstance(box, list) and len(box) == 4 and all(_num(b) and 0 <= b <= 1 for b in box):
+                out["box"] = list(box)
+            else:
+                problems.append(f"capture.notes[{i}].box dropped: four fractions from 0 to 1")
+        clean["notes"].append(out)
+    if len(notes) > MAX_NOTES:
+        problems.append(f"capture.notes cut to {MAX_NOTES}")
+    return clean, problems
+
+
+def validate_processed(value):
+    """A run's report of processed requests (spec 7a) cleaned, and the problems found. Absent gives (None, []).
+
+    An entry without a string request or with an unknown outcome is dropped; long text is cut to 500
+    characters; past 200 entries the list is cut.
+    """
+    if value is None:
+        return None, []
+    if not isinstance(value, list):
+        return None, ["processed must be a list"]
+    problems, clean = [], []
+    if len(value) > MAX_PROCESSED:
+        problems.append(f"processed cut to {MAX_PROCESSED}")
+    for i, entry in enumerate(value[:MAX_PROCESSED]):
+        if not isinstance(entry, dict) or not isinstance(entry.get("request"), str) or not entry["request"]:
+            problems.append(f"processed[{i}] dropped: needs a request id")
+            continue
+        if entry.get("outcome") not in PROCESSED_OUTCOMES:
+            problems.append(f"processed[{i}] dropped: outcome is one of {', '.join(PROCESSED_OUTCOMES)}")
+            continue
+        out = {"request": entry["request"][:MAX_PROCESSED_TEXT], "outcome": entry["outcome"]}
+        if len(entry["request"]) > MAX_PROCESSED_TEXT:
+            problems.append(f"processed[{i}].request cut to {MAX_PROCESSED_TEXT} characters")
+        for key in ("reason", "result"):
+            if key not in entry:
+                continue
+            if not isinstance(entry[key], str):
+                problems.append(f"processed[{i}].{key} dropped: must be text")
+                continue
+            if len(entry[key]) > MAX_PROCESSED_TEXT:
+                problems.append(f"processed[{i}].{key} cut to {MAX_PROCESSED_TEXT} characters")
+            out[key] = entry[key][:MAX_PROCESSED_TEXT]
+        clean.append(out)
+    return clean, problems
+
+
+def validate_decision(data):
+    """Problems with a decision doc's optional note (spec 7g): text of at most 2,000 characters."""
+    if not isinstance(data, dict) or "note" not in data:
+        return []
+    note = data["note"]
+    if not isinstance(note, str):
+        return ["decision note must be text"]
+    if len(note) > MAX_DECISION_NOTE:
+        return [f"decision note is over {MAX_DECISION_NOTE} characters"]
+    return []
+
+
+def comment_id(entity, viewer, at):
+    """The id an earlier Desk gave a flat comment, <entityId>--<viewerId>--<ts36> (spec 7d): the time in ms since the epoch,
+    in base 36. New comments live at people/<viewerId>/comments/<entityId>--<ts36>; this reads old ones."""
+    from datetime import datetime
+    n = int(datetime.fromisoformat(at.replace("Z", "+00:00")).timestamp() * 1000)
+    digits, out = "0123456789abcdefghijklmnopqrstuvwxyz", ""
+    while n:
+        n, r = divmod(n, 36)
+        out = digits[r] + out
+    return f"{entity}--{viewer}--{out or '0'}"
+
+
+def check_lock(data):
+    """Raise ContractError unless data is a meta/lock document: {salt, hash, iterations, algo, setAt, setBy}."""
+    if not isinstance(data, dict):
+        raise ContractError("meta/lock must be an object")
+    if set(data) != LOCK_KEYS:
+        raise ContractError("meta/lock must have exactly " + ", ".join(sorted(LOCK_KEYS)))
+    if not isinstance(data["salt"], str) or not LOCK_SALT_RE.match(data["salt"]):
+        raise ContractError("meta/lock salt must be 8 to 64 bytes of lowercase hex")
+    if not isinstance(data["hash"], str) or not LOCK_HASH_RE.match(data["hash"]):
+        raise ContractError("meta/lock hash must be 32 bytes of lowercase hex")
+    it = data["iterations"]
+    if not isinstance(it, int) or isinstance(it, bool) or not LOCK_MIN_ITERATIONS <= it <= LOCK_MAX_ITERATIONS:
+        raise ContractError(f"meta/lock iterations must be a whole number from {LOCK_MIN_ITERATIONS} to {LOCK_MAX_ITERATIONS}")
+    if data["algo"] != "PBKDF2-SHA-256":
+        raise ContractError("meta/lock algo must be PBKDF2-SHA-256")
+    if not isinstance(data["setAt"], str) or not ISO_UTC_RE.match(data["setAt"]):
+        raise ContractError("meta/lock setAt must be an ISO time in UTC")
+    if not isinstance(data["setBy"], str) or not PERSON_ID_RE.match(data["setBy"]):
+        raise ContractError("meta/lock setBy must be a person id")
+
+
 def guard(ops, worker=None):
     """Refuse writes outside the caller's side of the contract.
 
@@ -208,6 +371,8 @@ def guard(ops, worker=None):
             raise ContractError(f"refusing to write {path}: only a lane's worker writes this path")
         if path == "meta/owner":
             raise ContractError("refusing to write meta/owner: only the Desk page writes it")
+        if path == "meta/lock" and op.get("op") != "delete":
+            check_lock(op.get("data"))
         if path.startswith(HUMAN_PREFIXES):
             raise HumanPathError(f"refusing to write {path}: people own this path")
         if path.startswith(CREATE_ONLY_PREFIXES) and (op["op"] == "delete" or op.get("if_version") is not None):
@@ -566,6 +731,12 @@ class _Plan:
         fields = dict(doc.get("agentFields", {}), **rec.get("agentFields", {}))
         doc["agentFields"] = {k: v for k, v in fields.items() if k in cols}
         doc["lastRun"] = self.run_id
+        if "capture" in rec:
+            capture, problems = validate_capture(rec["capture"])
+            for problem in problems:
+                print(f"{path}: {problem}", file=sys.stderr)
+            if capture is not None:
+                doc["capture"] = capture
         if _bytes(doc) > MAX_DOC_BYTES:
             raise ContractError(f"entity {eid} would be {_bytes(doc)} bytes, over the 256 KiB document limit")
         outcomes[eid] = (outcome, reason)
@@ -721,6 +892,11 @@ def plan_run(defn, docs, run_input):
         changed=changed[:MAX_CHANGED_LISTED], inboxWritten=written, inboxSuppressed=suppressed,
         inboxFiltered=filtered,
     )
+    if "processed" in inp:
+        processed, problems = validate_processed(inp["processed"])
+        for problem in problems:
+            print(f"{p.run_path}: {problem}", file=sys.stderr)
+        summary["processed"] = processed or []
     summary_ops = [p.op(p.run_path, summary)]
     p.proposals(summary_ops)
     phases += _chunks("summary", summary_ops)

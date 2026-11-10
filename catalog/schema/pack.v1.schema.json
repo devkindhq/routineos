@@ -357,6 +357,24 @@
               "type": "integer"
             }
           }
+        },
+        "desk": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "modules": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/module"
+              }
+            },
+            "pages": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          }
         }
       }
     },
@@ -574,6 +592,128 @@
         },
         "group": {
           "type": "string"
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "label",
+        "view"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,31}$"
+        },
+        "kind": {
+          "const": "view"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "icon": {
+          "enum": [
+            "house",
+            "inbox",
+            "badge-check",
+            "history",
+            "settings",
+            "list",
+            "dot",
+            "building-2",
+            "briefcase",
+            "user",
+            "users",
+            "video",
+            "file-text",
+            "mail",
+            "message-square",
+            "calendar",
+            "receipt",
+            "tag",
+            "folder",
+            "newspaper",
+            "git-pull-request",
+            "chart-line",
+            "circle-help",
+            "rss",
+            "file-search",
+            "package",
+            "globe",
+            "link"
+          ]
+        },
+        "view": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "filters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "q": {},
+                "status": {},
+                "starred": {},
+                "tag": {},
+                "source": {},
+                "reason": {},
+                "fields": {
+                  "type": "object"
+                }
+              }
+            },
+            "window": {
+              "enum": [
+                "all",
+                "week",
+                "month",
+                "last-month"
+              ]
+            },
+            "sort": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "dir": {
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ]
+                }
+              }
+            },
+            "group": {
+              "type": "string"
+            },
+            "columns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,31}$"
+          }
         }
       }
     },

@@ -1,0 +1,92 @@
+[routine]
+name = "site-compliance-review"
+type = "watch"
+schedule = "0 21 * * *"  # UTC, daily; minimum interval is 1 hour
+first_run = "report-only"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+template = "site-compliance-review"
+template_version = 1
+
+[[setting]]
+name = "site_url"
+type = "list"
+label = "Site URL (required, first entry is used)"
+example = "https://www.example.com"
+default = []
+cost_note = "no extra cost; the run stops with an Inbox message until this is set"
+
+[[setting]]
+name = "sitemap_url"
+type = "list"
+label = "Sitemap URL (first entry; empty means <site>/sitemap.xml)"
+example = "https://www.example.com/sitemap.xml"
+default = []
+cost_note = "no extra cost; the run checks that your Worker reads this sitemap"
+
+[[setting]]
+name = "worker_url"
+type = "list"
+label = "Review Worker URL (required, first entry is used)"
+example = "https://review.example.com"
+default = []
+cost_note = "no extra cost to the routine; the Worker runs on your Cloudflare account"
+
+[[setting]]
+name = "include_draft_rules"
+type = "toggle"
+label = "Also run draft rules"
+default = false
+cost_note = "no extra cost; draft rules usually raise more flags to review"
+
+[[setting]]
+name = "max_pages_per_run"
+type = "number"
+label = "Captures read per run"
+default = 200
+min = 1
+max = 2000
+cost_note = "more captures mean a longer run; the Worker decides how many pages it captures"
+
+[[setting]]
+name = "max_screenshots"
+type = "number"
+label = "Screenshots attached per run"
+default = 10
+min = 0
+max = 50
+cost_note = "each screenshot is one download and one upload to the Desk's asset store"
+
+[[setting]]
+name = "max_runs_per_day"
+type = "number"
+label = "Runs allowed per day"
+default = 2
+min = 1
+max = 24
+cost_note = "a run over this cap stops before reading anything"
+
+[[setting]]
+name = "max_inbox_per_run"
+type = "number"
+label = "Inbox messages per run"
+default = 10
+min = 0
+max = 30
+cost_note = "no extra cost; more messages ask more of your attention"
+
+[gate]
+enabled = false
+
+[[setting]]
+name = "clef_flag_at"
+type = "number"
+label = "Clef flag line (percent)"
+default = 70
+min = 1
+max = 100
+cost_note = "no extra cost; a lower line flags more pages, and it applies to captures made after the run that sends it"

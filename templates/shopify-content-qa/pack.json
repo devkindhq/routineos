@@ -1,0 +1,117 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "shopify-content-qa",
+  "version": "1.0.0",
+  "title": "Shopify content QA",
+  "summary": "Checks a Shopify store's public pages each day for missing descriptions, alt text, broken links, placeholder text, SEO gaps and price slips, and tracks what changed. It never edits the store.",
+  "category": "content",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "stages": [
+    {
+      "id": "discover",
+      "kind": "code",
+      "title": "Discover pages",
+      "does": "Reads the home page, the sitemap, the public products.json feed and each page on the store host, with a pause between requests; never-read and least recently read pages go first under the cap. STORE is store_url, PAGES max_pages, DELAY request_delay_ms, LINKS max_link_checks; in worker mode it fetches through your Worker.",
+      "command": "python3 lib/discover.py --store STORE --out pages.json --max-pages PAGES --delay-ms DELAY --max-link-checks LINKS --docs snapshot.json --producer shopify-content-qa",
+      "connectors": [
+        "storefront",
+        "worker"
+      ]
+    },
+    {
+      "id": "check",
+      "kind": "code",
+      "title": "Check content",
+      "does": "Applies the editable rule pack in lib/rules.json; WORDS is thin_description_words.",
+      "command": "python3 lib/qa_checks.py --pages pages.json --rules lib/rules.json --out issues.json --thin-words WORDS --restricted restricted.json"
+    },
+    {
+      "id": "shots",
+      "kind": "code",
+      "title": "Screenshots (worker mode)",
+      "does": "Queues captures on your own Worker and reads short-lived links; off unless max_screenshots is above 0.",
+      "command": "python3 lib/worker_shots.py --worker WORKER --issues issues.json --max SHOTS --out shots.json",
+      "connectors": [
+        "worker"
+      ]
+    },
+    {
+      "id": "look",
+      "kind": "model",
+      "title": "Look (direct mode, optional)",
+      "does": "May view a few pages with high issues through the browser connector and add a note to the Inbox; never changes an issue.",
+      "connectors": [
+        "browser"
+      ]
+    },
+    {
+      "id": "track",
+      "kind": "code",
+      "title": "Track changes",
+      "does": "Compares with stored pages and issues, honours decisions and builds records and the Inbox; CAP is max_inbox_per_run.",
+      "command": "python3 lib/track.py --pages pages.json --issues issues.json --docs snapshot.json --producer shopify-content-qa --max-inbox CAP --out run-part.json"
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "storefront",
+      "label": "Your store's public pages",
+      "kind": "http",
+      "purpose": "Read the home page, sitemap, products.json feed, pages and product JSON on the store host.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "discover"
+      ],
+      "connect": "Add the store host to the environment's allowed domains. No login or key is used."
+    },
+    {
+      "id": "worker",
+      "label": "Your content QA Worker",
+      "kind": "http",
+      "purpose": "Fetch store pages through your Worker in worker mode and read screenshot links and notes; queuing a capture changes nothing on the store.",
+      "required": false,
+      "access": "read",
+      "stages": [
+        "discover",
+        "shots"
+      ],
+      "connect": "Deploy worker/ from the repository, then add its host to the allowed domains and its token as a network secret."
+    },
+    {
+      "id": "browser",
+      "label": "Cloudflare Browser",
+      "kind": "mcp",
+      "purpose": "View a few pages as screenshots without deploying a Worker.",
+      "required": false,
+      "access": "read",
+      "stages": [
+        "look"
+      ],
+      "alternatives": [
+        "Cloudflare Browser MCP server"
+      ],
+      "connect": "Add the Cloudflare Browser MCP server as a connector."
+    }
+  ]
+}

@@ -10,3 +10,5 @@ The facts moved to the capability registry, which is the single source.
 Tags used when speaking to the person: pilot (checked by a real run), docs (read in official docs), unverified (not checked, do not promise), call (the author's judgement).
 
 Always search the live docs when a decision depends on a current limit. The registry holds only core caveats and may be stale. Do not copy registry values into other files; read the registry.
+
+Spec pages and the native comment composer have registry records (`desk-native-comment-composer`, status unverified). Do not promise the composer to a person; say it is unverified, and that no publisher in this repo declares the capability.

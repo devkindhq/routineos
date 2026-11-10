@@ -118,5 +118,332 @@
   ],
   "learning": {
     "enabled": true
+  },
+  "desk": {
+    "pages": [
+      {
+        "id": "overview",
+        "title": "Overview",
+        "nav": {
+          "label": "Overview",
+          "icon": "chart-line"
+        },
+        "controls": [
+          "refresh",
+          "dateRange",
+          "filter"
+        ],
+        "filter": {
+          "field": "source",
+          "label": "Source"
+        },
+        "blocks": [
+          {
+            "id": "sessions",
+            "kind": "tile",
+            "label": "Sessions",
+            "span": {
+              "base": 12,
+              "md": 4
+            },
+            "format": "number",
+            "sparkline": true,
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "sessions"
+                ]
+              ],
+              "x": "week",
+              "aggregate": {
+                "op": "latest",
+                "field": "value"
+              }
+            }
+          },
+          {
+            "id": "conversions",
+            "kind": "tile",
+            "label": "Conversions",
+            "span": {
+              "base": 12,
+              "md": 4
+            },
+            "format": "number",
+            "sparkline": true,
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "conversions"
+                ]
+              ],
+              "x": "week",
+              "aggregate": {
+                "op": "latest",
+                "field": "value"
+              }
+            }
+          },
+          {
+            "id": "revenue",
+            "kind": "tile",
+            "label": "Revenue",
+            "span": {
+              "base": 12,
+              "md": 4
+            },
+            "format": "currency",
+            "sparkline": true,
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "revenue"
+                ]
+              ],
+              "x": "week",
+              "aggregate": {
+                "op": "latest",
+                "field": "value"
+              }
+            }
+          },
+          {
+            "id": "clicks",
+            "kind": "tile",
+            "label": "Search clicks",
+            "span": {
+              "base": 12,
+              "md": 4
+            },
+            "format": "number",
+            "sparkline": true,
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "clicks"
+                ]
+              ],
+              "x": "week",
+              "aggregate": {
+                "op": "latest",
+                "field": "value"
+              }
+            }
+          },
+          {
+            "id": "impressions",
+            "kind": "tile",
+            "label": "Search impressions",
+            "span": {
+              "base": 12,
+              "md": 4
+            },
+            "format": "number",
+            "sparkline": true,
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "impressions"
+                ]
+              ],
+              "x": "week",
+              "aggregate": {
+                "op": "latest",
+                "field": "value"
+              }
+            }
+          },
+          {
+            "id": "position",
+            "kind": "tile",
+            "label": "Average position",
+            "span": {
+              "base": 12,
+              "md": 4
+            },
+            "format": "number",
+            "sparkline": true,
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "position"
+                ]
+              ],
+              "x": "week",
+              "aggregate": {
+                "op": "latest",
+                "field": "value"
+              }
+            }
+          },
+          {
+            "id": "sessions-trend",
+            "kind": "chart",
+            "type": "line",
+            "title": "Sessions by source",
+            "span": {
+              "base": 12,
+              "md": 6
+            },
+            "xLabel": "Week",
+            "yLabel": "Sessions",
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "sessions"
+                ]
+              ],
+              "x": "week",
+              "groupBy": "source",
+              "aggregate": {
+                "op": "sum",
+                "field": "value"
+              },
+              "window": "range"
+            }
+          },
+          {
+            "id": "clicks-trend",
+            "kind": "chart",
+            "type": "line",
+            "title": "Search clicks by source",
+            "span": {
+              "base": 12,
+              "md": 6
+            },
+            "xLabel": "Week",
+            "yLabel": "Clicks",
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "clicks"
+                ]
+              ],
+              "x": "week",
+              "groupBy": "source",
+              "aggregate": {
+                "op": "sum",
+                "field": "value"
+              },
+              "window": "range"
+            }
+          },
+          {
+            "id": "impressions-trend",
+            "kind": "chart",
+            "type": "line",
+            "title": "Search impressions by source",
+            "span": {
+              "base": 12,
+              "md": 6
+            },
+            "xLabel": "Week",
+            "yLabel": "Impressions",
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "impressions"
+                ]
+              ],
+              "x": "week",
+              "groupBy": "source",
+              "aggregate": {
+                "op": "sum",
+                "field": "value"
+              },
+              "window": "range"
+            }
+          },
+          {
+            "id": "conversions-stack",
+            "kind": "chart",
+            "type": "stackedBar",
+            "title": "Conversions by source",
+            "span": {
+              "base": 12,
+              "md": 6
+            },
+            "xLabel": "Week",
+            "yLabel": "Conversions",
+            "query": {
+              "type": "metric",
+              "where": [
+                [
+                  "name",
+                  "==",
+                  "conversions"
+                ]
+              ],
+              "x": "week",
+              "groupBy": "source",
+              "aggregate": {
+                "op": "sum",
+                "field": "value"
+              },
+              "window": "range"
+            }
+          },
+          {
+            "id": "audit-pages",
+            "kind": "table",
+            "title": "Audited pages",
+            "span": {
+              "base": 12
+            },
+            "columns": [
+              "url",
+              "title",
+              "checked",
+              "issues"
+            ],
+            "link": true,
+            "query": {
+              "type": "audit",
+              "orderBy": [
+                "checked",
+                "desc"
+              ],
+              "limit": 10
+            }
+          },
+          {
+            "id": "read-me",
+            "kind": "text",
+            "heading": "About this page",
+            "text": "Numbers come from the last weekly run. Each tile shows the last full week (Monday to Sunday) against the week before. Position is an average, and lower is better. Use Refresh to read the data again.",
+            "span": {
+              "base": 12
+            }
+          }
+        ]
+      }
+    ]
   }
 }

@@ -1,7 +1,7 @@
 [routine]
 name = "weekly-marketing-report"
 type = "watch"
-schedule = "0 21 * * 0"  # UTC, Sunday; minimum interval is 1 hour
+schedule = "0 21 * * 4"  # UTC, Thursday; minimum interval is 1 hour
 first_run = "report-only"
 
 [store]
@@ -17,8 +17,24 @@ name = "sources"
 type = "list"
 role = "include"
 label = "Data sources"
-default = ["analytics", "search-ads", "social-ads"]
-cost_note = "each source is one more read from the analytics connector"
+default = ["analytics", "search"]
+cost_note = "analytics is one report, search is two queries"
+
+[[setting]]
+name = "ga_property"
+type = "list"
+label = "GA4 property"
+example = "properties/123456789"
+default = []
+cost_note = "the first entry is read; no extra cost"
+
+[[setting]]
+name = "search_site"
+type = "list"
+label = "Search Console site"
+example = "sc-domain:example.com"
+default = []
+cost_note = "the first entry is read; no extra cost"
 
 [[setting]]
 name = "pages_to_audit"

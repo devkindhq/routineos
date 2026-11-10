@@ -1,0 +1,15 @@
+{
+  "id": "review-page",
+  "kind": "custom",
+  "slot": "page",
+  "factory": "component_review_page",
+  "summary": "A review queue page with an approve button for the first record.",
+  "why": "No registry component or view module draws a queue with a decision button beside each record.",
+  "fallback": "same",
+  "since": "0.9.0",
+  "title": "Review queue",
+  "nav": true,
+  "verbs": [
+    "decide"
+  ]
+}

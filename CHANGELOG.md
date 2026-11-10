@@ -1,6 +1,61 @@
 # Changelog
 
-## Unreleased
+## 0.11.0
+
+### Added
+
+- Desk spec pages: `desk.pages` in `definition.json` declares pages of tiles, charts (sparkline, line, bar, stacked bar, share bar), tables and text, drawn at `#/p/<id>` from entities the Desk has read. The lint refuses code keys, undeclared types and fields, aggregates over non-number fields and id collisions with built-in pages and modules. Controls: Refresh, date range and a filter. Each chart has a show-as-table toggle, an accessible summary and a visible notice when the read was capped. See `references/desk-pages.md`.
+- Desk: charts use `@mantine/charts` 9.7.5 with `recharts` 3.10.1. The gzip budget for `single/index.html` rises to cover them (each raise has a `raise_reason` in `tests/desk_budgets.json`); the cap agreed for this release is 521,723 bytes.
+- Desk: Refresh works in a static Desk (`staticStore.reload()` re-fetches the snapshot), spec pages show "Updated", and a page refreshes once after the next scheduled run when the cron parses.
+- Desk: a Commenter comments through the platform composer (`claude.use("comments")`) when the published Desk declares `comments: {composer_only: true}`; the Desk cannot list those threads. The declaration is documented but no publisher in this repo declares it, so this is unverified end to end. Registry record `desk-native-comment-composer`, status unverified.
+- Desk spec pages: dropped records are excluded, a previous window with less than a full period of data shows "no change data", skipped non-number values are counted on the block, a bad `range` or a block that cannot be drawn no longer blanks the page, and windows are limited to 3660 days or 520 weeks. The code host now checks the body of a `ui.block` for script, frames, event handlers and non-https links.
+- Desk code pages: allow-listed SVG through `ui.el`, `ui.block(spec, records)` for core blocks, a page-slot `ctx.list` that reads past 50 records with a `capped` flag, and a 64 KiB size limit per component in the lint.
+
+### Changed
+
+- `site-compliance-review` and `shopify-content-qa` `lib/` fetchers (`fetch_results.py`, `fetch_shots.py`, `worker_shots.py`) no longer follow a redirect from the Worker URL; a redirect is an error, so a Worker or store setting that redirects cannot send the fetcher to another host.
+- `site-compliance-review` Worker: the screenshot and scrape calls now pass `allowRequestPattern`, so the browser loads only https requests to `ALLOWED_HOSTS` (and data: URLs). This closes a gap where the redirect-free status check and the browser's own navigation were separate requests, so a page could send the browser to another host. Pages that load assets from other hosts need those hosts added to `ALLOWED_HOSTS`.
+- `weekly-marketing-report` template: runs on Thursday 21:00 UTC, and a new `lib/weeks.py` step gives every source the same explicit Monday to Sunday weeks (the last completed one and the one before). It reads Google Analytics 4 through one read-only `runReport` call (two explicit date ranges) and a new `lib/ga_weeks.py` step that splits the response into this-week.json and last-week.json. New `ga_property` setting. A second source, `search`, reads Google Search Console through two read-only queries (the same two weeks) and a new `lib/gsc_weeks.py` (`merge`), with a new `search_site` setting; the `sources` default is `analytics` and `search`. The prompt limits the run to report tools. The Desk overview page gains Search clicks, Search impressions and Average position tiles and line charts of clicks and impressions by week, and drops the sessions share chart; the demo snapshot covers the search metrics. Piloted: run end to end twice in a cloud routine on a live site, report-only.
+
+### Known issues
+
+- List settings (for example `pages_to_audit`) are not validated by the Desk or the routines, and a routine prompt may pass a value to a shell command. On a Desk with other writers (a shared or joined Desk), someone who can write `settings/` could put a crafted value there. A Desk only its owner can write is not affected. Until this is fixed, share a Desk's write access only with people you trust, and read the settings values on the Desk before a run. Planned for 0.11.1: per-template checks on list values, quoting, and a lint rule against interpolating setting values into shell commands.
+
+## 0.10.0
+
+### Added
+
+- `site-compliance-review` template (unpiloted, watch): reviews a website's pages against a swappable rule pack (`lib/rules.json`) and records flags with severity, a screenshot and boxed capture notes, tracks them across runs and honours Keep and Drop decisions. Captures come from a Cloudflare Worker in the template's `worker/` folder (repository only, not in the pack) that reads the sitemap daily and captures pages with Browser Run. Clef on Workers AI (default `@cf/cloudflare/clef-flash`, Worker vars `USE_CLEF`, `CLEF_MODEL`, `CLEF_FLAG_AT`, `CLEF_IMAGE`) scores every rule on each capture and is the main verdict engine: a score at or above the flag line is a flag, a rule hit Clef scores low stays a flag marked needs review, and Clef off or failing leaves the rule flags unchanged. Flags carry `origin`, `clef_score` and `needs_review`; the Desk adds Clef verdicts and Needs review views, and an optional repository-only `clef-card` record section. The Clef endpoint shape is unverified, image input untested and the flag line uncalibrated.
+- `site-compliance-review`: a `clef_flag_at` setting (percent, default 70) that the run pushes to the Worker's new `POST /config` (stored in R2; precedence stored config, then the `CLEF_FLAG_AT` var, then 0.7; `GET /summary` shows `flagAt` and `flagAtSource`); no boxes on a screenshot whose width is not a whole multiple of the 1280 viewport; a recapture without a new image keeps the page's previous screenshot, and an uploaded asset url is stored as `/_blob/<id>`, the form that loads for viewers (observed on one host); `MAX_NEW_PER_SYNC` now ships at 5 for a small fresh start; new entries in `risks.md`.
+- `ui.markdown(text, {marks, clamp, onlyMarked})` for record sections, panels and pages: text as Markdown elements (headings as `h3` and `h4`, lists, bold, italic, code, quotes, tables), raw HTML shown as text, images as alt text, https links only, optional case-insensitive `mark` highlighting and block-level filtering. The allowed tags and attributes are unchanged; the component lint's `on*` key check now lets the option key `onlyMarked` through. The Desk gzip budget for `single/index.html` rises from 364500 to 364600 bytes.
+- Desk: a viewer who may not write shared data (a Commenter or Viewer, when the platform answers `user.can("data.write")` false) sees Save view, Approve, Decline, Mark reviewed, Remind me, Run now, Retry, Mark seen, the Decision control, star, notes and the comment box disabled with the reason "Saving needs Contributor access or above", in place of a save that fails. When the platform does not answer, the controls stay enabled and a refused write shows "Not saved", as before.
+- Desk: the columns a viewer picks on a list are kept per viewer (`data/users/<id>/state/cols/<type>`, or this device's storage for a viewer who cannot write) and come back when the list is reopened. The address `cols=` wins, then a saved view's columns, then the personal choice, then the defaults. "Reset columns" in the Columns menu clears it.
+- Desk: the last route is remembered per viewer and opened when the Desk is opened with no address (for a host that does not show the Desk's own address). In a frame the Desk uses a slash-free address, `#d--<piece>--<piece>...` (letters, digits and hyphens only, other characters written as `-` and two hex digits), because the host passes only a plain `#name` to its own address bar (observed on one host page, not a `#/path`). `#/...` is still accepted, an explicit address of either form wins over the saved route, and Copy link in a frame copies the slash-free address (the page address itself is not available to the Desk) and says to put it after the page address.
+- Test harness: `fakeClaude` takes `canWrite` (true, false, null) for `user.can("data.write")`.
+
+### Changed
+
+- The Desk is a React and Mantine app, prebuilt with Vite into one committed file (`assets/desk/index.html`) with everything inlined. It makes no network request of its own; only the store reaches the host. Routes, store calls and the custom component contract are unchanged. Pages keep their features but their markup and text are Mantine's, so the 0.8.1 and v2 text goldens describe the old Desk and are no longer compared (`tests/visual/golden/PROVENANCE.md`).
+- Browse behaviour that differs from the classic Desk:
+  - The peek shows the fields, the decision state, the Decision control and the comments. Drop from the peek opens the record page for its reason, and comments are written on the record page.
+  - On a joined Desk only the owner gets Keep, Drop and Restore in the bulk bar, as on the record page and in the peek.
+- `routineos bundle` writes one file. `--split` is kept as an alias: it writes the same file to `dashboard/artifact/` with a one-entry `files.json` and says split mode is gone.
+- The component registry describes the Desk's building blocks and pages by id and purpose. `desk component new` no longer writes a library key; a routine's `component.json` that still has one passes `desk lint` (the key is ignored).
+- Desk comments are written at `people/<viewer>/comments/<entity>--<ts36>`, under the existing `people/{self}` rule (no new db rule: the platform refuses `write: "view"` at publish, and a `{self}` segment must be the last one). Only the person in the path writes there, so the path says who wrote a comment; a `by` or `entity` field in the body is ignored. A comment never makes anyone a member or the owner of a record. Commenting is Contributor and up; a Commenter or Viewer sees the comment box disabled with the reason. The first comment also writes a marker document `people/<viewer>` so other visits can list the author (listing returns only real documents). A Desk published earlier needs a republish.
+- Whose comments the Desk reads is capped at 50 people (the viewer, the owner, the people collection, then names from decisions and settings in that order), because a Contributor can write any `by` and each name costs a subscription; names past the cap are not read.
+- Comments an earlier Desk wrote flat at `comments/` still show, marked unverified, are never used for identity and cannot be edited. Nothing migrates them.
+- `ownerOf` and `deriveMembers` no longer read comments: the owner shown for a record is the person who decided it, and Members lists only people from decisions and settings.
+
+### Removed
+
+- Split mode's lazy page loading and basic mode (`components=native`).
+- The classic Desk scripts in `assets/desk/src/`.
+
+## 0.9.0
+
+### Added
+
+- Desk icons `desk`, `improve` and `desk-mark`; the sidebar brand block shows the Desk mark.
 
 ### Changed
 

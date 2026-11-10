@@ -64,3 +64,11 @@ Append the `proposals.json` messages to the run's `inbox` before `write`, ahead 
 ## On the Desk
 
 Suggestions (`#/suggestions`, after Inbox) shows one card per proposal: the item line, the level label, the evidence, the why and the run, then Accept, Reject and Snooze. Decided and snoozed cards move to History, newest decision first; a snooze that has passed returns the card to the open list, and a snooze without `until` stays in History. Accept refuses a change that would leave an include list empty.
+
+## Views in the sidebar
+
+A producer may propose a saved view over a type it owns, with filters, in a run's `views` list. It lands on the
+Views page as an agent-made proposal and is never overwritten by a later run. When a person presses Keep, the view
+shows under that type in the sidebar, beside the type's view modules. That is the only way learning adds a filter,
+a saved view or a sidebar entry. Hiding a view module is a hand edit on the Settings page. No other learning path
+changes.

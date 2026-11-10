@@ -137,6 +137,28 @@ class BudgetTests(unittest.TestCase):
                        "Never estimate or invent a time"):
             self.assertIn(needle, text)
 
+    def test_header_reads_requests_and_never_lets_a_refused_run_touch_health(self):
+        with open(os.path.join(ASSETS, "app-prompt-header.md"), encoding="utf-8") as fh:
+            text = fh.read()
+        for needle in ("`requests/`", "`processed`", "run-now", "retry",
+                       "A refused or capped manual run never writes `state/health`"):
+            self.assertIn(needle, text)
+
+    def test_every_state_health_instruction_carves_out_a_capped_manual_request(self):
+        """The header must not tell a routine both to write state/health and never to. Each paragraph that sends a
+        run to state/health (the alert, the refused override, the last step) names the capped manual request
+        exception, and the Requests paragraph states it."""
+        with open(os.path.join(ASSETS, "app-prompt-header.md"), encoding="utf-8") as fh:
+            paras = [p for p in fh.read().split("\n\n") if "state/health" in p]
+        self.assertEqual(len(paras), 4)
+        marker = "capped manual request"
+        for p in paras:
+            self.assertIn(marker, p, p[:60])
+        last = [p for p in paras if p.startswith("Last step")][0]
+        self.assertIn("do not touch `state/health`", last)
+        refuse = [p for p in paras if p.startswith("Never run past")][0]
+        self.assertIn("`not_applied`", refuse)
+
     def test_prompt_fragment_app_header_prints(self):
         r = subprocess.run([sys.executable, SCRIPT, "prompt", "app-header"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)

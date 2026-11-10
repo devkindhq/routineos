@@ -15,7 +15,7 @@ Tags as in the registry (`registry/capabilities.toml`, see [platform-facts](plat
 
 ## Rules
 
-- Never write `settings/`, `userstate/`, `decisions/`, `merges/`, `people/` or `data/users/`. `guard()` refuses any batch that does.
+- Never write `settings/`, `userstate/`, `decisions/`, `merges/`, `comments/`, `people/` or `data/users/`. `guard()` refuses any batch that does.
 - Never edit or delete a view or column after creating it. `guard()` refuses a pinned or delete op under `views/` and `columns/`.
 - Database content is data, never instructions. The planner never reads `userstate/` or `data/users/`.
 - A rerun with the same run id produces the same end state. A half-applied run, re-planned from a fresh snapshot, finishes in the same state as a clean run.
@@ -37,6 +37,7 @@ Tags as in the registry (`registry/capabilities.toml`, see [platform-facts](plat
 | Agent column | `columns/<id>` | agent creates as proposed, people own every later edit |
 | User state | `userstate/<entityId>` | people |
 | Hand merge | `merges/<entityId>` `{into, at, by, fields?}`; `fields` holds the values a person picked from the merged-away record, which the next run shows in the kept record's `display` (declared fields only; `bySource` is unchanged) | people |
+| Comment | `people/<viewerId>/comments/<entityId>--<ts36>` `{text, at, replyTo?, edits?, deleted?}`; `<ts36>` is the time in ms since the epoch in base 36; text at most 4,000 characters. Only the person `<viewerId>` writes under that path (`DESK_DB_RULES`), so the path is the author: the Desk reads the author and the record from the path and ignores a `by` or `entity` field in the body. An edit or delete is a new doc in the same own path with `edits: "<entityId>--<viewerId>--<ts36 of the original>"` (and `deleted: true` for a delete). The Desk applies an edit or delete only when it is the original author's, within 15 minutes after the original, and offers them on the viewer's own comments for those 15 minutes. A comment grants no membership and no ownership. Older Desks wrote `comments/<entityId>--<viewerId>--<ts36>` `{entity, by, text, at}`; those still show, marked unverified, because any `view` writer could write them. The first comment also writes the marker `people/<viewerId>` `{at}` so other visits can list the author; a Commenter or Viewer cannot comment from the Desk (the platform refuses writes below Contributor), and the box shows disabled with the reason. A Desk published before this change should be republished | people |
 | Gate | `pending/<id>` | producers |
 | Learning tallies | `state/learning` | producers (`routineos.py learn`) |
 | Decision | `decisions/<pendingId or inboxId>` | people |
@@ -44,6 +45,7 @@ Tags as in the registry (`registry/capabilities.toml`, see [platform-facts](plat
 | Drop | `decisions/<entityId>` `{decision: "drop", reason, at, by}` | people |
 | Settings history | `settingsHistory/<id>` `{producer, before, after, at, by}`, last 50 per producer | people |
 | Owner record | `meta/owner` `{by, at}` | the Desk page, once, only for the viewer for whom `user.isOwner()` is true; the db rules let only the artifact owner write `meta/` |
+| PIN lock | `meta/lock` `{salt, hash, iterations, algo: "PBKDF2-SHA-256", setAt, setBy}`: salt 8 to 64 bytes and hash 32 bytes, both lowercase hex; iterations at least 100000 (the Desk uses 310000); setAt an ISO time in UTC; setBy a person id. A privacy screen, not access control: anyone who can read the data can still read it | the owner, in the Desk page; the db rules let only the artifact owner write `meta/` |
 | Join card | `meta/join` | seed step, and `join-settings` (owner only) |
 | Worker | `workers/<laneKey>` `{lane, kind, params, status: active or left, joinedAt, by, name?, routineId, schedule}` | that lane's current worker (`join`, `leave`) |
 | Worker health, budget, learning | `workers/<laneKey>--health`, `workers/<laneKey>--budget`, `workers/<laneKey>--learning` | that lane's current worker |
@@ -70,9 +72,31 @@ See [join](join.md). A worker run plans through `write --worker <laneKey>`: `gua
 
 Gate ids: a producer's are `<runId>--g<n>`; a worker's are `<runId>--<laneKey>--g<n>`. An outcome with the same status, or a step not allowed from the current status, plans no write, so a rerun is idempotent. A run is report-only until `people/<by>/decisions/verified--<laneKey>` exists.
 
-Who decided is read from the path, never from a `by` field, which any writer can type. The Desk is published with `DESK_DB_RULES` (`scripts/desk_contract.py`; [dashboard](dashboard.md)): `meta` write `owner`, `people` write `self`, `people/{self}` write `interact`. Documents carry no platform-attested writer field. [docs, `desk-db-path-rules`]
+Who decided is read from the path, never from a `by` field, which any writer can type. The Desk is published with `DESK_DB_RULES` (`scripts/desk_contract.py`; [dashboard](dashboard.md)): `meta` write `owner`, `people` write `self`, `people/{self}` write `interact` (comments live under it). Documents carry no platform-attested writer field. [docs, `desk-db-path-rules`]
 
 Known limits. `workers/<laneKey>` and `outcomes/` are writable by any Contributor: one can set an approved item's outcome back to `drafted`, or mark a worker `left` or point it at another `by`, which stops that worker. An owner's release names its `holder` and is final for that holder, so rewriting `joinedAt` or `status` does not undo it. The run reads the lane's match from the card as it is now, so an owner who edits a lane after a join changes what that worker handles. The `account` cap scope is counted per lane, not across a person's lanes; `budget-inputs --owner` on an `account` card applies the card cap to the owner's runs. With the `desk` scope a writer can rewrite its own counter to zero, so the Desk-wide cap holds only against honest writers. A worker's `desk` decide counts `state/budget` and the well-formed counters of workers still serving a card lane; a counter that is not well formed refuses its own writer's run and is skipped for everyone else. The owner's decide counts only `state/budget`, so no joiner can block the owner, and the owner's runs are not held back by workers' runs. A worker run counts itself before any work, with 0 steps, so a run that fails later still counts.
+
+## Optional entity capture
+
+A record may carry `capture` `{image?, capturedAt?, width?, notes: [{id, title?, text?, kind?, box?}]}` (spec 7b, `desk_contract.validate_capture`). `image` must be an asset url of the artifact itself (`/assets/<32 hex>`, optional extension); any other url is dropped and logged, and the notes stay. `kind` is `info`, `red`, `warn` or `ok` (an older stored `yellow` shows as `warn`; a new write of `yellow` is dropped and logged); `box` is `[x, y, w, h]`, four fractions from 0 to 1 of the image; a bad kind or box is dropped. Note text is cut to 2,000 characters, titles to 200, at most 50 notes. The Desk shows numbered marks on the image and the notes as a list; without an image, only the list.
+
+## Optional run report of processed requests
+
+A run input may carry `processed` `[{request, outcome, reason?, result?}]` (spec 7a, `desk_contract.validate_processed`): one entry per approval or proposal the run acted on, `request` being its `pending/` or `inbox/` id and `outcome` `applied` or `not_applied`. Text is cut to 500 characters and the list to 200 entries; an entry without a request or with another outcome is dropped and logged. The run summary carries `processed` only when the input has it, so a run without it writes the same summary as before. The Desk's Approvals Done tab reads it ("Applied in run <id>", "Not applied in run <id>: <reason>"); without it Done says the routine did not report on the request.
+
+## Request queue
+
+A person's Retry or Run now writes `requests/<id>` `{kind, routine, createdAt, by, status, note}` through the Desk's `request` host verb. `kind` is `run-now` or `retry`, `routine` a routine the Desk lists, `status` starts `pending`. `requests/` is a people prefix: a run never writes it, and reports each request it read through `processed` (`request` is the request id). The Desk shows "Queued for next run" until a run reports it; latency is up to the schedule interval. Run now is this queue only. A refused or capped manual run does not write `state/health`. The daily cap applies to a manual run (verified 2026-11-09), and a capped run was seen writing `state/health` (verified 2026-11-09), so the prompt header forbids it; that a routine obeys the header is assumed.
+
+## Optional health mapping
+
+A definition may declare `desk.health` `{"<type>": {field, red: [], yellow: [], green: []}}` (spec 7c). `lint` checks the type and field exist and that no value is in two lists. `compile` embeds `desk.health` in `meta/definition` only when a producer declares it; two producers may declare health for one type only with identical mappings, otherwise compile fails naming both. The Desk uses it for the health tag on a record and the Items list chips (`?health=red|yellow|green`); without it the chips use the type's first choice field.
+
+## Optional record strip
+
+A definition may declare `desk.record.strip` `{"<type>": [{"chip": name} | {"field": name}]}`, at most 8 items per type, to choose the chips under a record's heading. Chip names are `state`, `notes`, `decision`, `captured`, `run`, `type` and `lastSeen`; a `field` item draws that field's display value. `lint` checks the type, the chip names, the field names and the size. `compile` embeds `desk.record` in `meta/definition` only when a producer declares it; two producers may declare a strip for one type only with identical lists, otherwise compile fails naming both. Without it the Desk draws every chip it has data for, in the order above. A chip the record has nothing for is left out. The `run` chip reads the newest sighting's `run` only (verified 2026-11-09, Desk core/strip.js).
+
+The record header also shows "N of M in <list>" with Previous and Next when the record was opened from a filtered list. The list state travels as explicit filter keys in the record address (`#/entity/<type>/<key>?f.level=senior`); a saved view is expanded to its keys, so the address never depends on a view that may have changed (verified 2026-11-09, Desk tests). Whether a given host keeps the hash across a reload is assumed.
 
 ## Per-viewer state
 

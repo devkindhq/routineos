@@ -4,7 +4,7 @@ title: "RoutineOS: the self-improving framework for Claude routines"
 type: software
 authors:
   - name: Devkind
-version: 0.8.1
+version: 0.11.0
 license: MIT
 repository-code: "https://github.com/devkindhq/routineos"
 url: "https://docs.routineos.org"
