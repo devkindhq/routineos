@@ -1,4 +1,4 @@
-// Phone and narrow-screen behaviour: 16px fields,
+// Phone and narrow-screen behaviour (spec docs/superpowers/specs/2026-11-09-desk-mobile-ux-design.md): 16px fields,
 // sidebar parents that navigate, Today's read error, a header that fits at 320 and 200% text, record and badge reflow,
 // 44px touch targets, an on-screen tour and readable dimmed and link text. Run with: bash tests/visual/run.sh.
 import { test as base, expect } from "@playwright/test";

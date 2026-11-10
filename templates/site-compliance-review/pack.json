@@ -1,0 +1,93 @@
+{
+  "format": "routineos.pack.v1",
+  "id": "site-compliance-review",
+  "version": "1.0.0",
+  "title": "Site compliance review",
+  "summary": "Reviews a website's pages each day against a rule pack you supply, with a Clef model scoring every rule per page as the main verdict, flags wording that may breach a rule with severity, a screenshot and boxed notes, and tracks decisions. It never changes the site.",
+  "category": "content",
+  "maturity": "unpiloted",
+  "license": "MIT",
+  "stages": [
+    {
+      "id": "budget",
+      "kind": "code",
+      "title": "Budget check",
+      "does": "Counts this routine's runs today in the Desk and stops the run when max_runs_per_day is reached. RUNS is max_runs_per_day.",
+      "command": "python3 lib/budget_check.py --docs snapshot.json --producer site-compliance-review --max-runs RUNS"
+    },
+    {
+      "id": "fetch",
+      "kind": "code",
+      "title": "Read captures",
+      "does": "Reads the Worker's health and the page captures it made since the last run, on the site host only, each with the Clef scores the Worker asked for. First sends the Clef flag line (clef_flag_at, in percent) to the Worker when the setting is present; a failed push never stops the run. WORKER is worker_url, SITE is site_url, PAGES is max_pages_per_run, FLAGAT is clef_flag_at.",
+      "command": "python3 lib/fetch_results.py --worker WORKER --site SITE --docs snapshot.json --producer site-compliance-review --max-pages PAGES --clef-flag-at FLAGAT --out results.json",
+      "connectors": [
+        "worker"
+      ]
+    },
+    {
+      "id": "rules",
+      "kind": "code",
+      "title": "Apply the rule pack",
+      "does": "Applies the swappable rule pack in lib/rules.json to each capture, merges the Clef verdict per rule (a score at or above the flag line is a flag; a rule hit Clef scores below it is kept and marked needs review), builds the Clef scorecard and places a box for each quoted flag on the screenshot.",
+      "command": "python3 lib/apply_rules.py --results results.json --rules lib/rules.json --out flags.json"
+    },
+    {
+      "id": "shots",
+      "kind": "code",
+      "title": "Screenshots",
+      "does": "Downloads the screenshots of flagged pages through short-lived signed links. WORKER is worker_url, SHOTS is max_screenshots.",
+      "command": "python3 lib/fetch_shots.py --worker WORKER --flags flags.json --max SHOTS --out-dir shots --out shots.json",
+      "connectors": [
+        "worker"
+      ]
+    },
+    {
+      "id": "upload",
+      "kind": "model",
+      "title": "Attach screenshots",
+      "does": "Uploads each downloaded screenshot to this Desk's own asset store, the same store the write step writes to, so the flag boxes can be drawn on it. Skipped on the first run."
+    },
+    {
+      "id": "track",
+      "kind": "code",
+      "title": "Track changes",
+      "does": "Compares with stored pages and flags, honours decisions, resolves a Clef-backed flag only when Clef scored the page, adds Worker and Clef health, and builds records and the Inbox. CAP is max_inbox_per_run.",
+      "command": "python3 lib/track.py --flags flags.json --results results.json --docs snapshot.json --producer site-compliance-review --max-inbox CAP --out run-part.json"
+    },
+    {
+      "id": "learn",
+      "kind": "code",
+      "title": "Learn",
+      "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+      "command": "python3 skills/routineos/scripts/routineos.py learn --docs snapshot.json --run run.json --out learn"
+    },
+    {
+      "id": "write",
+      "kind": "code",
+      "title": "Write",
+      "does": "Applies the run input under the write contract.",
+      "command": "python3 skills/routineos/scripts/routineos.py write --docs snapshot.json --run run.json --out batches",
+      "writes": [
+        "runs",
+        "entities",
+        "inbox"
+      ]
+    }
+  ],
+  "connectors": [
+    {
+      "id": "worker",
+      "label": "Your review Worker",
+      "kind": "http",
+      "purpose": "Read the Worker's health, its page captures with their Clef scores, and signed screenshot links. The Worker reads your sitemap, captures pages and asks Clef on its own schedule; the routine never asks it to change anything on the site.",
+      "required": true,
+      "access": "read",
+      "stages": [
+        "fetch",
+        "shots"
+      ],
+      "connect": "Deploy worker/ from the repository, then add its host to the allowed domains and its token as a network secret."
+    }
+  ]
+}

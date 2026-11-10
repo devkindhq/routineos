@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "note": "A small neutral sample. Replace it with your own rule pack: same shape, your own ids, wording and severities. kind is phrases (any phrase found), pattern (a regular expression, at most 200 characters) or needs_disclosure (a phrase found and none of the disclosures anywhere on the page). status is confirmed or draft; draft rules run only when include_draft_rules is on. question is what Clef is asked about the page for that rule; the Worker bundles id, label and question at deploy time, so redeploy it after adding a rule or changing a question. An unknown kind or a bad pattern stops the check with exit 2.",
+  "rules": [
+    {"id": "unsubstantiated_superlative", "enabled": true, "status": "confirmed", "severity": "medium", "kind": "phrases",
+     "label": "Unsubstantiated superlative",
+     "phrases": ["best in the world", "world's best", "number one", "the only", "unbeatable", "industry leading"],
+     "question": "Does the page claim to be the best, the only or the leading option without saying what supports it?"},
+    {"id": "unverifiable_numeric_claim", "enabled": true, "status": "confirmed", "severity": "high", "kind": "pattern",
+     "label": "Unverifiable numeric claim",
+     "pattern": "\\b\\d{1,3}(?:\\.\\d+)?\\s?%\\s+(?:more|less|faster|better|cheaper|stronger)\\b",
+     "question": "Does the page state a percentage improvement without naming its source or basis?"},
+    {"id": "missing_disclosure", "enabled": true, "status": "confirmed", "severity": "high", "kind": "needs_disclosure",
+     "label": "Missing disclosure",
+     "phrases": ["guaranteed results", "results guaranteed", "instant results"],
+     "disclosures": ["results may vary", "individual results vary", "terms apply"],
+     "question": "Does the page promise a result without a nearby note that results vary or terms apply?"},
+    {"id": "absolute_claim", "enabled": true, "status": "draft", "severity": "low", "kind": "phrases",
+     "label": "Absolute claim (draft rule)",
+     "phrases": ["always works", "never fails", "100% effective", "risk free"],
+     "question": "Does the page say something always works or carries no risk?"}
+  ]
+}

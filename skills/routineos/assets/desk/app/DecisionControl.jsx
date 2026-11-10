@@ -5,7 +5,8 @@
 import { useEffect, useRef, useState } from "react";
 import { SegmentedControl } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { canDecide, canWrite, decide, remove, writeMessage } from "../core/actions.js";
+import Gated from "./Gated.jsx";
+import { accessReason, canDecide, canWrite, decide, isDeskOwner, remove, writeMessage } from "../core/actions.js";
 
 export { canDecide };
 
@@ -24,7 +25,8 @@ export default function DecisionControl({ ctx, id, value, decided, canDrop, onDr
   // so a change while an arrow key is down is ignored; Space or a click on the focused option still chooses it.
   const arrow = useRef(false);
   useEffect(() => { setV(value); }, [value]);
-  if (!canDecide(ctx)) return null;
+  var noAccess = accessReason(ctx);
+  if (!canDecide(ctx) && !(noAccess && (!ctx.join || isDeskOwner(ctx)))) return null;
 
   function change(next) {
     if (busy || next === v || arrow.current) return;
@@ -49,9 +51,11 @@ export default function DecisionControl({ ctx, id, value, decided, canDrop, onDr
   }
 
   return (
+    <Gated reason={noAccess} inline>
     <SegmentedControl aria-label="Decision" value={v} onChange={change} readOnly={busy}
       onKeyDownCapture={(e) => { arrow.current = /^Arrow/.test(e.key); }} onKeyUpCapture={() => { arrow.current = false; }}
       data={[{ value: "keep", label: "Keep" }, { value: "drop", label: "Drop", disabled: !canDrop && value !== "drop" },
         { value: "pending", label: "Pending" }]} />
+    </Gated>
   );
 }

@@ -1,4 +1,4 @@
-// Phone and narrow-screen behaviour in jsdom.
+// Phone and narrow-screen behaviour in jsdom (spec docs/superpowers/specs/2026-11-09-desk-mobile-ux-design.md).
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { notifications } from "@mantine/notifications";

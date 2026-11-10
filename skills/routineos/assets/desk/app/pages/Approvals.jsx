@@ -8,9 +8,10 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  acceptProposal, byId, canWrite, decide, rejectProposal, remove, save, snoozeProposal, stamp, undoAccept, watchAll,
+  acceptProposal, accessReason, byId, canWrite, decide, isDeskOwner, rejectProposal, remove, save, snoozeProposal, stamp, undoAccept, watchAll,
   writeMessage,
 } from "../../core/actions.js";
+import Gated from "../Gated.jsx";
 import { human } from "../../core/dates.js";
 import {
   APPROVALS_NOTE, APPROVAL_EMPTY, APPROVAL_KINDS, APPROVAL_SOON_HOURS, APPROVAL_TABS, KIND_WORDS, MAX_NOTE,
@@ -110,13 +111,16 @@ function RequestCard({ r, now, may, decides, write, note, setNote, run, undo, as
   var gateLike = r.group === "gates";
   var left = gateLike ? timeLeft({ createdAt: r.createdAt, timeoutHours: g.timeoutHours }, now) : null;
   const [draft, setDraft] = useState({ subject: g.draft ? g.draft.subject : "", body: g.draft ? g.draft.body : "" });
-  var deciding = r.state === "waiting" && decides && may.ok;
+  var access = accessReason(r.ctx);
+  var mayDecide = decides || (!!access && (!r.ctx.join || isDeskOwner(r.ctx)));
+  var deciding = r.state === "waiting" && mayDecide && (may.ok || !!access);
   var foot = null;
   if (r.state === "waiting") {
-    if (decides && !may.ok) foot = <Text size="sm" c="dimmed">{may.reason}</Text>;
+    if (mayDecide && !may.ok && !access) foot = <Text size="sm" c="dimmed">{may.reason}</Text>;
     else if (deciding) {
       foot = r.group === "gates" ? <GateActions r={r} note={note} setNote={setNote} draft={draft} run={run} askDecline={askDecline} />
         : r.group === "proposals" ? <ProposalActions r={r} run={run} /> : <ViewActions r={r} run={run} />;
+      foot = <Gated reason={access}>{foot}</Gated>;
     }
   } else if (r.state === "queued") {
     foot = (

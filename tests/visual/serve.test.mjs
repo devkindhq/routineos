@@ -41,7 +41,7 @@ test("bundle=desk and bundle=bad-components inject the fixture components before
 test("the split and mirror routes are gone", async () => {
   const server = await start(0);
   try {
-    for (const path of ["/split/index.html", "/split-noprefetch/index.html"]) {
+    for (const path of ["/split/index.html", "/split-noprefetch/index.html", "/cdn-mirror/index.js"]) {
       const res = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
       assert.equal(res.status, 404, path);
     }

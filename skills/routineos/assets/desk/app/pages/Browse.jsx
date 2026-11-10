@@ -6,7 +6,10 @@ import { ActionIcon, Alert, Anchor, Badge, Button, Group, Menu, NativeSelect, Pa
 import { DataTable } from "mantine-datatable";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconColumns3, IconDeviceFloppy, IconDownload, IconFilter, IconLayoutList, IconPlus, IconSearch, IconStar, IconStarFilled, IconX } from "@tabler/icons-react";
-import { byId, canWrite, save, stamp, watchAll } from "../../core/actions.js";
+import Gated from "../Gated.jsx";
+import { loadCols, resetCols, saveCols } from "../../core/viewerstate.js";
+import { accessReason, byId, canWrite, save, stamp, watchAll, writeMessage } from "../../core/actions.js";
+import { watchComments } from "../../core/comments.js";
 import { human } from "../../core/dates.js";
 import { exportScope } from "../../core/exporter.js";
 import { ownerOf } from "../../core/members.js";
@@ -30,7 +33,8 @@ import Peek from "../Peek.jsx";
 import { failToast } from "../settings/common.jsx";
 import { StateView } from "../States.jsx";
 import { useModel, usePageCtx, useSetPageCommands, useStore } from "../StoreContext.jsx";
-import { ROUTE_EVENT, replaceParams } from "../useRoute.js";
+import { canonicalHash } from "../../core/router.js";
+import { go, replaceAddress, replaceParams } from "../useRoute.js";
 
 var DATE_COLS = ["lastSeen", "firstSeen", "capturedAt"];
 var NARROW_HIDDEN = ["notes", "commentCount"];
@@ -166,7 +170,7 @@ function BrowseList({ route, type, t, module: m }) {
     setError(null);
     var stop = watchAll(ctx, {
       userstate: { collection: "userstate" }, columns: { collection: "columns" },
-      decisions: { collection: "decisions" }, comments: { collection: "comments" },
+      decisions: { collection: "decisions" }, comments: { watch: (cb, onError) => watchComments(ctx, cb, onError) },
     }, (got) => { if (live) setPeople(Object.assign({}, got)); }, (e) => { if (live) setError(e); });
     return () => { live = false; stop(); };
   }, [store, ctx, type, attempt]);
@@ -195,6 +199,19 @@ function BrowseList({ route, type, t, module: m }) {
     return out;
   }, [shownDocs, t]);
 
+  // The viewer's own column choice for this type (null: none yet). The address and a saved view come first.
+  const [personalCols, setPersonalCols] = useState(null);
+  // Set once the viewer toggles or resets: a slower load of the saved choice must not replace it.
+  const colsTouched = useRef(false);
+  useEffect(() => {
+    var live = true;
+    setPersonalCols(null);
+    colsTouched.current = false;
+    loadCols(ctx, type).then((v) => { if (live && !colsTouched.current) setPersonalCols(v); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.store, ctx.viewer, type]);
+
   var allCols = useMemo(() => {
     var cols = browseColumns(t, people ? people.columns : [], type);
     Object.keys(EXTRA_COLS).forEach((k) => { if (!cols.some((c) => c.key === k)) cols.push({ key: k, label: EXTRA_COLS[k], extra: true }); });
@@ -205,7 +222,8 @@ function BrowseList({ route, type, t, module: m }) {
     allCols.forEach((c) => { o[c.key] = c; });
     return o;
   }, [allCols]);
-  var shownKeys = (fs.cols ? fs.cols.filter((k) => has(colByKey, k)) : defaultShown(allCols, rows || [], health));
+  var chosenCols = fs.cols || personalCols;
+  var shownKeys = (chosenCols ? chosenCols.filter((k) => has(colByKey, k)) : defaultShown(allCols, rows || [], health));
   if (!shownKeys.length) shownKeys = defaultShown(allCols, rows || [], health);
   var shownCols = shownKeys.map((k) => colByKey[k]);
 
@@ -223,10 +241,7 @@ function BrowseList({ route, type, t, module: m }) {
     if (m || viewDocData) qs = EDITED_KEY + "=1" + (qs ? "&" + qs : "");
     if (viewDocData) qs = "view=" + encodeURIComponent(viewId) + (qs ? "&" + qs : "");
     var h = base + (qs ? "?" + qs : "");
-    if (h !== window.location.hash) {
-      window.history.replaceState(window.history.state, "", h);
-      window.dispatchEvent(new Event(ROUTE_EVENT));
-    }
+    if (h !== canonicalHash(window.location.hash)) replaceAddress(h);
   }, [m, type, viewDocData, viewId]);
 
   // Search keeps its own text so the caret never jumps; the hash follows each keystroke.
@@ -258,6 +273,7 @@ function BrowseList({ route, type, t, module: m }) {
   const nameRef = useRef(null);
   const setPageCommands = useSetPageCommands();
   var may = canWrite(ctx).ok;
+  var noAccess = accessReason(ctx);
 
   // A ?peek= naming a record that is not in the list goes away once every row is known (not on the first page).
   var peekRow = peekId ? filtered.find((r) => r.id === peekId) || null : null;
@@ -282,7 +298,7 @@ function BrowseList({ route, type, t, module: m }) {
       var k = keys.current, what = ev.detail && ev.detail.key;
       if (k.peekId) {
         var i = k.ids.indexOf(k.peekId);
-        if (what === "open") window.location.hash = recordHref(k.peekId, k.query);
+        if (what === "open") go(recordHref(k.peekId, k.query));
         else if (what === "next" && i < k.ids.length - 1) replaceParams({ peek: k.ids[i + 1] });
         else if (what === "prev" && i > 0) replaceParams({ peek: k.ids[i - 1] });
         ev.preventDefault();
@@ -342,8 +358,7 @@ function BrowseList({ route, type, t, module: m }) {
       setViewState({ id: id, data: doc, builtIn: false, note: "" });
       var qs = writeFilterState(fs);
       var h = "#/browse/" + encodeURIComponent(type) + "?view=" + encodeURIComponent(id) + (qs ? "&" + qs : "");
-      window.history.replaceState(window.history.state, "", h);
-      window.dispatchEvent(new Event(ROUTE_EVENT));
+      replaceAddress(h);
       notifications.show({ message: "Saved view " + n + "." });
     }, (e) => { setSaving(false); failToast(e); });
   }
@@ -402,7 +417,24 @@ function BrowseList({ route, type, t, module: m }) {
   function toggleCol(key) {
     var next = shownKeys.indexOf(key) === -1 ? shownKeys.concat([key]) : shownKeys.filter((k) => k !== key);
     if (!next.length) return;
+    colsTouched.current = true;
+    // Back to exactly the defaults is not a choice: keeping no list lets later data-driven defaults show.
+    var def = defaultShown(allCols, rows || [], health);
+    if (next.length === def.length && next.every((k) => def.indexOf(k) !== -1)) {
+      setPersonalCols(null);
+      resetCols(ctx, type).catch((e) => notifications.show({ message: writeMessage(e) }));
+      writeHash(Object.assign({}, fs, { cols: null }));
+      return;
+    }
+    setPersonalCols(next);
+    saveCols(ctx, type, next);
     writeHash(Object.assign({}, fs, { cols: next }));
+  }
+  function resetColumns() {
+    colsTouched.current = true;
+    setPersonalCols(null);
+    resetCols(ctx, type).catch((e) => notifications.show({ message: writeMessage(e) }));
+    writeHash(Object.assign({}, fs, { cols: null }));
   }
   function exportRows(list) {
     return list.map((r) => {
@@ -428,13 +460,15 @@ function BrowseList({ route, type, t, module: m }) {
         var anchorEl = <Anchor href={recordHref(r.id, recQuery)} onClick={(e) => e.stopPropagation()}>{title}</Anchor>;
         var badge = overlayBadge(r);
         var link = badge ? <Group gap={6} wrap="nowrap">{anchorEl}{badge}</Group> : anchorEl;
-        if (!may) return link;
+        if (!may && !noAccess) return link;
         return (
           <Group gap={4} wrap="nowrap">
-            <ActionIcon size="sm" variant="subtle" color={r.star ? "yellow" : "gray"} aria-pressed={r.star ? "true" : "false"}
-              aria-label={(r.star ? "Unstar " : "Star ") + title} onClick={(e) => { e.stopPropagation(); toggleStar(r); }}>
-              {r.star ? <IconStarFilled size={14} /> : <IconStar size={14} />}
-            </ActionIcon>
+            <Gated reason={noAccess} inline>
+              <ActionIcon size="sm" variant="subtle" color={r.star ? "yellow" : "gray"} aria-pressed={r.star ? "true" : "false"}
+                aria-label={(r.star ? "Unstar " : "Star ") + title} onClick={(e) => { e.stopPropagation(); toggleStar(r); }}>
+                {r.star ? <IconStarFilled size={14} /> : <IconStar size={14} />}
+              </ActionIcon>
+            </Gated>
             {link}
           </Group>
         );
@@ -574,10 +608,13 @@ function BrowseList({ route, type, t, module: m }) {
                 {c.label}
               </Menu.Item>
             ))}
+            <Menu.Divider />
+            <Menu.Item onClick={resetColumns}>Reset columns</Menu.Item>
           </Menu.Dropdown>
         </Menu>
         <Button variant="default" leftSection={<IconDownload size={16} />} disabled={partial} onClick={() => setExportOpen("view")}>Export</Button>
-        {may && !m ? (
+        {(may || noAccess) && !m ? (
+          <Gated reason={noAccess} inline>
           <Popover opened={saveOpen} onDismiss={() => setSaveOpen(false)} position="bottom-start" withArrow trapFocus hideDetached={false}>
             <Popover.Target>
               <Button variant="default" leftSection={<IconDeviceFloppy size={16} />} onClick={() => openSave()}>Save view</Button>
@@ -595,6 +632,7 @@ function BrowseList({ route, type, t, module: m }) {
               </Stack>
             </Popover.Dropdown>
           </Popover>
+          </Gated>
         ) : null}
         {modified ? <Badge color="yellow" variant="light">Modified</Badge> : null}
       </Group>

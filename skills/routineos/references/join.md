@@ -10,7 +10,7 @@ At build, ask: "Should other people be able to join this Desk with their own rou
 
 To switch later: `join-settings <dir> --open` or `--closed`, with `--docs` (a snapshot holding `meta/owner` and `meta/join`), `--by <your Desk id>` (refused unless it equals `meta/owner.by`) and `--url <the Desk link>` (stored as `meta/join.url` for Copy link). Apply the batch it writes with ArtifactData. A closed Desk refuses new joins with "This Desk is not open to join. Ask its owner to open it." Closing never stops a worker that already joined; only `release` or `leave` does.
 
-Publish the Desk with `DESK_DB_RULES` (see [dashboard](dashboard.md)): only the artifact's owner writes `meta/`, and each person writes only their own `people/<id>/`. `desk-db-path-rules` [docs]. The owner opens the Desk once so the page records `meta/owner`; a Desk without it accepts no release.
+Publish the Desk with `DESK_DB_RULES` (see [dashboard](dashboard.md)): only the artifact's owner writes `meta/`, and each person writes only their own `people/<id>/`; comments live under `people/<id>/comments/`, so the path names the author of a comment; Contributor and up comment, and a Commenter sees the box disabled. `desk-db-path-rules` [docs]. The owner opens the Desk once so the page records `meta/owner`; a Desk without it accepts no release.
 
 ## Joiner flow
 

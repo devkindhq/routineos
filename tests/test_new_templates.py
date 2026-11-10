@@ -16,7 +16,7 @@ import routineos
 # id: (type, lib scripts, skills, gated action kind or None, n8n workflow ids)
 NEW = {
     "meeting-brief": ("watch", [], [], None, [2324, 1862, 2786]),
-    "weekly-marketing-report": ("watch", ["week_over_week.py"], [], None, [2783, 3224]),
+    "weekly-marketing-report": ("watch", ["week_over_week.py", "weeks.py", "ga_weeks.py", "gsc_weeks.py"], [], None, [2783, 3224]),
     "inbox-triage": ("approval-gated", [], ["reply-style"], "send", [2271, 2454, 1953, 2722]),
     "support-gap-digest": ("watch", ["group_questions.py"], [], None, [2753, 2752, 2465]),
     "invoice-exceptions": ("watch", ["invoice_checks.py"], [], None, [2320]),
@@ -40,6 +40,9 @@ def toml(tid):
         return tomllib.load(fh)
 
 
+PILOTED = {"weekly-marketing-report"}  # run end to end in a cloud routine
+
+
 class NewTemplateTests(unittest.TestCase):
     def each(self):
         for tid in NEW:
@@ -53,7 +56,7 @@ class NewTemplateTests(unittest.TestCase):
             p = pack.export(folder(tid))
             self.assertEqual(pack.validate(p), [])
             self.assertEqual(p["id"], tid)
-            self.assertEqual(p["maturity"], "unpiloted")
+            self.assertEqual(p["maturity"], "piloted" if tid in PILOTED else "unpiloted")
 
     def test_round_trips(self):
         for tid, _ in self.each():
@@ -133,6 +136,29 @@ class NewTemplateTests(unittest.TestCase):
             for name in ("prompt.md", "README.md"):
                 text = read(tid, name)
                 self.assertNotRegex(text, r"\b\d[\d,]{3,}\+? (integrations|templates|users)\b")
+
+    def test_weekly_report_overview_page_and_demo_snapshot(self):
+        tid = "weekly-marketing-report"
+        with open(os.path.join(folder(tid), "definition.json"), encoding="utf-8") as fh:
+            pages = json.load(fh)["desk"]["pages"]
+        self.assertEqual([pg["id"] for pg in pages], ["overview"])
+        kinds = [b["kind"] for b in pages[0]["blocks"]]
+        self.assertEqual(kinds.count("tile"), 6)
+        self.assertIn("chart", kinds)
+        res = subprocess.run([sys.executable, CLI, "desk", "lint", "--routine", folder(tid)], capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        demo = os.path.join(folder(tid), "demo", "pages-demo-generate.py")
+        snap = os.path.join(folder(tid), "demo", "pages-demo.json")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "again.json")
+            res = subprocess.run([sys.executable, demo, "--snapshot", out], capture_output=True, text=True)
+            self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+            with open(out, "rb") as a, open(snap, "rb") as b:
+                self.assertEqual(a.read(), b.read())
+        with open(snap, encoding="utf-8") as fh:
+            docs = json.load(fh)
+        metrics = [d for k, d in docs.items() if k.startswith("entities/") and d["data"]["type"] == "metric"]
+        self.assertEqual(len(metrics), 12 * 3 * 3 + 12 * 4)
 
     def test_all_are_in_the_catalog(self):
         with open(os.path.join(CATALOG, "index.json"), encoding="utf-8") as fh:

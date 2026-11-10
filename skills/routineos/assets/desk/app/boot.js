@@ -1,5 +1,5 @@
 // app/boot.js: the Desk's first reads. They start in the base order (meta/definition, meta/workspace, viewer,
-// meta/join, meta/owner, meta/lock, settings/workspace), run together, then ensureOwner records or checks
+// meta/join, meta/owner, meta/lock, settings/workspace, canWriteShared), run together, then ensureOwner records or checks
 // meta/owner. A failure resolves a model with failed "no-db" or "read-error" rather than rejecting.
 import { ensureOwner } from "../core/actions.js";
 import { validLock } from "../core/lock.js";
@@ -9,7 +9,7 @@ export function boot(store, config) {
   config = config || {};
   var model = {
     store: store, definition: null, workspace: { name: config.workspace }, viewer: null, join: null, owner: null,
-    ownerTampered: false, lock: null, tour: config.tour === true, tourOff: false, failed: null, failError: null,
+    ownerTampered: false, canWriteShared: null, lock: null, tour: config.tour === true, tourOff: false, failed: null, failError: null,
   };
   var reads;
   try {
@@ -21,6 +21,9 @@ export function boot(store, config) {
       store.get("meta/owner"),
       store.get("meta/lock"),
       Promise.resolve(store.get("settings/workspace")).catch(function () { return { exists: false }; }),
+      // The platform's answer on shared writes: true, false or null (not told, or a store that cannot say).
+      Promise.resolve().then(function () { return typeof store.canWriteShared === "function" ? store.canWriteShared() : null; })
+        .then(function (yes) { return yes === true || yes === false ? yes : null; }, function () { return null; }),
     ];
   } catch (e) {
     reads = [Promise.reject(e)];
@@ -34,6 +37,7 @@ export function boot(store, config) {
     model.lock = docs[5].exists && validLock(docs[5].data) ? docs[5].data : null;
     var ws = docs[6].exists ? docs[6].data : null;
     model.tourOff = !!(ws && ws.values && ws.values.tour === false);
+    model.canWriteShared = docs[7];
     return ensureOwner(model).then(function () { return model; });
   }, function (e) {
     model.failed = e instanceof NoDbError ? "no-db" : "read-error";

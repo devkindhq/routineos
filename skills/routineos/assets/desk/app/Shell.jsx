@@ -12,7 +12,7 @@ import { IconCheck, IconChevronDown, IconChevronRight, IconDotsVertical, IconKey
 import { forgetLockPass, lockPassed } from "../core/lock.js";
 import { NAV_GROUP_KEY, readPref, savePref } from "../core/prefs.js";
 import { findPage, navPages } from "../core/ext.js";
-import { SIGN_OUT_NOTE, moduleFor, navModel, navTypes_, shortcutRows, signedInLine } from "../core/palette.js";
+import { SIGN_OUT_NOTE, moduleFor, navModel, navTypes_, shortcutRows, signedInLine, specPageFor } from "../core/palette.js";
 import { personName_ } from "../core/shared.js";
 import Bell, { useShellFeed } from "./Bell.jsx";
 import { boot } from "./boot.js";
@@ -23,7 +23,7 @@ import { LockScreen } from "./settings/lock.jsx";
 import { OFFLINE_TEXT, StateView } from "./States.jsx";
 import { ModelProvider, PageCommandsProvider, useModel, useStore } from "./StoreContext.jsx";
 import { usePrefs } from "./usePrefs.js";
-import { useRoute } from "./useRoute.js";
+import { useRestoreRoute, useRoute } from "./useRoute.js";
 import { TourProvider, useTour } from "./Tour.jsx";
 
 var PAGE_TITLES = { today: "Today", approvals: "Approvals", history: "History", settings: "Settings", workers: "Workers",
@@ -41,6 +41,10 @@ export function pageTitle(r, definition) {
   if (r.page === "module") {
     var m = moduleFor(definition, r.params.id);
     return m ? String(m.label || m.id) : "Not found";
+  }
+  if (r.page === "spec") {
+    var sp = specPageFor(definition, r.params.id);
+    return sp ? String(sp.title) : "Not found";
   }
   if (r.page === "ext") {
     var x = findPage(typeof window !== "undefined" ? window.DESK_EXTENSIONS : null, r.params.name);
@@ -224,6 +228,9 @@ export default function Shell({ config }) {
   useEffect(load, [load]);
 
   const feed = useShellFeed(model);
+  const routeCtx = useMemo(() => (model && !model.failed && model.viewer
+    ? { store: store, viewer: model.viewer, canWriteShared: model.canWriteShared } : null), [store, model]);
+  useRestoreRoute(routeCtx, r.hash);
   const definition = model && !model.failed ? model.definition : null;
   const nav = useMemo(() => {
     var built = navModel(definition, feed.views, feed.pins, model && model.join, feed.hidden, undefined,

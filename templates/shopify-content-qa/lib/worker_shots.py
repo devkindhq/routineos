@@ -21,6 +21,15 @@ import urllib.request
 USER_AGENT = "RoutineOS-content-qa/1 (read-only monitor)"
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A redirect from the Worker is an error: it could send this script (and its headers) to another host."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+_open = urllib.request.build_opener(_NoRedirect).open
+
+
 def fail(msg):
     print(f"error: {msg}", file=sys.stderr)
     sys.exit(2)
@@ -30,7 +39,7 @@ def call(url, body=None):
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(url, data=data, method="POST" if data else "GET",
                                  headers={"User-Agent": USER_AGENT, "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with _open(req, timeout=20) as resp:
         return json.loads(resp.read(2 * 1024 * 1024).decode("utf-8"))
 
 

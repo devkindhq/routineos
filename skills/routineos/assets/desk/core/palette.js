@@ -49,6 +49,59 @@ export function moduleFor(definition, id) {
   return m && Object.prototype.hasOwnProperty.call(t, m.view.type) ? m : null;
 }
 
+// The spec pages the compiled definition carries (definition.desk.pages). Like deskModules this is data a person
+// could have edited, so a page without an id, a title or a blocks list is left out, and so is a block whose query
+// names a type the definition no longer has.
+// Ids a spec page may not take: the built-in pages and the retired ones (the same lists as definition.py), words
+// learning never touches, and any desk module id, so nav, the palette and moduleFor stay unambiguous.
+var BUILTIN_PAGE_IDS = ["today", "approvals", "runs", "workers", "history", "settings", "browse", "entity", "inbox", "suggestions", "views"];
+var NEVER_LEARNABLE = /push|gate|send|alert|permission|budget|maxruns|capoverride/;
+
+export function deskPages(definition) {
+  var list = definition && definition.desk && definition.desk.pages;
+  if (!Array.isArray(list)) return [];
+  var t = (definition && definition.types) || {};
+  var taken = new Set(deskModules(definition).map(function (m) { return m.id; }));
+  return list.filter(function (p) {
+    return !!p && typeof p === "object" && typeof p.id === "string" && p.id !== "" &&
+      BUILTIN_PAGE_IDS.indexOf(p.id) === -1 && !NEVER_LEARNABLE.test(p.id.replace(/[^0-9a-z]/gi, "").toLowerCase()) && !taken.has(p.id) &&
+      typeof p.title === "string" && p.title.trim() !== "" && Array.isArray(p.blocks);
+  }).map(function (p) {
+    return Object.assign({}, p, { blocks: p.blocks.filter(function (b) { return specBlockOk(b, t); }) });
+  });
+}
+
+// The client half of definition.lint_pages: a block the Python lint would refuse is dropped here, so a hand edited
+// definition cannot crash the page. Kinds, a declared query type, x and aggregate for a tile or chart, a window the
+// evaluator can use (the same limits as definition.py: 3660 days, 520 weeks).
+var SPEC_KINDS = ["tile", "chart", "table", "text"];
+var SPEC_AGG_OPS = ["latest", "sum", "avg", "count", "delta"];
+var SPEC_WINDOW = { days: 3660, weeks: 520 };
+
+function windowOk(w) {
+  if (w === undefined || w === null || w === "range") return true;
+  var last = w && typeof w === "object" ? w.last : null;
+  return !!last && typeof last === "object" && Number.isInteger(last.n) && last.n >= 1 &&
+    Object.prototype.hasOwnProperty.call(SPEC_WINDOW, last.unit) && last.n <= SPEC_WINDOW[last.unit];
+}
+
+function specBlockOk(b, types) {
+  if (!b || typeof b !== "object" || SPEC_KINDS.indexOf(b.kind) === -1) return false;
+  if (b.kind === "text") return !b.query || (typeof b.query === "object" && typeof b.query.type === "string");
+  var q = b.query;
+  if (!q || typeof q !== "object" || typeof q.type !== "string" || !Object.prototype.hasOwnProperty.call(types, q.type)) return false;
+  if (!windowOk(q.window)) return false;
+  if (q.where !== undefined && !Array.isArray(q.where)) return false;
+  if (b.kind === "table") return Array.isArray(b.columns);
+  if (typeof q.x !== "string") return false;
+  return !!q.aggregate && typeof q.aggregate === "object" && SPEC_AGG_OPS.indexOf(q.aggregate.op) !== -1;
+}
+
+// The spec page for #/p/<id>, or null.
+export function specPageFor(definition, id) {
+  return deskPages(definition).filter(function (p) { return p.id === id; })[0] || null;
+}
+
 // The hide list stored in settings/workspace (values.nav.hidden), from the settings collection's docs.
 export function navHidden(settingsDocs) {
   var ws = (settingsDocs || []).filter(function (d) { return d && d.id === "workspace"; })[0];
@@ -108,6 +161,16 @@ export function navModel(definition, views, pins, join, hidden, counts, extPages
     groups.push({ id: "pages", label: "Pages", items: pages.map(function (p) {
       return { id: "ext:" + p.id, label: String(p.title || p.id), href: "#/x/" + encodeURIComponent(p.id), icon: TYPE_ICON, children: [] };
     }) });
+  }
+  // Spec pages (desk.pages in the definition) join that group, or start their own when there are no code pages.
+  var specItems = deskPages(definition).map(function (p) {
+    var label = p.nav && typeof p.nav.label === "string" && p.nav.label !== "" ? p.nav.label : p.title;
+    return { id: "spec:" + p.id, label: String(label), href: "#/p/" + encodeURIComponent(p.id), icon: navIcon_(p.nav && p.nav.icon, TYPE_ICON), children: [] };
+  });
+  if (specItems.length) {
+    var shared = groups.filter(function (g) { return g.id === "pages"; })[0];
+    if (shared) shared.items = shared.items.concat(specItems);
+    else groups.push({ id: "specpages", label: "Pages", items: specItems });
   }
   return { groups: groups,
     settings: navEntry_(NAV_TAIL[0]), members: navEntry_(["members", "Members", "#/settings/members", "users"]) };

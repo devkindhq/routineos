@@ -78,6 +78,147 @@ class WeekOverWeekTests(ScriptCase):
             self.assert_input_error("--this", self.put("t.json", '{"a": {"m": %s}}' % word), "--last", last)
 
 
+class WeeksTests(ScriptCase):
+    TEMPLATE, NAME = "weekly-marketing-report", "weeks.py"
+
+    def test_thursday_run_reports_the_monday_to_sunday_week_before(self):
+        out = self.ok_json("--today", "2026-11-12")  # a Thursday
+        self.assertEqual(out, {"this_start": "2026-11-02", "this_end": "2026-11-08", "last_start": "2026-10-26",
+                               "last_end": "2026-11-01", "week": "2026-11-02", "previous_week": "2026-10-26"})
+        with open(os.path.join(self.d, "weeks.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh), out)
+
+    def test_a_week_is_complete_only_after_its_sunday(self):
+        for today, this_start, this_end in (("2026-11-09", "2026-11-02", "2026-11-08"),   # Monday: week just ended
+                                            ("2026-11-15", "2026-11-02", "2026-11-08"),   # Sunday: still in progress
+                                            ("2026-11-16", "2026-11-09", "2026-11-15")):  # next Monday
+            out = self.ok_json("--today", today)
+            self.assertEqual((out["this_start"], out["this_end"]), (this_start, this_end), today)
+
+    def test_bad_date_is_refused(self):
+        self.assert_input_error("--today", "not-a-date")
+
+
+class GaWeeksTests(ScriptCase):
+    TEMPLATE, NAME = "weekly-marketing-report", "ga_weeks.py"
+
+    def report(self, **over):
+        rep = {"dimensionHeaders": [{"name": "dateRange"}], "kind": "analyticsData#runReport",
+               "metadata": {"currencyCode": "AUD", "timeZone": "Australia/Melbourne"},
+               "metricHeaders": [{"name": "sessions", "type": "TYPE_INTEGER"},
+                                 {"name": "conversions", "type": "TYPE_FLOAT"},
+                                 {"name": "totalRevenue", "type": "TYPE_CURRENCY"}],
+               "rowCount": 2,
+               "rows": [{"dimensionValues": [{"value": "date_range_1"}],
+                         "metricValues": [{"value": "174"}, {"value": "71"}, {"value": "0"}]},
+                        {"dimensionValues": [{"value": "date_range_0"}],
+                         "metricValues": [{"value": "214"}, {"value": "97.5"}, {"value": "12.25"}]}]}
+        rep.update(over)
+        return rep
+
+    def read(self, name):
+        with open(os.path.join(self.d, name), encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def test_splits_weeks_and_renames_revenue(self):
+        path = self.put("r.json", self.report())
+        res = self.run_script("--report", path)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(self.read("this-week.json"), {"analytics": {"sessions": 214, "conversions": 97.5, "revenue": 12.25}})
+        self.assertEqual(self.read("last-week.json"), {"analytics": {"sessions": 174, "conversions": 71, "revenue": 0}})
+        self.assertFalse(os.path.exists(os.path.join(self.d, "weeks.json")))
+
+    def test_output_feeds_week_over_week(self):
+        self.run_script("--report", self.put("r.json", self.report()))
+        res = subprocess.run([sys.executable, "-I", script("weekly-marketing-report", "week_over_week.py"),
+                              "--this", os.path.join(self.d, "this-week.json"),
+                              "--last", os.path.join(self.d, "last-week.json")],
+                             capture_output=True, text=True, cwd=self.d)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(json.loads(res.stdout)["analytics"]["sessions"],
+                         {"value": 214, "previous": 174, "change_pct": 23.0})
+
+    def test_unwraps_connector_envelopes(self):
+        wrapped = {"successful": True, "data": {"results": [{"response": {"successful": True, "data": self.report()}}]}}
+        res = self.run_script("--report", self.put("r.json", wrapped))
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(self.read("this-week.json")["analytics"]["sessions"], 214)
+
+    def test_bad_reports_are_refused_without_echo(self):
+        rows = self.report()["rows"]
+        self.assert_input_error("--report", self.put("a.json", "not json"))
+        self.assert_input_error("--report", self.put("b.json", {"nothing": "here"}))
+        self.assert_input_error("--report", self.put("c.json", self.report(rows=rows[:1])))
+        bad = self.report(rows=[{"dimensionValues": [{"value": "date_range_0"}],
+                                 "metricValues": [{"value": "secret-ish"}, {"value": "1"}, {"value": "1"}]}, rows[0]])
+        self.assert_input_error("--report", self.put("e.json", bad), hidden="secret-ish")
+
+
+class GscWeeksTests(ScriptCase):
+    TEMPLATE, NAME = "weekly-marketing-report", "gsc_weeks.py"
+
+    ROW = {"clicks": 6, "ctr": 0.0019236934915036871, "impressions": 3119, "position": 30.751522924014107}
+
+    def response(self, row=None):
+        data = {"responseAggregationType": "byProperty"}
+        if row is not None:
+            data["rows"] = [row]
+        return data
+
+    def read(self, name):
+        with open(os.path.join(self.d, name), encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def test_merge_converts_ctr_and_keeps_position(self):
+        this = self.put("t.json", self.response(self.ROW))
+        last = self.put("l.json", self.response({"clicks": 7, "ctr": 0.002, "impressions": 3193, "position": 32.7}))
+        res = self.run_script("merge", "--this", this, "--last", last)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(self.read("this-week.json"), {"search": {
+            "clicks": 6, "impressions": 3119, "ctr_pct": 0.19, "position": 30.751522924014107}})
+        self.assertEqual(self.read("last-week.json")["search"]["ctr_pct"], 0.2)
+
+    def test_an_empty_week_is_zeros_with_no_position_not_a_failure(self):
+        this = self.put("t.json", self.response(self.ROW))
+        last = self.put("l.json", self.response())
+        self.assertEqual(self.run_script("merge", "--this", this, "--last", last).returncode, 0)
+        self.assertEqual(self.read("last-week.json"), {"search": {"clicks": 0, "impressions": 0, "ctr_pct": 0}})
+
+    def test_merge_keeps_the_analytics_source_already_written(self):
+        self.put("this-week.json", {"analytics": {"sessions": 214}})
+        self.put("last-week.json", {"analytics": {"sessions": 174}})
+        wrapped = {"successful": True, "data": {"results": [{"response": {"successful": True,
+                                                                         "data": self.response(self.ROW)}}]}}
+        res = self.run_script("merge", "--this", self.put("t.json", wrapped), "--last", self.put("l.json", wrapped))
+        self.assertEqual(res.returncode, 0, res.stderr)
+        merged = self.read("this-week.json")
+        self.assertEqual(merged["analytics"], {"sessions": 214})
+        self.assertEqual(merged["search"]["clicks"], 6)
+
+    def test_merge_output_feeds_week_over_week(self):
+        self.run_script("merge", "--this", self.put("t.json", self.response(self.ROW)),
+                        "--last", self.put("l.json", self.response()))
+        res = subprocess.run([sys.executable, "-I", script("weekly-marketing-report", "week_over_week.py"),
+                              "--this", os.path.join(self.d, "this-week.json"),
+                              "--last", os.path.join(self.d, "last-week.json")],
+                             capture_output=True, text=True, cwd=self.d)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        out = json.loads(res.stdout)["search"]
+        self.assertEqual(out["clicks"], {"value": 6, "previous": 0, "change_pct": None})
+        self.assertEqual(out["position"], {"value": 30.751522924014107, "previous": None, "change_pct": None})
+
+    def test_bad_input_is_refused_without_echo(self):
+        good = self.put("g.json", self.response(self.ROW))
+        self.assert_input_error("merge", "--this", self.put("a.json", "not json"), "--last", good)
+        self.assert_input_error("merge", "--this", self.put("b.json", {"error": "quota"}), "--last", good)
+        two = {"responseAggregationType": "x", "rows": [self.ROW, self.ROW]}
+        self.assert_input_error("merge", "--this", self.put("c.json", two), "--last", good)
+        self.assert_input_error("merge", "--this", self.put("d.json", self.response({"clicks": 1})), "--last", good)
+        secret = dict(self.ROW, clicks="secret-ish")
+        self.assert_input_error("merge", "--this", self.put("e.json", self.response(secret)), "--last", good,
+                                hidden="secret-ish")
+
+
 class GroupQuestionsTests(ScriptCase):
     TEMPLATE, NAME = "support-gap-digest", "group_questions.py"
 

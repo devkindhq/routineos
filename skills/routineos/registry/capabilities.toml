@@ -532,4 +532,31 @@ docs = "Artifact runtime contract 0.2.93 db type definitions and the ArtifactDat
 source = ["docs:artifact-runtime-contract-0.2.93/db.d.ts", "docs:ArtifactData-tool-description"]
 checked = "2026-10-31"
 risk_if_wrong = "any Contributor could create meta/owner or write a release, verified or worker gate decision under another person's people/<id>/ path"
-test = "Publish a Desk with DESK_DB_RULES; from a second account try to set meta/owner and people/<owner id>/decisions/x, and expect both refused"
+test = "Publish a Desk with DESK_DB_RULES; from a second account try to set meta/owner and people/<owner id>/decisions/x, and expect both refused. Second check, comments: as a Contributor write people/<own id>/comments/x (expect accepted) and people/<another id>/comments/x (expect refused)"
+
+[[capability]]
+id = "user-can-data-write-commenter"
+claim = "user.can(\"data.write\") resolves false for a Commenter or Viewer and true for a Contributor, and the Desk reads it to show write controls and the comment box disabled."
+status = "unverified"
+lead = "true for a Contributor was seen in the join pilot (2026-10-30); false for a Commenter has never been run"
+checked = "2026-11-10"
+risk_if_wrong = "if it resolves null for a Commenter the Desk leaves controls enabled and a refused write shows a Not saved toast, as before"
+test = "Open a published Desk as a real Commenter and call user.can(\"data.write\") from the page; compare with the same call as a Contributor"
+
+[[capability]]
+id = "desk-comments-path-rule"
+claim = "Comments at people/<id>/comments/ ride the people/{self} rule (a {self} rule covers its whole subtree), and listing people returns only real documents, so a marker document at people/<id> is what lets other viewers find that author's comments."
+status = "unverified"
+lead = "observed on a private probe artifact on 2026-11-10 as the owner and with as_level interact: without the marker, list people returned nothing even with a comment present; with the marker, list people and list people/<id>/comments both returned it; a write under another person's id was refused. Not run with a second real account"
+checked = "2026-11-10"
+risk_if_wrong = "a Contributor's comment is not found by other visits, so it does not show for them"
+test = "As a Contributor post a comment on a published Desk, then open it as the owner and as a second member and confirm the comment shows with the right author; try writing under another person's id and expect a refusal"
+
+[[capability]]
+id = "desk-native-comment-composer"
+claim = "A Commenter, who cannot write the shared db, can open the platform comment composer on a page element through claude.use(\"comments\").openComposer({element}) when the published Desk declares the comments capability, and the thread is stored natively. The Desk cannot list those threads."
+status = "unverified"
+lead = "a recorded Commenter used the composer in a probe on 2026-11-10; deep-link behaviour was not verified and the publish declaration was not run end to end"
+checked = "2026-11-10"
+risk_if_wrong = "claude.use(\"comments\") resolves null or lacks openComposer, so the Desk shows the disabled comment box with the reason, as before"
+test = "Publish the Desk declaring comments: {composer_only: true}, open it as a real Commenter, press Comment on a record and confirm the composer opens and the thread is stored"

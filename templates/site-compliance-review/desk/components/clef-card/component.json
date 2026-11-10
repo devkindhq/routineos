@@ -1,0 +1,16 @@
+{
+  "id": "clef-card",
+  "kind": "custom",
+  "slot": "record-section",
+  "factory": "component_clef_card",
+  "summary": "The Clef scorecard of a page: one score per asked rule, whether the rule fired, and where Clef and the rules disagree.",
+  "why": "No registry component draws a list of rows held on the record itself (display.clef_card, an object value) with outcome tones.",
+  "fallback": "same",
+  "since": "0.9.0",
+  "types": [
+    "page"
+  ],
+  "verbs": [],
+  "title": "Clef scorecard",
+  "placement": "after-fields"
+}

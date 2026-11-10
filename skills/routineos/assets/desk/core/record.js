@@ -86,7 +86,10 @@ export function recordEvents(d, o) {
   });
   (o.comments || []).forEach(function (c) {
     var x = c.data || {};
-    if (x.entity === id && !x.edits && !x.deleted) add(x.at, "comment", x.by, [x.replyTo ? "replied" : "commented"]);
+    if (x.entity !== id || x.edits || x.deleted) return;
+    // verified false: an earlier Desk's flat comment; its by is a claim in the body, so no one is named.
+    if (c.verified === false) add(x.at, "comment", null, ["Unverified " + (x.replyTo ? "reply" : "comment")]);
+    else add(x.at, "comment", x.by, [x.replyTo ? "replied" : "commented"]);
   });
   return out.sort(recByAt).reverse();
 }
@@ -107,19 +110,20 @@ export function commentIdParts(id) {
 // Comments as shown (spec 7d): a doc counts only when its by is the author in its id. For each original, the newest
 // edit or delete whose id author is the original's and whose id time is within 15 minutes after the original's
 // applies; others are ignored, so the window holds wherever edits are read, not only in the UI. canEdit only on the
-// viewer's own, for 15 minutes after posting. Oldest first.
+// viewer's own, for 15 minutes after posting. Oldest first. A doc carries verified (core/comments.js): false for an
+// old flat comment, and an edit only applies to an original of the same kind.
 export function commentView(docs, viewer, now) {
   var mine = docs.filter(function (c) { var x = c.data || {}, p = commentIdParts(c.id); return p && x.by === p.author; });
-  var orig = {}, last = {};
-  mine.forEach(function (c) { if (!c.data.edits) orig[c.id] = commentIdParts(c.id); });
+  var orig = {}, last = {}, ver = {};
+  mine.forEach(function (c) { if (!c.data.edits) { orig[c.id] = commentIdParts(c.id); ver[c.id] = c.verified; } });
   mine.forEach(function (c) {
     var x = c.data, o = x.edits && String(x.edits).replace(/^comments\//, ""), a = orig[o], p = commentIdParts(c.id);
-    if (a && p.author === a.author && p.ts >= a.ts && p.ts - a.ts <= 9e5 && (!last[o] || last[o].at < x.at)) last[o] = x;
+    if (a && p.author === a.author && c.verified === ver[o] && p.ts >= a.ts && p.ts - a.ts <= 9e5 && (!last[o] || last[o].at < x.at)) last[o] = x;
   });
   return mine.filter(function (c) { return !c.data.edits; }).map(function (c) {
     var x = c.data, e = last[c.id];
-    return e && e.deleted ? null : { id: c.id, by: x.by, text: (e || x).text, at: x.at, edited: !!e,
-      canEdit: !!viewer && x.by === viewer && now - orig[c.id].ts < 9e5 };
+    return e && e.deleted ? null : { id: c.id, by: x.by, text: (e || x).text, at: x.at, edited: !!e, verified: c.verified,
+      canEdit: c.verified !== false && !!viewer && x.by === viewer && now - orig[c.id].ts < 9e5 };
   }).filter(Boolean).sort(recByAt);
 }
 

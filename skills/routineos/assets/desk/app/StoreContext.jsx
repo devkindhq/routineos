@@ -37,13 +37,13 @@ export function useModel() {
 }
 
 // The write context every page and Settings section passes to core/actions.js: {store, viewer, definition, join,
-// owner, ownerTampered}. One builder, so a gate such as canDecide (join and owner) reads the same fields everywhere.
+// owner, ownerTampered, canWriteShared}. One builder, so a gate such as canDecide (join and owner) reads the same fields everywhere.
 export function usePageCtx() {
   const store = useStore();
   const model = useModel();
   return useMemo(() => ({ store: store, viewer: model.viewer, definition: model.definition, join: model.join,
-    owner: model.owner, ownerTampered: model.ownerTampered }),
-  [store, model.viewer, model.definition, model.join, model.owner, model.ownerTampered]);
+    owner: model.owner, ownerTampered: model.ownerTampered, canWriteShared: model.canWriteShared }),
+  [store, model.viewer, model.definition, model.join, model.owner, model.ownerTampered, model.canWriteShared]);
 }
 
 // patch({lock}) or patch({tourOff}): a settings write the shell must see at once (the lock state, the tour switch).

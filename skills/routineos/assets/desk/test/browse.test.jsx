@@ -271,7 +271,7 @@ test("the Decision and Owner columns are shown", async () => {
   expect(screen.getByText("Kept")).toBeTruthy();
   expect(screen.getAllByText("Pending").length).toBe(2);
   expect(screen.getByText("uann")).toBeTruthy();
-  expect(screen.getByText("ubob")).toBeTruthy();
+  expect(screen.queryByText("ubob")).toBeNull(); // a comment never makes anyone the owner
 });
 
 test("the calculation footer shows the totals and a calculation can be removed", async () => {

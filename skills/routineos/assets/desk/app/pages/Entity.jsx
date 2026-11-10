@@ -9,8 +9,10 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconChevronLeft, IconChevronRight, IconDots, IconLayoutSidebar, IconStar, IconStarFilled } from "@tabler/icons-react";
-import { canWrite, dropRecord, remove, restoreRecord, save, stamp, writeMessage } from "../../core/actions.js";
+import Gated from "../Gated.jsx";
+import { accessReason, canComment, canNativeComment, canWrite, dropRecord, remove, restoreRecord, save, stamp, writeMessage } from "../../core/actions.js";
 import { DAY_GROUPS, dayGroup, human } from "../../core/dates.js";
+import { commentPath, listComments, nextTs36, saveComment } from "../../core/comments.js";
 import { downloadToast, exportSlug_ } from "../../core/exporter.js";
 import { HEALTH_LABELS, applyFilters, fieldRenderers, toRow } from "../../core/pages/browse.js";
 import {
@@ -36,7 +38,8 @@ import ExtHost from "../ExtHost.jsx";
 import SectionCard, { sectionId } from "../SectionCard.jsx";
 import { StateView } from "../States.jsx";
 import { LIST_KEY } from "../Keyboard.jsx";
-import { ROUTE_EVENT } from "../useRoute.js";
+import { toFrameHash } from "../../core/router.js";
+import { inFrame, replaceAddress } from "../useRoute.js";
 import { useCanDownload, useModel, usePageCtx, useStore } from "../StoreContext.jsx";
 
 var TONE_COLORS = { danger: "red", warning: "yellow", success: "teal" };
@@ -52,9 +55,9 @@ function personWord(profiles, id, viewer) {
 }
 
 // Copy with the clipboard; when it is missing or refuses the write, the text opens selected in a box to copy by hand.
-function CopyItem({ value, label, onFallback }) {
+function CopyItem({ value, label, onFallback, done }) {
   function onClick() {
-    copyText(value).then((ok) => { if (ok) notifications.show({ message: "Copied." }); else onFallback(value); });
+    copyText(value).then((ok) => { if (ok) notifications.show({ message: done || "Copied." }); else onFallback(value); });
   }
   return <Menu.Item onClick={onClick}>{label}</Menu.Item>;
 }
@@ -143,12 +146,23 @@ function Comments({ ctx, id, docs, profiles, onSaved }) {
   const [text, setText] = useState("");
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [native, setNative] = useState(null);
+  const boxRef = useRef(null);
   var list = commentView(docs, ctx.viewer, Date.now());
-  var ok = canWrite(ctx).ok;
+  // Desk comments are shared-database writes, so Contributor and up. A Commenter or Viewer sees the box disabled with the reason.
+  var ok = canComment(ctx).ok;
+  var noAccess = accessReason(ctx);
+  // A Commenter cannot write the db, so the platform composer takes the comment when the platform offers one.
+  useEffect(() => {
+    var live = true;
+    canNativeComment(ctx).then((n) => { if (live) setNative(n); });
+    return () => { live = false; };
+  }, [ctx.store, ctx.canWriteShared]);
   function put(extra) {
     setBusy(true);
-    return save(ctx.store, ctx.viewer, "comments/" + id + "--" + ctx.viewer + "--" + Date.now().toString(36),
-      Object.assign({ entity: id, by: ctx.viewer, at: new Date().toISOString() }, extra)).then(() => {
+    // The path names the author (people/<viewer>/comments), so nobody else's comment can be written or replaced.
+    return saveComment(ctx.store, ctx.viewer, commentPath(ctx.viewer, id, nextTs36()),
+      Object.assign({ at: new Date().toISOString() }, extra)).then(() => {
       setBusy(false);
       onSaved();
       return true;
@@ -168,7 +182,7 @@ function Comments({ ctx, id, docs, profiles, onSaved }) {
     <Stack gap="sm">
       {list.length ? list.map((c) => (
         <Stack key={c.id} gap={2}>
-          <Text size="sm" fw={600}>{personWord(profiles, c.by, ctx.viewer)} <Text span size="xs" c="dimmed">{human(c.at, Date.now(), { style: "sentence" })}{c.edited ? ", edited" : ""}</Text></Text>
+          <Text size="sm" fw={600}>{personWord(profiles, c.by, ctx.viewer)} <Text span size="xs" c="dimmed">{human(c.at, Date.now(), { style: "sentence" })}{c.edited ? ", edited" : ""}{c.verified === false ? ", unverified (written before comments were tied to a person)" : ""}</Text></Text>
           <Text size="sm">{c.text}</Text>
           {ok && c.canEdit ? (
             <Group gap="xs">
@@ -178,8 +192,10 @@ function Comments({ ctx, id, docs, profiles, onSaved }) {
           ) : null}
         </Stack>
       )) : <Text size="sm" c="dimmed">No comments yet.</Text>}
-      {ok ? (
-        <Stack gap="xs">
+      {native ? (
+        <Box ref={boxRef}><Button onClick={() => native.open(boxRef.current)}>Comment</Button></Box>
+      ) : ok || noAccess ? (
+        <Gated reason={noAccess}><Stack gap="xs">
           <Textarea aria-label="Comment" placeholder="Add a comment" autosize minRows={2} maxLength={4000} value={text}
             onChange={(e) => setText(e.currentTarget.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && text.trim()) { e.preventDefault(); post(); } }} />
@@ -187,7 +203,7 @@ function Comments({ ctx, id, docs, profiles, onSaved }) {
             <Button disabled={!text.trim()} loading={busy} onClick={post}>{editing ? "Save edit" : "Post comment"}</Button>
             {editing ? <Button variant="default" onClick={() => { setEditing(null); setText(""); }}>Cancel edit</Button> : null}
           </Group>
-        </Stack>
+        </Stack></Gated>
       ) : null}
     </Stack>
   );
@@ -552,7 +568,7 @@ export default function Entity({ route }) {
     var live = true;
     function list(c, w) { return store.list(c, w ? { where: [w] } : undefined).then(null, () => []); }
     Promise.all([store.get("entities/" + id), store.get("userstate/" + id), store.get("merges/" + id), store.get("decisions/" + id),
-      list("views"), list("merges", ["into", "==", id]), list("settingsHistory"), list("comments", ["entity", "==", id])]).then((r) => {
+      list("views"), list("merges", ["into", "==", id]), list("settingsHistory"), listComments(ctx, id).then(null, () => [])]).then((r) => {
       var d = r[0].exists ? r[0].data : {};
       var ev = recordEvents(d, { id: id, definition: def, decisions: r[3].exists ? [r[3].data] : [],
         merges: (r[2].exists ? [{ id: id, data: r[2].data }] : []).concat(r[5]), settingsHistory: r[6], comments: r[7] });
@@ -562,7 +578,7 @@ export default function Entity({ route }) {
       });
     }).then(null, () => { if (live) setFailed(true); });
     return () => { live = false; };
-  }, [store, id, attempt]);
+  }, [store, ctx, id, attempt]);
 
   useEffect(() => load(), [load]);
 
@@ -582,8 +598,7 @@ export default function Entity({ route }) {
       if (!pos || (what !== "next" && what !== "prev")) return;
       ev.preventDefault();
       if (!to) return;
-      window.history.replaceState(window.history.state, "", recordHref(to, pos.qs));
-      window.dispatchEvent(new Event(ROUTE_EVENT));
+      replaceAddress(recordHref(to, pos.qs));
     }
     window.addEventListener(LIST_KEY, onKey);
     return () => window.removeEventListener(LIST_KEY, onKey);
@@ -619,10 +634,13 @@ export default function Entity({ route }) {
   var v = d.display || {}, keys = recordKeys(t), title = recordTitle(t, d), subtitle = recordSubtitle(t, d);
   var src = keys.map((k) => (defs[k].type === "url" ? v[k] : null)).filter(isHttpsUrl)[0];
   var write = canWrite(ctx).ok;
+  var noAccess = accessReason(ctx);
   var health = recHealth(def, type, v);
   var badge = KEEP_BADGES[keepState(d, keep)];
   var noun = String(t.label || type).toLowerCase();
-  var link = String(window.location.href).split("#")[0] + entityHash(id);
+  // In a frame the page's own address is not one a person can open, so only the address inside the Desk is copied.
+  var framed = inFrame();
+  var link = framed ? toFrameHash(entityHash(id)) : String(window.location.href).split("#")[0] + entityHash(id);
   var lists = r[4].filter((x) => x.data && x.data.type === type && x.data.state !== "proposed"
     && applyFilters([toRow({ id: id, data: d }, us)], Object.assign(viewToFilterState(x.data), { now: new Date().toISOString() })).length);
   var renderers = fieldRenderers(def, type);
@@ -699,7 +717,7 @@ export default function Entity({ route }) {
         ) : <Text size="sm" c="dimmed">In no saved lists</Text>}
       </Section>
       <Section title="Yours">
-        {write ? <NotesForm ctx={ctx} id={id} us={us} onSaved={reload} /> : (
+        {write || noAccess ? <Gated reason={noAccess}><NotesForm ctx={ctx} id={id} us={us} onSaved={reload} /></Gated> : (
           <Stack gap={4}>
             <Text size="sm">{(us.tags || []).length ? "Tags: " + us.tags.join(", ") : "No tags"}</Text>
             {us.note ? <Text size="sm">{us.note}</Text> : null}
@@ -726,10 +744,10 @@ export default function Entity({ route }) {
           {subtitle ? <Text c="dimmed">{subtitle}</Text> : null}
         </Stack>
         <Group gap="xs" wrap="nowrap">
-          {write ? (
-            <ActionIcon variant="subtle" onClick={star} aria-label={(us.star ? "Unstar " : "Star ") + title} aria-pressed={!!us.star}>
+          {write || noAccess ? (
+            <Gated reason={noAccess} inline><ActionIcon variant="subtle" onClick={star} aria-label={(us.star ? "Unstar " : "Star ") + title} aria-pressed={!!us.star}>
               {us.star ? <IconStarFilled size={18} /> : <IconStar size={18} />}
-            </ActionIcon>
+            </ActionIcon></Gated>
           ) : null}
           <Button variant="default" leftSection={<IconLayoutSidebar size={16} />} onClick={toggleRail} aria-pressed={rail !== "0"}>Details</Button>
           <Menu position="bottom-end">
@@ -737,7 +755,8 @@ export default function Entity({ route }) {
               <ActionIcon variant="default" size="lg" aria-label="More actions"><IconDots size={18} /></ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <CopyItem value={link} label="Copy link" onFallback={setFallback} />
+              <CopyItem value={link} label="Copy link" onFallback={setFallback}
+                done={framed ? "Copied the end of the address (the part after #). Put it after the web address of this page." : undefined} />
               {can === true && !saveHidden ? <Menu.Item onClick={exportMd}>Export record as Markdown</Menu.Item> : null}
               {src ? <Menu.Item component="a" href={src} target="_blank" rel="noopener noreferrer">Open source url</Menu.Item> : null}
               {mayRestore ? <Menu.Item onClick={restore}>Restore</Menu.Item> : null}

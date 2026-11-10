@@ -1229,7 +1229,7 @@ test("deriveMembers lists the owner and the member with their newest activity", 
   const docs = JSON.parse(readFileSync(new URL("../desk_fixtures/v2-demo.json", import.meta.url), "utf8"));
   const out = deriveMembers(docs, docs["meta/owner"].data.by, "u_owner");
   assert.deepEqual(out, [
-    { id: "u_owner", role: "Owner", lastActive: "2026-10-26T09:10:00Z" },
+    { id: "u_owner", role: "Owner", lastActive: null }, // the owner's only other activity was a comment, which counts for nothing
     { id: "u_member", role: "Member", lastActive: "2026-10-28T01:22:00.000Z" },
   ]);
   assert.ok(!out.some((m) => m.id === "seed"));
@@ -1245,8 +1245,9 @@ test("deriveMembers keeps a viewer with no docs, skips bad ids and ignores meta/
     "meta/join": { data: { by: "u_join" } },
     "entities/e": { data: { by: "u_other" } },
   };
+  // comments (flat or under people/<id>/comments) grant no membership
+  docs["people/u_y/comments/e--1"] = { data: { by: "u_y", at: "2026-10-06T00:00:00Z" } };
   assert.deepEqual(deriveMembers(docs, null, "u_new"), [
-    { id: "u_x", role: "Member", lastActive: "2026-10-05T00:00:00Z" },
     { id: "u_new", role: "Member", lastActive: null },
   ]);
   assert.deepEqual(deriveMembers({}, null, null), []);

@@ -5,7 +5,7 @@
   "title": "Weekly marketing report",
   "summary": "Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves.",
   "category": "marketing",
-  "maturity": "unpiloted",
+  "maturity": "piloted",
   "license": "MIT",
   "inspiration": [
     {
@@ -21,13 +21,35 @@
   ],
   "stages": [
     {
+      "id": "windows",
+      "kind": "code",
+      "title": "Pick the dates",
+      "does": "Works out the last completed Monday to Sunday week and the week before it, so both sources use the same dates.",
+      "command": "python3 lib/weeks.py"
+    },
+    {
       "id": "collect",
       "kind": "model",
       "title": "Read both weeks",
-      "does": "Reads this week's and last week's totals per source and metric.",
+      "does": "Runs one read-only Google Analytics report and two read-only Search Console queries, for the two weeks from the windows stage, and saves the responses.",
       "connectors": [
-        "analytics"
+        "analytics",
+        "search"
       ]
+    },
+    {
+      "id": "normalize",
+      "kind": "code",
+      "title": "Split the weeks",
+      "does": "Turns the analytics report into this-week.json and last-week.json, so no figure is the model's arithmetic.",
+      "command": "python3 lib/ga_weeks.py --report ga-report.json"
+    },
+    {
+      "id": "normalize-search",
+      "kind": "code",
+      "title": "Add Search Console",
+      "does": "Adds the two Search Console responses to this-week.json and last-week.json under the search source, so no figure is the model's arithmetic.",
+      "command": "python3 lib/gsc_weeks.py merge --this gsc-this.json --last gsc-last.json"
     },
     {
       "id": "compare",
@@ -68,18 +90,35 @@
   "connectors": [
     {
       "id": "analytics",
-      "label": "Analytics and ad platforms",
+      "label": "Google Analytics (GA4)",
       "kind": "mcp",
-      "purpose": "Read weekly totals per source and metric.",
-      "required": true,
+      "purpose": "Run one read-only report comparing this week with last week.",
+      "required": false,
       "access": "read",
       "stages": [
         "collect"
       ],
       "alternatives": [
-        "Two JSON exports placed in the run folder"
+        "Another Google Analytics 4 report tool",
+        "A saved response: ga-report.json"
       ],
-      "connect": "Add an MCP server or connector that reads your analytics and ad platforms. RoutineOS does not supply one."
+      "connect": "Connect a Google Analytics 4 connector that can run reports, for example the Composio Google Analytics tools or Google's analytics-mcp server. Whether either can be limited to read-only is unverified, so the prompt restricts the run to report tools. RoutineOS does not supply one."
+    },
+    {
+      "id": "search",
+      "label": "Google Search Console",
+      "kind": "mcp",
+      "purpose": "Run two read-only search analytics queries, one per week, for the clicks, impressions, click rate and average position of one site.",
+      "required": false,
+      "access": "read",
+      "stages": [
+        "collect"
+      ],
+      "alternatives": [
+        "Another Search Console query tool",
+        "Saved responses: gsc-this.json and gsc-last.json"
+      ],
+      "connect": "Connect a Google Search Console connector that can run search analytics queries, for example the Composio Google Search Console tools. Whether it can be limited to read-only is unverified, so the prompt restricts the run to query and read tools. RoutineOS does not supply one."
     },
     {
       "id": "web",

@@ -4,10 +4,11 @@
 import { hashPin, rememberLockPass, validPin } from "./lock.js";
 import { REQUEST_KINDS, REQUEST_NOTE_MAX, listedRoutines, newRequestId, waitingRequests } from "./queue.js";
 
-export var PEOPLE_COLLECTIONS = ["settings", "userstate", "decisions", "merges", "views", "columns", "settingsHistory", "comments", "requests"];
-export var VIEWER_STATE_KINDS = ["read", "done", "ack", "snooze", "pin"];
+export var PEOPLE_COLLECTIONS = ["settings", "userstate", "decisions", "merges", "views", "columns", "settingsHistory", "requests"];
+export var VIEWER_STATE_KINDS = ["read", "done", "ack", "snooze", "pin", "cols", "route"];
 export var READ_ONLY_NOTE = "Demo data, read only";
 export var SIGN_IN_NOTE = "Sign in to make changes";
+export var ACCESS_NOTE = "Saving needs Contributor access or above";
 export var QUOTA_NOTE = "The Desk is full (25,000 records). Ask the routine owner to clear old records.";
 
 export function PathError(path) {
@@ -17,7 +18,7 @@ export function PathError(path) {
 PathError.prototype = Object.create(Error.prototype);
 PathError.prototype.constructor = PathError;
 
-// Per-viewer state lives at data/users/<viewer>/state/{read,done,ack,snooze,pin}/<id> (six segments, a doc).
+// Per-viewer state lives at data/users/<viewer>/state/{read,done,ack,snooze,pin,cols,route}/<id> (six segments, a doc).
 export function viewerPath(viewer, kind, id) {
   return "data/users/" + viewer + "/state/" + kind + "/" + id;
 }
@@ -25,8 +26,11 @@ export function viewerPath(viewer, kind, id) {
 export function writable(path, viewer) {
   var seg = String(path).split("/");
   if (seg.some(function (s) { return !s; })) return false;
+  // Comments are written only under people/<viewer>/comments (core/comments.js), the one path where the path proves
+  // the author. The flat comments/ collection of an earlier Desk is read, never written.
+  if (seg.length === 2 && seg[0] === "people") return !!viewer && seg[1] === String(viewer); // the marker doc that makes an author listable
   if (seg.length === 2) return PEOPLE_COLLECTIONS.indexOf(seg[0]) !== -1;
-  if (seg.length === 4 && seg[0] === "people") return !!viewer && seg[1] === String(viewer) && seg[2] === "decisions";
+  if (seg.length === 4 && seg[0] === "people") return !!viewer && seg[1] === String(viewer) && (seg[2] === "decisions" || seg[2] === "comments");
   return !!viewer && seg.length === 6 && seg[0] === "data" && seg[1] === "users" && seg[2] === String(viewer) &&
     seg[3] === "state" && VIEWER_STATE_KINDS.indexOf(seg[4]) !== -1;
 }
@@ -41,11 +45,37 @@ export function remove(store, viewer, path) {
   return store.del(path);
 }
 
-// Whether this visit may write at all. No viewer id means no attributable write, so nothing is written.
+// Whether this visit may write shared data. No viewer id means no attributable write, so nothing is written. The
+// platform's answer (ctx.canWriteShared, from store.canWriteShared) refuses only when it is exactly false: null or
+// undefined (not told) leaves the control enabled and a refused write decides. code "access" marks that refusal, the one
+// the controls show disabled with the reason rather than hide.
 export function canWrite(ctx) {
   if (ctx.store && ctx.store.readOnly) return { ok: false, reason: READ_ONLY_NOTE };
   if (!ctx.viewer) return { ok: false, reason: SIGN_IN_NOTE };
+  if (ctx.canWriteShared === false) return { ok: false, reason: ACCESS_NOTE, code: "access" };
   return { ok: true, reason: "" };
+}
+
+// Desk comments are written to the shared database, which a Commenter or Viewer cannot write (the platform refuses a
+// write rule below interact), so commenting follows the same gate as every other write: Contributor and up.
+export function canComment(ctx) {
+  return canWrite(ctx);
+}
+
+// The platform comment composer for a viewer the shared db refuses (Commenter or Viewer). Non-null only when the store
+// is writable, the platform says exactly false to data.write, and the store's composer() (the platform comments namespace) resolves a namespace with
+// openComposer; otherwise null and the Desk keeps its own comment box. Composer only: the Desk cannot list the threads.
+export function canNativeComment(ctx) {
+  if (!ctx || !ctx.store || ctx.store.readOnly || ctx.canWriteShared !== false || typeof ctx.store.composer !== "function") return Promise.resolve(null);
+  return Promise.resolve(ctx.store.composer()).then(function (ns) {
+    return ns && typeof ns.openComposer === "function" ? { open: function (el) { return ns.openComposer({ element: el }); } } : null;
+  }, function () { return null; });
+}
+
+// The reason to show on a disabled control when this visit is refused shared writes by access level, else "".
+export function accessReason(ctx) {
+  var w = canWrite(ctx);
+  return w.code === "access" ? w.reason : "";
 }
 
 // Asks a routine for something at its next run: writes requests/<id> as pending. Only an allow-listed kind for a
@@ -115,11 +145,14 @@ export function watchAll(ctx, specs, cb, onError) {
   var stops = names.map(function (name) {
     var first = true;
     var q = Object.assign({}, specs[name].q || {}, { onError: onError || function () {} });
-    return ctx.store.subscribe(specs[name].collection, function (docs) {
+    function answer(docs) {
       got[name] = docs;
       if (first) { first = false; waiting--; }
       if (waiting === 0) cb(got);
-    }, q);
+    }
+    // A spec with watch(cb, onError) reads from more than one place (comments); it returns its own stop.
+    if (specs[name].watch) return specs[name].watch(answer, onError);
+    return ctx.store.subscribe(specs[name].collection, answer, q);
   });
   return function () { stops.forEach(function (stop) { stop(); }); };
 }

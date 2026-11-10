@@ -156,7 +156,8 @@ class ModuleLint(unittest.TestCase):
 
     def test_desk_shape(self):
         self.assertTrue(definition.lint(dict(job_defn(), desk=[]), []))
-        self.assertTrue(definition.lint(dict(job_defn(), desk={"modules": [], "pages": []}), []))
+        self.assertEqual(definition.lint(dict(job_defn(), desk={"modules": [], "pages": []}), []), [])
+        self.assertTrue(definition.lint(dict(job_defn(), desk={"pages": "x"}), []))
         self.assertTrue(definition.lint(dict(job_defn(), desk={"modules": ["x"]}), []))
 
     def test_no_desk_block_lints_as_before(self):

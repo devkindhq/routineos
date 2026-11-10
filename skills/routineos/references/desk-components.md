@@ -707,6 +707,16 @@ One list per entity type, with filters in the link so back and shared links work
 
 Use: the `browse` default module. Place it with modules; never call it from a component.
 
+### spec
+
+A page declared in the definition (desk.pages): tiles, charts, tables and text with Refresh, date range and a filter.
+
+| Prop | Type | Required |
+|---|---|---|
+| `id` | text | yes |
+
+Use: the `spec` default module. Place it with modules; never call it from a component.
+
 ### entity
 
 One record: fields, per source values, sighting history, links, notes and hand merge.
@@ -717,7 +727,6 @@ One record: fields, per source values, sighting history, links, notes and hand m
 | `key` | text | yes |
 
 Use: the `entity` default module. Place it with modules; never call it from a component.
-
 <!-- generated:end -->
 
 ## Custom components
@@ -786,12 +795,16 @@ edits `routine.toml` for you.
 
 ### What a component can do
 
-- Read: `ctx.read(id)`, `ctx.list(view)` (a saved-view shape, at most 50 records), `ctx.store.get` and
+- Read: `ctx.read(id)`, `ctx.list(view)` (a saved-view shape; a record section or panel gets at most 50 records, a page gets every record the read returned and the array carries `capped: true` when the read stopped at its cap), `ctx.store.get` and
   `ctx.store.list`, and `ctx.watch(collection, cb)` for `entities`, `decisions`, `comments` and `userstate`. `watch`
   returns a disposer; the Desk also calls every disposer when the component leaves the page.
 - Draw: everything `ui.el` allows for a field cell, plus `button`, `input`, `textarea`, `label`, `img` (data: and blob: images only; an https source is refused because it would be a request out), `h3`, `h4` and table tags, and the `ui` helpers `button(label, onClick, {local})` (drawn disabled for read-only visits unless `local: true`), `input`, `textarea`,
   `image`, `markdown`, `valueOf(node)` and `status`. No `on*` attribute exists. A click handler is only `ui.button`'s second
   argument.
+- SVG: `ui.el` also draws `svg`, `g`, `path`, `line`, `polyline`, `rect`, `circle` and `text`, created in the SVG namespace by the host. Allowed attributes: `viewBox`, `width`, `height`, `x`, `y`, `x1`, `y1`, `x2`, `y2`, `cx`, `cy`, `r`, `d`, `points`, `fill`, `stroke`, `stroke-width`, `stroke-dasharray`, `text-anchor`, `transform`, `role`, `class`, `title` and `aria-*`. Refused, in `ui.el` and again in the host's tree check: `foreignObject`, `use`, `image`, `script`, `style` and the animation tags, any `href` or `xlink:href`, a `style` attribute, any `on*` attribute, and a paint value that contains `url(`. Give a chart an `aria-label` or a `text` summary and a table form; colour alone is not enough. [verified: Desk tests in this repo; how every browser treats SVG in the artifact viewer is unverified]
+- Blocks: `ui.block(spec, records)` returns a `div` that the host fills with a spec page block (`tile`, `chart`, `table` or `text`, see [desk-pages.md](desk-pages.md)) drawn from records already read, for example the array from `ctx.list`. A tile shows the same value text as the same spec on a spec page. An unknown kind or a spec that cannot be drawn shows nothing. The host does not look inside the block's own element when it re-checks the tree, so keep the `div` ui.block returns as it is and do not add children to it. [verified: Desk tests in this repo]
+- Size: a component file larger than 64 KiB fails the lint; past that, use a spec page.
+- Upgrade note: widening the host does not change a component's approval hash, so a code page approved earlier gains SVG, `ui.block` and the uncapped page `ctx.list` when the Desk is rebuilt, with no new approval. The owner who approved the code approved what it could do on the older host; read it again if that matters. The lint is a text check and approval is enforced only by the Python publisher.
 - Markdown: `ui.markdown(text, {marks, clamp, onlyMarked})` returns one `div` built from the text as Markdown. Headings
   become `h3` (levels 1 to 3) or `h4` (deeper); bold, italic, code, lists, quotes and tables become their elements. Raw
   HTML in the text is shown as text, an image is its alt text, and only an `https` link is live (any other link is its
@@ -805,7 +818,7 @@ edits `routine.toml` for you.
 | verb | writes | notes |
 | --- | --- | --- |
 | `decide(id, value, note)` | `decisions/<id>~x` | `value` is 1 to 40 of `a-z`, `0-9`, `-`; `drop` and `keep` are reserved. It never changes the built-in keep or drop decision. |
-| `comment(id, text)` | `comments/ext~<time>~<random>` | text up to 4000 characters |
+| `comment(id, text)` | `people/<viewer>/comments/<id>--<ts36>` | text up to 4000 characters; the path names the author |
 | `saveField(id, field, value)` | `userstate/<id>` (`fields.<field>`) | value up to 2000 characters |
 | `drop(id, reason)` | the built-in drop | same as the Drop action |
 | `keep(id)` | the built-in keep | same as the Keep action |

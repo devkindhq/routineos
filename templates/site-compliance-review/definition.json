@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "label": "Site compliance review",
+  "inbox": true,
+  "types": {
+    "page": {
+      "label": "Page",
+      "plural": "Pages",
+      "icon": "file-text",
+      "identity": "field:id",
+      "merge": "merge",
+      "fields": {
+        "id": {"label": "Page id", "type": "text"},
+        "url": {"label": "URL", "type": "url", "summary": true},
+        "title": {"label": "Title", "type": "text", "summary": true},
+        "state": {"label": "Change", "type": "choice", "choices": ["new", "changed", "unchanged"], "summary": true},
+        "capture": {"label": "Capture", "type": "choice", "choices": ["ok", "failed"]},
+        "http_status": {"label": "HTTP status", "type": "number"},
+        "flag_count": {"label": "Flags", "type": "number", "summary": true},
+        "top_severity": {"label": "Worst flag", "type": "text", "summary": true},
+        "captured_at": {"label": "Captured", "type": "date"},
+        "seq": {"label": "Capture number", "type": "number"},
+        "hash": {"label": "Text hash", "type": "text"},
+        "error": {"label": "Capture error", "type": "text"},
+        "clef_state": {"label": "Clef", "type": "choice", "choices": ["ok", "off", "error"]}
+      }
+    },
+    "flag": {
+      "label": "Flag",
+      "plural": "Flags",
+      "icon": "file-search",
+      "identity": "field:id",
+      "merge": "merge",
+      "links": ["page"],
+      "fields": {
+        "id": {"label": "Flag id", "type": "text"},
+        "rule": {"label": "Rule", "type": "text", "summary": true},
+        "label": {"label": "Problem", "type": "text", "summary": true},
+        "severity": {"label": "Severity", "type": "choice", "choices": ["high", "medium", "low"], "summary": true},
+        "url": {"label": "Page", "type": "url", "summary": true},
+        "match": {"label": "Matched wording", "type": "text", "summary": true},
+        "context": {"label": "Context", "type": "text"},
+        "count": {"label": "Matches on page", "type": "number"},
+        "state": {"label": "State", "type": "choice", "choices": ["new", "open", "resolved"], "summary": true},
+        "origin": {"label": "Found by", "type": "choice", "choices": ["both", "regex", "clef"], "summary": true},
+        "clef_score": {"label": "Clef score", "type": "number"},
+        "needs_review": {"label": "Needs review", "type": "bool"}
+      }
+    },
+    "health": {
+      "label": "Worker health",
+      "plural": "Worker health",
+      "icon": "chart-line",
+      "identity": "field:id",
+      "merge": "merge",
+      "fields": {
+        "id": {"label": "Id", "type": "text"},
+        "reachable": {"label": "Reachable", "type": "bool", "summary": true},
+        "error": {"label": "Error", "type": "text", "summary": true},
+        "queue_pending": {"label": "Pages waiting", "type": "number", "summary": true},
+        "queue_failed": {"label": "Pages failed", "type": "number", "summary": true},
+        "sitemap_url": {"label": "Sitemap read", "type": "url"},
+        "sitemap_matches": {"label": "Sitemap matches setting", "type": "bool"},
+        "sitemap_refreshed": {"label": "Sitemap refreshed", "type": "date"},
+        "sitemap_errors": {"label": "Sitemap errors", "type": "text"},
+        "last_batch": {"label": "Last capture batch", "type": "date"},
+        "captures_read": {"label": "Captures read this run", "type": "number"},
+        "refused": {"label": "Captures refused", "type": "number"},
+        "clef_on": {"label": "Clef on", "type": "bool", "summary": true},
+        "clef_model": {"label": "Clef model", "type": "text"},
+        "clef_rules_match": {"label": "Clef asks the routine's rules", "type": "bool"},
+        "clef_calls": {"label": "Clef calls", "type": "number"},
+        "clef_errors": {"label": "Clef errors", "type": "number"},
+        "clef_input_tokens": {"label": "Clef input tokens", "type": "number"},
+        "clef_output_tokens": {"label": "Clef output tokens", "type": "number"}
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "pages-to-review",
+      "type": "page",
+      "name": "Pages to review",
+      "filters": {"status": "active"},
+      "sort": {"field": "flag_count", "dir": "desc"},
+      "columns": ["title", "url", "flag_count", "top_severity", "captured_at"]
+    },
+    {
+      "id": "issues-by-rule",
+      "type": "flag",
+      "name": "Issues by rule",
+      "filters": {"status": "active"},
+      "group": "rule",
+      "sort": {"field": "lastSeen", "dir": "desc"},
+      "columns": ["severity", "label", "match", "url", "state"]
+    },
+    {
+      "id": "high-flags",
+      "type": "flag",
+      "name": "High severity",
+      "filters": {"status": "active", "fields": {"severity": "high"}},
+      "sort": {"field": "firstSeen", "dir": "desc"},
+      "columns": ["label", "match", "url", "state"]
+    },
+    {
+      "id": "clef-verdicts",
+      "type": "flag",
+      "name": "Clef verdicts",
+      "filters": {"status": "active"},
+      "group": "origin",
+      "sort": {"field": "clef_score", "dir": "desc"},
+      "columns": ["label", "clef_score", "needs_review", "match", "url"]
+    },
+    {
+      "id": "needs-review",
+      "type": "flag",
+      "name": "Needs review",
+      "filters": {"status": "active", "fields": {"needs_review": "true"}},
+      "sort": {"field": "clef_score", "dir": "asc"},
+      "columns": ["severity", "label", "match", "clef_score", "url"]
+    },
+    {
+      "id": "decisions",
+      "type": "flag",
+      "name": "Accepted or dismissed",
+      "filters": {"status": "dropped"},
+      "sort": {"field": "lastSeen", "dir": "desc"},
+      "columns": ["severity", "label", "url", "dropReason"]
+    },
+    {
+      "id": "fixed",
+      "type": "flag",
+      "name": "Fixed",
+      "filters": {"status": "all", "fields": {"state": "resolved"}},
+      "sort": {"field": "lastSeen", "dir": "desc"},
+      "columns": ["severity", "label", "url"]
+    },
+    {
+      "id": "worker-health",
+      "type": "health",
+      "name": "Worker health",
+      "filters": {"status": "all"},
+      "sort": {"field": "lastSeen", "dir": "desc"},
+      "columns": ["reachable", "queue_pending", "queue_failed", "sitemap_refreshed", "clef_on", "clef_errors", "error"]
+    }
+  ],
+  "learning": {
+    "enabled": true
+  }
+}

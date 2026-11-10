@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Accordion, Anchor, Badge, Button, Group, Stack, Table, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { byId, canWrite, idSet, markViewer, watchAll, withViewerState, writeMessage } from "../../core/actions.js";
+import Gated from "../Gated.jsx";
+import { accessReason, byId, canWrite, idSet, markViewer, watchAll, withViewerState, writeMessage } from "../../core/actions.js";
 import { human } from "../../core/dates.js";
 import {
   RUN_COUNTS, currentSettings, dropReasonLinks, idType, runMinutes, runStatusTone, settingsDiff, shown, sourcesLine,
@@ -51,7 +52,7 @@ function RunDetail({ ctx, id, d, settingsDoc, seen, onSeen }) {
   var seenBox;
   if (!ctx.viewer) seenBox = <Text size="sm" c="dimmed">Mark seen needs a viewer id, which this visit does not have.</Text>;
   else if (seen) seenBox = <Text size="sm" c="dimmed">You marked this run seen.</Text>;
-  else if (canWrite(ctx).ok) seenBox = <Group><Button size="xs" variant="light" onClick={onSeen}>Mark seen</Button></Group>;
+  else if (canWrite(ctx).ok || accessReason(ctx)) seenBox = <Gated reason={accessReason(ctx)}><Group><Button size="xs" variant="light" onClick={onSeen}>Mark seen</Button></Group></Gated>;
   return (
     <Stack gap="md">
       <Group justify="space-between" align="flex-start">

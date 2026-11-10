@@ -1,7 +1,8 @@
 // core/ext.js: what an agent-written record section, panel or page may do (spec: Desk extensions).
 // Pure and node-testable. A component gets ctx.actions (host verbs) and nothing else that writes: every verb checks
 // canWrite and goes through actions.save, so the write allowlist applies. Not a sandbox.
-import { canDecide, canWrite, decide, dropRecord, request, save, stamp, writeMessage } from "./actions.js";
+import { canComment, canDecide, canWrite, decide, dropRecord, request, save, stamp, writeMessage } from "./actions.js";
+import { commentPath, nextTs36, saveComment, watchComments } from "./comments.js";
 import { COMPONENT_ATTRS, COMPONENT_TAGS, applyFilters, toRow } from "./pages/browse.js";
 import { viewToFilterState } from "./pages/settings.js";
 import { fullRead } from "./paging.js";
@@ -17,7 +18,20 @@ export var FIELD_MAX = 2000;
 export var NOTE_MAX = 2000;
 
 // Interactive slots may also build these. No on* attribute, ever; handlers go through ui.button only.
-export var EXT_TAGS = COMPONENT_TAGS.concat(["button", "input", "textarea", "label", "img", "h3", "h4", "table", "thead", "tbody", "tr", "th", "td"]);
+// The SVG tags and attributes a code page may draw with. Nothing that loads, scripts, animates or links: no foreignObject,
+// use, image, script, style, animate or set, no href, no style attribute, and no paint that names a url(). SVG is made
+// with createElementNS and checked against its namespace, so an HTML element called "svg" is refused.
+export var SVG_NS = "http://www.w3.org/2000/svg";
+export var SVG_TAGS = ["svg", "g", "path", "line", "polyline", "rect", "circle", "text"];
+export var SVG_ATTRS = ["viewbox", "width", "height", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "d", "points", "fill", "stroke",
+  "stroke-width", "stroke-dasharray", "text-anchor", "transform", "role", "class", "title"];
+export var SVG_ATTR_CASE = { viewbox: "viewBox" };
+
+export function isSvgTag(tag) {
+  return SVG_TAGS.indexOf(tag) !== -1;
+}
+
+export var EXT_TAGS = COMPONENT_TAGS.concat(["button", "input", "textarea", "label", "img", "h3", "h4", "table", "thead", "tbody", "tr", "th", "td"], SVG_TAGS);
 export var EXT_ATTRS = COMPONENT_ATTRS.concat(["type", "placeholder", "rows", "maxlength", "disabled", "alt", "for", "name", "src"]);
 
 export function extTag(tag) {
@@ -26,6 +40,10 @@ export function extTag(tag) {
 
 // src only on img and only a safe image source; type only button or text; the rest as the field cell set plus the extras.
 export function extAttr(name, tag, value, safeImage) {
+  if (isSvgTag(tag)) {
+    if (/^aria-[a-z0-9-]*[a-z0-9]$/.test(name)) return true;
+    return SVG_ATTRS.indexOf(name) !== -1 && !/url\s*\(/i.test(String(value));
+  }
   if (/^(aria|data)-[a-z0-9-]*[a-z0-9]$/.test(name)) return true;
   if (EXT_ATTRS.indexOf(name) === -1) return false;
   if (name === "src") return tag === "img" && safeImage(value);
@@ -47,24 +65,13 @@ export function validId(id) {
 // same way, and the path never lands on a built-in decisions/<id> doc.
 export var DECISION_SUFFIX = "~x";
 
-function opaqueId() {
-  var r = "";
-  try {
-    var a = new Uint8Array(6);
-    globalThis.crypto.getRandomValues(a);
-    r = Array.prototype.map.call(a, function (x) { return (x < 16 ? "0" : "") + x.toString(16); }).join("");
-  } catch (e) {
-    r = Math.random().toString(16).slice(2, 14);
-  }
-  return "ext~" + Date.now().toString(36) + "~" + r;
-}
-
 function refuse(msg) {
   return Promise.reject(new Error(msg));
 }
 
-function gate(ctx, id, decides) {
-  var w = canWrite(ctx);
+// kind "comment" uses the comment gate, today the same as canWrite: Contributor and up.
+function gate(ctx, id, decides, kind) {
+  var w = kind === "comment" ? canComment(ctx) : canWrite(ctx);
   if (!w.ok) return refuse(w.reason);
   if (!validId(id)) return refuse("That is not a record id.");
   if (decides && !canDecide(ctx)) return refuse("Only the Desk owner can decide on a joined Desk.");
@@ -85,8 +92,8 @@ export function makeActions(ctx, allowed, scope) {
     return p.then(function () { return true; }, function (e) { throw new Error(writeMessage(e)); });
   }
   // Runs fn once the id passes the gate and, with a scope, names a record this component may touch.
-  function inScope(id, decides, fn) {
-    var bad = gate(ctx, id, decides);
+  function inScope(id, decides, fn, kind) {
+    var bad = gate(ctx, id, decides, kind);
     if (bad) return bad;
     if (!scope) return fn();
     return ctx.store.get("entities/" + id).then(function (d) {
@@ -111,9 +118,9 @@ export function makeActions(ctx, allowed, scope) {
       var t = text(body, COMMENT_MAX).trim();
       return inScope(id, false, function () {
         if (!t) return refuse("Write a comment first.");
-        return wrap(save(ctx.store, ctx.viewer, "comments/" + opaqueId(),
-          { entity: id, by: ctx.viewer, at: new Date().toISOString(), text: t }));
-      });
+        return wrap(saveComment(ctx.store, ctx.viewer, commentPath(ctx.viewer, id, nextTs36()),
+          { at: new Date().toISOString(), text: t }));
+      }, "comment");
     },
     saveField: function (id, field, value) {
       if (typeof field !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(field)) return gate(ctx, id) || refuse("That is not a field name.");
@@ -143,14 +150,18 @@ export function makeActions(ctx, allowed, scope) {
   return out;
 }
 
-// Records of a saved-view shape ({type, filters, sort, window}) as [{id, data}], at most PANEL_MAX.
-export function listView(store, view) {
+// Records of a saved-view shape ({type, filters, sort, window}) as [{id, data}]. A page slot gets every record the
+// read returned and `capped` says whether the read stopped at its cap; a panel or record section keeps PANEL_MAX.
+export function listView(store, view, all) {
   if (!view || !validId(view.type)) return Promise.resolve([]);
   return fullRead(store, "entities", { where: [["type", "==", view.type]] }).then(function (docs) {
     var byId = Object.create(null);
     var rows = docs.map(function (d) { byId[d.id] = d; return toRow(d, {}); });
     var fs = Object.assign(viewToFilterState(view), { now: new Date().toISOString() });
-    return applyFilters(rows, fs).slice(0, PANEL_MAX).map(function (r) { return { id: r.id, data: byId[r.id].data }; });
+    var kept = applyFilters(rows, fs);
+    var out = (all ? kept : kept.slice(0, PANEL_MAX)).map(function (r) { return { id: r.id, data: byId[r.id].data }; });
+    out.capped = docs.capped === true || (!all && kept.length > PANEL_MAX);
+    return out;
   });
 }
 
@@ -192,23 +203,26 @@ export function makePrefs(componentId, live) {
 
 // What a component sees: reads, a watch whose disposer the host also keeps, and the verbs.
 // track(disposer) lets the host call every watch's disposer on unmount.
-// opts: {id, prefs}. A component that did not declare prefs: true gets no pref or setPref.
+// opts: {id, prefs, slot}. A component that did not declare prefs: true gets no pref or setPref.
 export function extCtx(base, track, verbs, scope, opts) {
   var store = base.store;
   var out = {
     store: { get: function (p) { return store.get(p); }, list: function (c, q) { return store.list(c, q); } },
     viewer: base.viewer || null,
     canWrite: canWrite(base).ok,
+    canComment: canComment(base).ok,
     read: function (id) {
       if (!validId(id)) return Promise.resolve(null);
       return store.get("entities/" + id).then(function (d) { return d.exists ? d.data : null; });
     },
-    list: function (view) { return listView(store, view); },
+    list: function (view) { return listView(store, view, !!(opts && opts.slot === "page")); },
     watch: function (collection, cb) {
       if (WATCHABLE.indexOf(collection) === -1 || typeof cb !== "function") throw new Error("Cannot watch " + collection);
-      var off = store.subscribe(collection, function (docs) {
+      function safe(docs) {
         try { cb(docs); } catch (e) { /* a failing callback must not break the store */ }
-      }, {});
+      }
+      // Comments sit under each person (people/<id>/comments); watchComments merges them, the author read from the path.
+      var off = collection === "comments" ? watchComments(base, safe) : store.subscribe(collection, safe, {});
       var done = false;
       var dispose = function () { if (!done) { done = true; off(); } };
       track(dispose);

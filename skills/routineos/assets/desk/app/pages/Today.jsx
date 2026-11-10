@@ -4,7 +4,8 @@
 import { useEffect, useState } from "react";
 import { Anchor, Badge, Button, Card, Group, Paper, Progress, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { byId, canWrite, idSet, isDeskOwner, markViewer, snoozeItem, watchAll, withViewerState, writeMessage } from "../../core/actions.js";
+import Gated from "../Gated.jsx";
+import { accessReason, byId, canWrite, idSet, isDeskOwner, markViewer, snoozeItem, watchAll, withViewerState, writeMessage } from "../../core/actions.js";
 import { human } from "../../core/dates.js";
 import { APPROVAL_SOON_HOURS, KIND_WORDS, timeLeft } from "../../core/pages/approvals.js";
 import { countLine } from "../../core/pages/browse.js";
@@ -143,6 +144,7 @@ export default function Today() {
     personDecisions: got.mine || [], workersByKey: byId(got.workers), done: idSet(got.done) }), now);
   var fromRoutine = m.fromRoutine.filter((x) => !gone[x.id]);
   var write = canWrite(ctx).ok && !!model.viewer;
+  var noAccess = model.viewer ? accessReason(ctx) : "";
   var nP = m.health.length;
   var tz;
   try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { tz = undefined; }
@@ -235,11 +237,11 @@ export default function Today() {
                     {typeof rid === "string" ? <Anchor href={entityHash(rid)}>{title}</Anchor> : <Text>{title}</Text>}
                   </Group>
                   {x.data.why ? <Text size="sm" c="dimmed">{x.data.why}</Text> : null}
-                  {write ? (
-                    <Group gap="xs">
+                  {write || noAccess ? (
+                    <Gated reason={noAccess}><Group gap="xs">
                       <Button size="xs" variant="light" onClick={() => act(x, () => markViewer(ctx, "done", x.id, true), "Marked reviewed.", () => markViewer(ctx, "done", x.id, false))}>Mark reviewed</Button>
                       <Button size="xs" variant="subtle" onClick={() => act(x, () => snoozeItem(ctx, x.id, new Date(Date.now() + 86400000).toISOString()), "Back tomorrow.")}>Remind me tomorrow</Button>
-                    </Group>
+                    </Group></Gated>
                   ) : null}
                 </Stack>
               );

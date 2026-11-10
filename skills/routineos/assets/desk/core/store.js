@@ -62,6 +62,7 @@ export function unavailable() {
 
 export function staticStore(opts) {
   var loaded = null;
+  var bust = false;
   function load() {
     if (!loaded) {
       if (opts.docs) {
@@ -69,7 +70,10 @@ export function staticStore(opts) {
       } else {
         var fetchFn = opts.fetch || globalThis.fetch;
         // A failed load is not kept, so the next read (Try again) fetches afresh.
-        loaded = fetchFn(opts.url).then(function (res) {
+        // A reload asks for the file again with a changing query value so no cache answers it.
+        var url = bust ? opts.url + (opts.url.indexOf("?") === -1 ? "?" : "&") + "r=" + Date.now() : opts.url;
+        bust = false;
+        loaded = fetchFn(url).then(function (res) {
           if (!res.ok) throw new Error("could not load " + opts.url);
           return res.json();
         }).catch(function (e) {
@@ -115,6 +119,12 @@ export function staticStore(opts) {
       });
     },
     list: list,
+    // Forget the memoised snapshot and read it again; resolves true once the new one is in.
+    reload: function () {
+      loaded = null;
+      bust = true;
+      return load().then(function () { return true; });
+    },
     subscribe: function (collection, cb, q) {
       var live = true;
       list(collection, q).then(function (rows) { if (live) cb(rows); }, function (e) {
@@ -199,6 +209,20 @@ export function dbStore(opts) {
       if (!usable) return Promise.resolve(false);
       return claude.use("user").then(function (user) { return user ? user.isOwner() : false; })
         .then(function (yes) { return yes === true; }, function () { return false; });
+    },
+    // user.can("data.write") (user.d.ts, contract 0.2.96): true, false, or null when the platform does not say. Anything
+    // else, a missing namespace or method, or a failure is also null, so the controls stay enabled and a refused write
+    // decides. Commenter and Viewer hold `view`, which writes nothing under the Desk's rules; Contributor holds `interact`.
+    canWriteShared: function () {
+      if (!usable) return Promise.resolve(null);
+      return Promise.resolve().then(function () { return claude.use("user"); }).then(function (user) {
+        return user && typeof user.can === "function" ? user.can("data.write") : null;
+      }).then(function (yes) { return yes === true || yes === false ? yes : null; }, function () { return null; });
+    },
+    // claude.use("comments") (the platform comment composer), or null when unavailable or it fails.
+    composer: function () {
+      if (!usable) return Promise.resolve(null);
+      return Promise.resolve().then(function () { return claude.use("comments"); }).then(function (ns) { return ns || null; }, function () { return null; });
     },
     // {id: Profile} for the ids on screen (user.d.ts: never rejects; name is "" without scope "profile").
     // A null namespace resolves {} and the page shows "Someone".

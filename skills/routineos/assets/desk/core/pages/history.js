@@ -66,14 +66,16 @@ export function isPerson_(by) {
 export function historyEvents(src) {
   var out = [], names = src.names || {};
   function name(id) { return Object.prototype.hasOwnProperty.call(names, id) ? names[id] : id; }
-  function add(at, by, kind, text, href, entity) {
-    if (at && (by === null || isPerson_(by))) out.push(Object.assign({ at: at, by: by, kind: kind, text: text, href: href }, entity ? { entity: entity } : {}));
+  function add(at, by, kind, text, href, entity, unverified) {
+    if (at && (by === null || isPerson_(by))) out.push(Object.assign({ at: at, by: by, kind: kind, text: text, href: href }, entity ? { entity: entity } : {}, unverified ? { unverified: true } : {}));
   }
   (src.runs || []).forEach(function (r) {
     add(r.data.startedAt, null, "run", producerLabel(src.definition, r.data.producer) + " run, " + (r.data.status || "unknown"), "#/runs/" + encodeURIComponent(r.id));
   });
   (src.comments || []).forEach(function (c) {
-    add(c.data.at, c.data.by, "comment", "Commented on " + name(c.data.entity) + ": " + c.data.text, entityHash(c.data.entity), c.data.entity);
+    // A comment from an earlier Desk (verified false) says who wrote it only in its own body, so it names nobody.
+    if (c.verified === false) add(c.data.at, null, "comment", "Unverified comment on " + name(c.data.entity) + ": " + c.data.text, entityHash(c.data.entity), c.data.entity, true);
+    else add(c.data.at, c.data.by, "comment", "Commented on " + name(c.data.entity) + ": " + c.data.text, entityHash(c.data.entity), c.data.entity);
   });
   (src.decisions || []).forEach(function (d) {
     var x = d.data;

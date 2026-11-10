@@ -4,7 +4,7 @@
     "raise_reason": "Desk moved to React and Mantine (spec 2026-11-08-desk-mantine-design)"
   },
   "single/index.html": {
-    "gzip": 364600,
-    "raise_reason": "Pan and zoom viewer for image notes: react-zoom-pan-pinch 4.2.0 (about 15 kB gz) plus the viewer component"
+    "gzip": 502393,
+    "raise_reason": "Mantine charts for spec pages (chart blocks and tile sparklines, with the Mantine charts and recharts packages). Base 367663, now 502393 gzip, +134,730. That is 6,002 bytes over the +128,728 first accepted (496,391) and 19,330 under the 521,723 cap the owner agreed. The extra over the first measure is the platform comment composer, the code page host (SVG, ui.block with a checked body), and the spec page robustness work (error boundaries, real date checks, skipped counts, load and failure states)."
   }
 }

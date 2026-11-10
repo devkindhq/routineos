@@ -1,6 +1,7 @@
 """definition.json loading, linting and compiling into meta/definition. Standard library only."""
 import hashlib
 import json
+import math
 import re
 
 import join_card
@@ -322,11 +323,249 @@ def lint_record(record, types):
     return problems
 
 
+PAGE_KEYS = ("id", "title", "nav", "controls", "filter", "blocks")
+PAGE_CONTROLS = ("refresh", "dateRange", "filter")
+BLOCK_KINDS = ("tile", "chart", "text", "table")
+BLOCK_KEYS = {
+    "tile": ("id", "kind", "span", "label", "query", "format", "sparkline"),
+    "chart": ("id", "kind", "span", "type", "title", "query", "format", "xLabel", "yLabel", "target"),
+    "table": ("id", "kind", "span", "title", "query", "columns", "link"),
+    "text": ("id", "kind", "span", "heading", "text"),
+}
+CHART_TYPES = ("sparkline", "line", "bar", "stackedBar", "shareBar")
+BLOCK_FORMATS = ("number", "percent", "currency")
+QUERY_KEYS = ("type", "where", "window", "groupBy", "x", "aggregate", "orderBy", "limit")
+QUERY_OPS = ("==", "!=", "<", "<=", ">", ">=", "in", "not-in", "array-contains")
+AGGREGATE_OPS = ("latest", "sum", "avg", "count", "delta")
+WINDOW_UNITS = ("days", "weeks")
+# The longest window a page may ask for. The Desk (core/palette.js SPEC_WINDOW) drops a block over these.
+WINDOW_MAX = {"days": 3660, "weeks": 520}
+DATE_META_FIELDS = ("lastSeen", "firstSeen")
+SPAN_KEYS = ("base", "md")
+QUERY_LIMIT_MAX = 1000
+
+
+def _lint_span(label, span):
+    if not isinstance(span, dict) or any(k not in SPAN_KEYS for k in span):
+        return [f"{label}: span must be an object with base and md, each 1 to 12"]
+    return [f"{label}: span.{k} must be a whole number from 1 to 12" for k, v in span.items()
+            if not _whole(v) or not 1 <= v <= 12]
+
+
+def _lint_query(label, query, kind, types):
+    """Problems with a block query: {type, where, window, groupBy, x, aggregate, orderBy, limit}."""
+    if not isinstance(query, dict):
+        return [f"{label}: query must be an object"]
+    problems = [f"{label}: unknown query key '{k}'" for k in query if k not in QUERY_KEYS]
+    tname = query.get("type")
+    if not isinstance(tname, str) or tname not in types:
+        return problems + [f"{label}: query.type is undeclared type '{tname}'"]
+    fields = (types[tname] or {}).get("fields") or {}
+    known = set(fields) | set(VIEW_META_FIELDS)
+    where = query.get("where", [])
+    if not isinstance(where, list):
+        problems.append(f"{label}: query.where must be a list of [field, operator, value]")
+        where = []
+    for clause in where:
+        if not isinstance(clause, list) or len(clause) != 3 or not isinstance(clause[0], str):
+            problems.append(f"{label}: query.where entries must be [field, operator, value]")
+            continue
+        if clause[0] not in known:
+            problems.append(f"{label}: query.where has undeclared field '{clause[0]}'")
+        if clause[1] not in QUERY_OPS:
+            problems.append(f"{label}: query.where operator '{clause[1]}' is not one of {', '.join(QUERY_OPS)}")
+        elif clause[1] in ("in", "not-in") and not isinstance(clause[2], list):
+            problems.append(f"{label}: query.where operator '{clause[1]}' needs a list value")
+    window = query.get("window")
+    if window is not None and window != "range":
+        last = window.get("last") if isinstance(window, dict) else None
+        if not (isinstance(last, dict) and _whole(last.get("n")) and last["n"] >= 1 and last.get("unit") in WINDOW_UNITS):
+            problems.append(f"{label}: query.window must be \"range\" or {{last: {{n, unit}}}} with n 1 or more "
+                            f"and unit {' or '.join(WINDOW_UNITS)}")
+        elif last["n"] > WINDOW_MAX[last["unit"]]:
+            problems.append(f"{label}: query.window.last.n is at most {WINDOW_MAX['days']} days or "
+                            f"{WINDOW_MAX['weeks']} weeks")
+    group = query.get("groupBy")
+    if group is not None and group not in known:
+        problems.append(f"{label}: query.groupBy has undeclared field '{group}'")
+    if group is not None and kind == "tile":
+        problems.append(f"{label}: a tile has no groupBy; it shows one number")
+    x = query.get("x")
+    if kind in ("tile", "chart") and x is None:
+        problems.append(f"{label}: a {kind} needs query.x, the date field it plots by")
+    elif x is not None and x not in known:
+        problems.append(f"{label}: query.x has undeclared field '{x}'")
+    elif x is not None and x not in DATE_META_FIELDS and (fields.get(x) or {}).get("type") != "date":
+        problems.append(f"{label}: query.x field '{x}' is not a date field")
+    if kind == "table" and window is not None and x is None:
+        problems.append(f"{label}: a table with a window needs query.x, the date field the window cuts by")
+    agg = query.get("aggregate")
+    if kind in ("tile", "chart") and agg is None:
+        problems.append(f"{label}: a {kind} needs query.aggregate")
+    elif agg is not None:
+        if not isinstance(agg, dict) or agg.get("op") not in AGGREGATE_OPS:
+            problems.append(f"{label}: aggregate op must be one of {', '.join(AGGREGATE_OPS)}")
+        else:
+            field = agg.get("field")
+            if agg["op"] != "count" or field is not None:
+                if field not in known:
+                    problems.append(f"{label}: aggregate has undeclared field '{field}'")
+                elif agg["op"] != "count" and (fields.get(field) or {}).get("type") != "number":
+                    problems.append(f"{label}: aggregate field '{field}' is not a number field")
+    order = query.get("orderBy")
+    if order is not None and not (isinstance(order, list) and len(order) == 2 and order[0] in known
+                                  and order[1] in ("asc", "desc")):
+        problems.append(f"{label}: query.orderBy must be [field, asc|desc] over a declared field")
+    if "limit" in query and kind != "table":
+        problems.append(f"{label}: query.limit is only for a table")
+    elif "limit" in query and not (_whole(query["limit"]) and 1 <= query["limit"] <= QUERY_LIMIT_MAX):
+        problems.append(f"{label}: query.limit must be a whole number from 1 to {QUERY_LIMIT_MAX}")
+    return problems
+
+
+def _lint_block(label, block, types):
+    if not isinstance(block, dict):
+        return [f"{label} must be an object"]
+    bid = block.get("id")
+    label = f"{label}: block '{bid}'"
+    problems = []
+    if not isinstance(bid, str) or not MODULE_ID_RE.match(bid):
+        problems.append(f"{label}: id must match {MODULE_ID_RE.pattern}")
+    kind = block.get("kind")
+    if kind not in BLOCK_KINDS:
+        return problems + [f"{label}: kind '{kind}' is not one of {', '.join(BLOCK_KINDS)}"]
+    problems += [f"{label}: unknown key '{k}' for a {kind}" for k in block if k not in BLOCK_KEYS[kind]
+                 and k not in CODE_KEYS and not str(k).endswith("Html")]
+    if "span" in block:
+        problems += _lint_span(label, block["span"])
+    if kind == "chart" and block.get("type") not in CHART_TYPES:
+        problems.append(f"{label}: chart type '{block.get('type')}' is not one of {', '.join(CHART_TYPES)}")
+    if "format" in block and block["format"] not in BLOCK_FORMATS:
+        problems.append(f"{label}: format must be one of {', '.join(BLOCK_FORMATS)}")
+    for key in ("label", "title", "heading", "xLabel", "yLabel"):
+        if key in block:
+            if not isinstance(block[key], str) or not block[key].strip():
+                problems.append(f"{label}: {key} must be text")
+            else:
+                problems += copy_problems(f"{label}.{key}", block[key])
+    if kind == "tile" and not block.get("label"):
+        problems.append(f"{label}: a tile needs a label")
+    if kind == "text":
+        if not isinstance(block.get("text"), str) or not block["text"].strip():
+            problems.append(f"{label}: a text block needs text")
+        else:
+            problems += copy_problems(f"{label}.text", block["text"])
+    else:
+        problems += _lint_query(label, block.get("query"), kind, types)
+    if kind == "table" and isinstance(block.get("query"), dict):
+        tfields = ((types.get(block["query"].get("type")) or {}).get("fields") or {})
+        cols = block.get("columns", [])
+        if not isinstance(cols, list) or not cols:
+            problems.append(f"{label}: columns must be a list of fields")
+        else:
+            problems += [f"{label}: columns has undeclared field '{c}'" for c in cols
+                         if c not in tfields and c not in VIEW_META_FIELDS]
+            problems += [f"{label}: columns lists '{c}' more than once" for c in dict.fromkeys(cols) if cols.count(c) > 1]
+    for flag in ("sparkline", "link"):
+        if flag in block and not isinstance(block[flag], bool):
+            problems.append(f"{label}: {flag} must be true or false")
+    if "target" in block and (isinstance(block["target"], bool) or not isinstance(block["target"], (int, float))
+                              or not math.isfinite(block["target"])):
+        problems.append(f"{label}: target must be a number")
+    return problems
+
+
+def lint_pages(pages, types, module_ids=()):
+    """Problems with desk.pages, the spec pages: [{id, title, nav, controls, filter, blocks}]. Each problem
+    starts desk.pages.<id>: . Not routine.toml [desk] pages, which turns on code pages."""
+    if not isinstance(pages, list):
+        return ["desk.pages must be a list"]
+    problems, seen = [], set()
+    for i, pg in enumerate(pages):
+        if not isinstance(pg, dict):
+            problems.append(f"desk.pages[{i}] must be an object")
+            continue
+        pid = pg.get("id")
+        label = f"desk.pages.{pid}"
+        found = []
+        if not isinstance(pid, str) or not MODULE_ID_RE.match(pid):
+            found.append(f"id must match {MODULE_ID_RE.pattern}")
+        elif pid in seen:
+            found.append("declared more than once")
+        elif pid in PAGE_IDS or pid in RETIRED_PAGE_IDS:
+            found.append("the id is a built-in page; choose another id")
+        elif never_learnable(pid):
+            found.append("the id contains a word learning never touches (push, gate, send, alert, permission, "
+                         "budget, maxruns, capoverride); choose another id")
+        elif pid in module_ids:
+            found.append("the id is also a desk module id; choose another id")
+        if isinstance(pid, str):
+            seen.add(pid)
+        found += [f"unknown key '{k}'" for k in pg if k not in PAGE_KEYS and k not in CODE_KEYS and not str(k).endswith("Html")]
+        found += [f"'{p}' would carry code; a spec page carries data only" for p in _code_keys(pg, "page")]
+        title = pg.get("title")
+        if not isinstance(title, str) or not title.strip():
+            found.append("needs a title")
+        else:
+            found += [p.split(": ", 1)[1] for p in copy_problems("t", title)]
+        nav = pg.get("nav")
+        if nav is not None:
+            if not isinstance(nav, dict) or any(k not in ("label", "icon") for k in nav):
+                found.append("nav must be an object with label and icon")
+            else:
+                if "label" in nav:
+                    text = nav["label"]
+                    if not isinstance(text, str) or not text.strip() or len(text) > MODULE_LABEL_MAX:
+                        found.append(f"nav.label must be text of at most {MODULE_LABEL_MAX} characters")
+                    else:
+                        found += [p.split(": ", 1)[1] for p in copy_problems("t", text)]
+                if "icon" in nav:
+                    found += [p.split(": ", 1)[1] for p in lint_icon("nav", nav["icon"])]
+        controls = pg.get("controls", [])
+        if not isinstance(controls, list):
+            found.append("controls must be a list")
+            controls = []
+        found += [f"control '{c}' is not one of {', '.join(PAGE_CONTROLS)}" for c in controls if c not in PAGE_CONTROLS]
+        flt = pg.get("filter")
+        every = {f for t in types.values() if isinstance(t, dict) for f in (t.get("fields") or {})} | set(VIEW_META_FIELDS)
+        if "filter" in controls and not isinstance(flt, dict):
+            found.append("the filter control needs a filter {field, label}")
+        elif flt is not None:
+            if not isinstance(flt, dict) or flt.get("field") not in every or not isinstance(flt.get("label"), str):
+                found.append(f"filter must be {{field, label}} over a declared field; undeclared field '{(flt or {}).get('field') if isinstance(flt, dict) else flt}'")
+        blocks = pg.get("blocks")
+        if not isinstance(blocks, list):
+            found.append("blocks must be a list")
+            blocks = []
+        queried = {b["query"]["type"] for b in blocks if isinstance(b, dict) and isinstance(b.get("query"), dict)
+                   and isinstance(b["query"].get("type"), str)}
+        if isinstance(flt, dict) and flt.get("field") in every and flt["field"] not in VIEW_META_FIELDS and not any(
+                flt["field"] in ((types.get(t) or {}).get("fields") or {}) for t in queried):
+            found.append(f"filter field '{flt['field']}' is declared on no block on this page's types")
+        for j, b in enumerate(blocks):
+            if isinstance(b, dict) and isinstance(b.get("query"), dict) and b["query"].get("window") == "range" \
+                    and "dateRange" not in controls:
+                found.append(f"blocks[{j}]: a window of \"range\" needs the dateRange control on the page")
+        bids = set()
+        for j, b in enumerate(blocks):
+            found += [p for p in _lint_block(f"blocks[{j}]", b, types)]
+            bid = b.get("id") if isinstance(b, dict) else None
+            if isinstance(bid, str):
+                if bid in bids:
+                    found.append(f"blocks[{j}]: block '{bid}' is declared more than once")
+                bids.add(bid)
+        problems += [f"{label}: {p}" for p in found]
+    return problems
+
+
 def lint_desk(desk, types):
     """Problems with a definition's desk block: {modules: [view module, ...], health: {...}, record: {strip}}."""
     if not isinstance(desk, dict):
         return ["desk must be an object with a modules list"]
-    problems = [f"desk: unknown key '{k}'" for k in desk if k not in ("modules", "health", "record")]
+    problems = [f"desk: unknown key '{k}'" for k in desk if k not in ("modules", "health", "record", "pages")]
+    if "pages" in desk:
+        mods = desk.get("modules") if isinstance(desk.get("modules"), list) else []
+        problems += lint_pages(desk["pages"], types, {m.get("id") for m in mods if isinstance(m, dict) and isinstance(m.get("id"), str)})
     if "health" in desk:
         problems += lint_health(desk["health"], types)
     if "record" in desk:
@@ -457,6 +696,7 @@ def compile(producers) -> dict:
     out_producers, types, views, modules, module_owner = [], {}, [], [], {}
     health, health_owner = {}, {}
     strips, strip_owner = {}, {}
+    pages, page_owner = [], {}
     for p in producers:
         pid, defn, settings = p["id"], p["definition"], list(p.get("settings", []))
         problems += [f"{pid}: {msg}" for msg in lint(defn, settings)]
@@ -524,6 +764,15 @@ def compile(producers) -> dict:
                     problems.append(f"desk module '{mid}' is declared by {module_owner[mid]} and {pid}")
                 module_owner.setdefault(mid, pid)
             modules.append(dict(m, producer=pid))
+        for pg in desk.get("pages", []) if isinstance(desk, dict) and isinstance(desk.get("pages"), list) else []:
+            if not isinstance(pg, dict):
+                continue
+            gid = pg.get("id")
+            if isinstance(gid, str):
+                if gid in page_owner and page_owner[gid] != pid:
+                    problems.append(f"desk page '{gid}' is declared by {page_owner[gid]} and {pid}")
+                page_owner.setdefault(gid, pid)
+            pages.append(dict(pg, producer=pid))
         rules = desk.get("health") if isinstance(desk, dict) else None
         for tname, rule in sorted(rules.items()) if isinstance(rules, dict) else []:
             if tname in health and health[tname] != rule:
@@ -546,11 +795,16 @@ def compile(producers) -> dict:
                         f"(found in {joins[0][0]} and {joins[1][0]})")
     elif joins:
         problems += join_card.lint_join(joins[0][1], types)
+    for pg in pages:
+        if pg.get("id") in module_owner:
+            problems.append(f"desk page '{pg['id']}' is also a desk module id (module from {module_owner[pg['id']]}, page from {pg['producer']})")
     if problems:
         raise DefinitionError(problems)
     body = {"producers": out_producers, "types": types, "views": views}
     if modules:
         body["desk"] = {"modules": modules}
+    if pages:
+        body.setdefault("desk", {})["pages"] = pages
     if health:
         body.setdefault("desk", {})["health"] = json.loads(json.dumps(health))
     if strips:

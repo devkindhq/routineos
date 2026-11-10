@@ -808,6 +808,19 @@
       "since": "0.9.0"
     },
     {
+      "id": "spec",
+      "kind": "page",
+      "summary": "A page declared in the definition (desk.pages): tiles, charts, tables and text with Refresh, date range and a filter.",
+      "props": {
+        "id": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "a11y": "",
+      "since": "0.11.0"
+    },
+    {
       "id": "entity",
       "kind": "page",
       "summary": "One record: fields, per source values, sighting history, links, notes and hand merge.",

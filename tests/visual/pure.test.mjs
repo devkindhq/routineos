@@ -893,8 +893,9 @@ test("a person's own decisions are writable only under people/<their id>/decisio
   const { writable, personPath } = require(CORE + "actions.js");
   assert.equal(personPath("u_1", "release--" + LK), "people/u_1/decisions/release--" + LK);
   assert.equal(writable("people/u_1/decisions/x", "u_1"), true);
+  assert.equal(writable("people/u_1", "u_1"), true, "the viewer's own marker doc");
   for (const [p, v] of [["people/u_2/decisions/x", "u_1"], ["people/u_1/decisions/x", null], ["people/u_1/other/x", "u_1"],
-    ["people/u_1", "u_1"], ["people/u_1/decisions/x/y", "u_1"], ["meta/owner", "u_1"]]) {
+    ["people/u_2", "u_1"], ["people/u_1", null], ["people/u_1/decisions/x/y", "u_1"], ["meta/owner", "u_1"]]) {
     assert.equal(writable(p, v), false, p);
   }
 });
@@ -1130,8 +1131,10 @@ test("commentView: authorship comes from the doc id (security review)", () => {
   assert.deepEqual(commentView([doc("junk", { entity: "role--x", by: "u_1", text: "x", at: at(0) })], "u_1", now), []);
 });
 
-test("comments are a people collection: comments/<entity>--<viewer>--<ts36> is writable", () => {
-  assert.equal(writable("comments/role--x--u_1--mvp102o0", "u_1"), true);
+test("comments are written only under the viewer's own people path", () => {
+  assert.equal(writable("people/u_1/comments/role--x--mvp102o0", "u_1"), true);
+  assert.equal(writable("people/u_2/comments/role--x--mvp102o0", "u_1"), false);
+  assert.equal(writable("comments/role--x--u_1--mvp102o0", "u_1"), false, "the flat collection is read, not written");
   assert.equal(writable("comments/a/b", "u_1"), false);
 });
 
@@ -1221,12 +1224,12 @@ test("decisionLabel", () => {
   assert.equal(decisionLabel(undefined), "Pending");
 });
 
-test("owner prefers decider, then latest commenter", () => {
+test("owner is the decider, and a comment never makes anyone an owner", () => {
   const d = new Map([["a", { decision: "keep", by: "Robin Vale" }]]);
   const c = [{ entity: "b", by: "Kit Marlow", at: "2026-10-01" }, { entity: "b", by: "Robin Vale", at: "2026-10-02" }];
   assert.equal(ownerOf("a", d, c).name, "Robin Vale");
-  assert.equal(ownerOf("b", d, c).name, "Robin Vale");
-  assert.equal(ownerOf("b", d, [{ data: { entity: "b", by: "Kit Marlow", at: "2026-10-03" } }, ...c]).name, "Kit Marlow");
+  assert.equal(ownerOf("b", d, c), null);
+  assert.equal(ownerOf("b", d, [{ verified: true, data: { entity: "b", by: "Kit Marlow", at: "2026-10-03" } }]), null);
   assert.equal(ownerOf("a", { a: { by: "Kit Marlow" } }, []).name, "Kit Marlow");
 });
 

@@ -9,6 +9,7 @@ import { decisionNow } from "../core/pages/entity.js";
 import { peekPosition } from "../core/peek.js";
 import { recordHref } from "../core/shared.js";
 import DecisionControl, { KEEP_BADGES } from "./DecisionControl.jsx";
+import { go } from "./useRoute.js";
 
 // row: the flattened row; title: its title; fields: [{key, label, text}]; ids: the filtered ids in order.
 // ctx: {store, viewer}; state: keepState of the record; decided: a person's decision exists; comments: commentView.
@@ -43,7 +44,7 @@ export default function Peek({ query, row, title, fields, ids, ctx, state, decid
             <Title order={2} size="h5">Decision</Title>
             <Group><Badge color={KEEP_BADGES[state][1]} variant="light">{KEEP_BADGES[state][0]}</Badge></Group>
             <DecisionControl ctx={ctx} id={row.id} value={decisionNow(state)} decided={decided}
-              canDrop={state === "active" || state === "kept"} onDrop={() => { window.location.hash = recordHref(row.id, query); }}
+              canDrop={state === "active" || state === "kept"} onDrop={() => { go(recordHref(row.id, query)); }}
               onSaved={onSaved} />
           </Stack>
           <Stack gap="xs">

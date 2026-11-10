@@ -62,7 +62,7 @@ function url(route) {
 async function open(page, route) {
   if ((route.snap || "v2") === "v2") {
     await fakeClaude(page, { viewer: route.viewer === undefined ? "u_owner" : route.viewer, owner: !!route.owner,
-      writable: !!route.writable, extra: route.extra, failDocs: route.failDocs, failCollections: route.failCollections });
+      writable: !!route.writable, canWrite: route.canWrite, extra: route.extra, failDocs: route.failDocs, failCollections: route.failCollections });
   }
   await page.goto(url(route));
 }
@@ -191,11 +191,23 @@ test.describe("v2 writes at 1280px", () => {
     await box.press(SUBMIT);
     await expect(main(page)).toContainText("Shortlisted for Friday.");
     const w = await writes(page);
-    expect(w.length).toBe(1);
-    expect(w[0].op).toBe("set");
-    expect(w[0].path).toMatch(new RegExp("^comments/" + ROLE3_ID + "--u_owner--[0-9a-z]+$"));
-    expect(Object.keys(w[0].data).sort()).toEqual(["at", "by", "entity", "text"]);
-    expect(w[0].data).toMatchObject({ entity: ROLE3_ID, by: "u_owner", text: "Shortlisted for Friday." });
+    expect(w.length).toBe(2);
+    expect(w[0]).toMatchObject({ op: "set", path: "people/u_owner" });
+    expect(w[1].op).toBe("set");
+    expect(w[1].path).toMatch(new RegExp("^people/u_owner/comments/" + ROLE3_ID + "--[0-9a-z]+$"));
+    expect(Object.keys(w[1].data).sort()).toEqual(["at", "text"]);
+    expect(w[1].data).toMatchObject({ text: "Shortlisted for Friday." });
+  });
+
+  // A Commenter (user.can("data.write") false). The refusal of writes is the harness's model, so this proves the Desk's
+  // behaviour, not the platform's.
+  test("a Commenter sees write controls and the comment box disabled with the reason, and nothing is written", async ({ page }) => {
+    await open(page, { hash: ROLE3, viewer: "u_member", writable: true, canWrite: false });
+    await expect(main(page)).toContainText("Agreed. I will check the salary band first.");
+    await expect(main(page).locator("fieldset[disabled]").first()).toBeVisible();
+    await expect(main(page).locator("[title='Saving needs Contributor access or above']").first()).toBeVisible();
+    await expect(main(page).getByRole("textbox", { name: "Comment" })).toBeDisabled();
+    expect(await writes(page)).toEqual([]);
   });
 
   test("a visit without a viewer has no comment box", async ({ page }) => {

@@ -200,9 +200,9 @@ class DeskRegistry(unittest.TestCase):
             self.assertNotIn("factory", ids[page])
 
     def test_a_registry_wa_key_or_header_is_refused(self):
-        self.edit(lambda r: r.update(extra="1"))
-        self.assertEqual(self.dr.lint(self.tmp), ["registry.json: unknown key 'extra'"])
-        self.edit(lambda r: r.pop("extra"))
+        self.edit(lambda r: r.update(vendor="3.14.0"))
+        self.assertEqual(self.dr.lint(self.tmp), ["registry.json: unknown key 'vendor'"])
+        self.edit(lambda r: r.pop("vendor"))
         self.edit(lambda r: r["components"][0].update(wa=["x"]))
         self.assertEqual(self.dr.lint(self.tmp), ["component 'button': unknown key 'wa'"])
 

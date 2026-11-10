@@ -10,10 +10,10 @@ CORE = os.path.join(DESK, "core")
 APP = os.path.join(DESK, "app")
 
 CORE_FILES = {
-    "actions.js", "bulk.js", "dates.js", "exporter.js", "ext.js", "keys.js", "lock.js", "members.js", "notify.js", "paging.js",
+    "actions.js", "bulk.js", "comments.js", "dates.js", "exporter.js", "ext.js", "keys.js", "lock.js", "members.js", "notify.js", "paging.js",
     "palette.js", "peek.js", "prefs.js", "queue.js", "record.js", "requests.js", "router.js", "schedule.js", "shared.js",
-    "store.js", "strip.js", "pages/approvals.js", "pages/browse.js", "pages/entity.js", "pages/history.js", "pages/runs.js",
-    "pages/runs-health.js", "pages/settings.js", "pages/today.js", "pages/workers.js",
+    "store.js", "strip.js", "viewerstate.js", "pages/approvals.js", "pages/browse.js", "pages/entity.js", "pages/history.js", "pages/runs.js",
+    "pages/autorefresh.js", "pages/runs-health.js", "pages/settings.js", "pages/spec-query.js", "pages/spec-read.js", "pages/today.js", "pages/workers.js",
 }
 # window.<name> is allowed only here, and only for these names.
 WINDOW_OK = {"store.js": {"localStorage", "sessionStorage", "crypto", "claude"},

@@ -393,10 +393,25 @@ class PersonPathTests(unittest.TestCase):
             {"path": "people/{self}", "read": "view", "write": "interact"},
         ])
 
+    def test_comments_ride_the_people_self_rule_and_are_documented_with_what_is_unverified(self):
+        import pathlib
+        self.assertFalse([r for r in dc.DESK_DB_RULES if r["path"].endswith("comments")], "no comments rule: the platform refuses write view and a {self} rule must be last")
+        self.assertFalse([r for r in dc.DESK_DB_RULES if r["write"] == "view"], "the platform refuses write view")
+        refs = pathlib.Path(__file__).resolve().parents[1] / "skills/routineos/references"
+        for name in ("dashboard.md", "write-contract.md", "join.md"):
+            self.assertIn("people/<id>/comments" if name != "write-contract.md" else "people/<viewerId>/comments",
+                          (refs / name).read_text(), name)
+        for name in ("dashboard.md", "write-contract.md"):
+            text = (refs / name).read_text()
+            self.assertIn("unverified", text, name)
+            self.assertIn("republish", text.lower(), name)
+            self.assertNotIn("accepted risk", text, name)
+            self.assertNotIn("overwrite another person's comment", text, name)
+
     def test_dashboard_reference_declares_the_same_rules(self):
         import json, pathlib, re
         text = (pathlib.Path(__file__).resolve().parents[1] / "skills/routineos/references/dashboard.md").read_text()
-        self.assertIn("{db: {rules: DESK_DB_RULES}, user: {}, downloads: true}", text)
+        self.assertIn("{db: {rules: DESK_DB_RULES}, user: {}, downloads: true, comments: {composer_only: true}}", text)
         block = re.search(r"```json\n(\[.*?\])\n```", text, re.S)
         self.assertEqual(json.loads(block.group(1)), dc.DESK_DB_RULES)
 

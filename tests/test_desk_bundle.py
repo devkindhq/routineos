@@ -29,10 +29,12 @@ URL_RE = re.compile(r"https?://[^\s\"'<>)`\\]*")
 # XML namespace names are identifiers, never fetched. The other two are strings inside the React and Mantine
 # runtime (an error-page prefix and a docs link in a warning); nothing requests them. The last two are strings inside
 # the marked Markdown lexer: the scheme it prepends to a bare www. link in text (the Desk draws only https links, so
-# that link is never live) and the issue address in its error message.
+# that link is never live) and the issue address in its error message. The charts library adds three more error
+# message strings (Immer and Redux Toolkit say where the full message is); none is requested.
 URL_ALLOWED = ("http://www.w3.org/", "https://www.w3.org/")
 URL_STRINGS = {"https://react.dev/errors/", "https://mantine.dev/theming/colors/#primary-color", "http://",
-               "https://github.com/markedjs/marked."}
+               "https://github.com/markedjs/marked.", "https://bit.ly/3cXEKWf", "https://redux.js.org/Errors?code=${e}",
+               "https://redux-toolkit.js.org/Errors?code=${e}"}
 SYNTHETIC = ('<!doctype html><html><head><title>Desk</title></head><body><div id="root"></div>'
              '<script type="application/json" id="desk-config">{"store":"db"}</script>\n'
              '<!-- desk-components -->\n<script>var v = "__ROUTINEOS_VERSION__";</script>\n'
@@ -246,7 +248,7 @@ class SessionUrlGuardTests(unittest.TestCase):
             self.skipTest("node not installed")
         script = (
             "const { isClaudeSessionUrl } = await import(process.argv[1]);"
-            "const cases = [['https://claude.ai/code/session_example', true],"
+            "const cases = [['https://claude.ai/code/session_1', true],"
             "['https://www.claude.ai/x', true],"
             "['javascript:alert(1)', false],['http://claude.ai/x', false],"
             "['https://evilclaude.ai/x', false],['https://claude.ai.evil.com/x', false],"

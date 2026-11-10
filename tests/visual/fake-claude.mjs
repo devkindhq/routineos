@@ -4,6 +4,10 @@
 // With writable, set/delete change an in-page copy, listed in window.__deskWrites, and re-run live queries. Each
 // collection read (a get or a live run) is listed in window.__deskReads by collection name.
 // viewer null means no user namespace (report-only); profiles default to the two fictional people.
+// canWrite answers user.can("data.write"): true (default), false or null (not told). With false a write is also
+// refused (rejects with code "permission-denied"), which is how the platform treats a Commenter or Viewer (it refuses a
+// db rule below interact, so such a person can write no shared data, comments included). Verified at publish time only,
+// not with a real Commenter; the harness's refusal is a model.
 // extra ({path: {data, version}}) adds or replaces documents in the snapshot for one test.
 // downloads "save" gives a downloads namespace whose save({filename, data}) resolves; "decline" rejects it with
 // {code: "declined"} as a viewer saying no would. Each call is listed in window.__deskSaves as {filename, type, data}
@@ -20,6 +24,7 @@ export async function fakeClaude(page, opts = {}) {
     fail: opts.failCollections ? opts.failCollections.source : null,
     failDocs: opts.failDocs ? opts.failDocs.source : null,
     extra: opts.extra || null,
+    canWrite: opts.canWrite === undefined ? true : opts.canWrite,
     downloads: opts.downloads || null,
   };
   await page.addInitScript((o) => {
@@ -57,6 +62,9 @@ export async function fakeClaude(page, opts = {}) {
       };
     }
     function write(path, data) {
+      if (o.canWrite === false) {
+        return Promise.reject(Object.assign(new Error("permission denied: this access level cannot write " + path), { code: "permission-denied" }));
+      }
       if (!o.writable) return Promise.resolve();
       return snapshot.then((docs) => {
         window.__deskWrites.push({ op: data === undefined ? "delete" : "set", path, data });
@@ -80,6 +88,7 @@ export async function fakeClaude(page, opts = {}) {
     const user = {
       id: () => Promise.resolve(o.viewer),
       isOwner: () => Promise.resolve(o.owner),
+      can: (capability) => Promise.resolve(capability === "data.write" ? o.canWrite : null),
       profiles: (ids) => Promise.resolve(Object.fromEntries(ids.filter((i) => i in o.profiles).map((i) => [i, o.profiles[i]]))),
     };
     const downloads = {

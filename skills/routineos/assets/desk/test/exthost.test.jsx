@@ -96,14 +96,14 @@ test("a tree that turns bad later falls back", async () => {
   await waitFor(() => expect(r.container.textContent).toBe("FALLBACK"));
 });
 
-test("unmount calls the disposer of every watch", () => {
+test("unmount calls the disposer of every watch, comments included (one per person read)", async () => {
   var store = fake();
   var r = mount("box", function (ctx, p, ui) {
     ctx.watch("decisions", function () {});
     ctx.watch("comments", function () {});
     return ui.el("p", {}, "x");
   }, store);
-  expect(store.subs.length).toBe(2);
+  await waitFor(() => expect(store.subs.map((s) => s.c)).toEqual(expect.arrayContaining(["decisions", "comments", "people/u1/comments"])));
   r.unmount();
   expect(store.subs.every((s) => s.off.mock.calls.length === 1)).toBe(true);
 });

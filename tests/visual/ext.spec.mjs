@@ -71,10 +71,11 @@ test("the section's Add comment writes one comments doc", async ({ page }) => {
   await open(page, ROLE3);
   await main(page).getByRole("textbox", { name: "Reviewer note" }).fill("Check the band");
   await main(page).getByRole("button", { name: "Add comment" }).click();
-  await expect.poll(async () => (await writes(page)).length).toBe(1);
-  const w = (await writes(page))[0];
-  expect(w.path).toMatch(/^comments\/ext~[0-9a-z]+~[0-9a-f]{12}$/);
-  expect(w.data).toMatchObject({ entity: ROLE3_ID, text: "Check the band" });
+  await expect.poll(async () => (await writes(page)).length).toBe(2);
+  expect((await writes(page))[0].path).toMatch(/^people\/[^/]+$/);
+  const w = (await writes(page))[1];
+  expect(w.path).toMatch(new RegExp("^people/[^/]+/comments/" + ROLE3_ID + "--[0-9a-z]+$"));
+  expect(w.data).toMatchObject({ text: "Check the band" });
 });
 
 test("a visit with no signed-in viewer: the write buttons are disabled and nothing is written", async ({ page }) => {

@@ -367,6 +367,12 @@
               "items": {
                 "$ref": "#/$defs/module"
               }
+            },
+            "pages": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
             }
           }
         }

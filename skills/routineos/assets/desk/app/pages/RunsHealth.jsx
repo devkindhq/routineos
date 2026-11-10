@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Anchor, Badge, Button, Card, Group, SegmentedControl, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { byId, canWrite, request, watchAll, writeMessage } from "../../core/actions.js";
+import Gated from "../Gated.jsx";
+import { accessReason, byId, canWrite, request, watchAll, writeMessage } from "../../core/actions.js";
 import { human } from "../../core/dates.js";
 import { nextRunLine, runsModel } from "../../core/pages/runs-health.js";
 import { sourcesLine } from "../../core/pages/runs.js";
@@ -42,7 +43,7 @@ function AskButton({ ctx, routine, kind, label, size, onDone }) {
   return <Button size={size} variant="default" loading={busy} onClick={go} aria-label={label + ": " + producerLabel(ctx.definition, routine)}>{label}</Button>;
 }
 
-function Result({ row, now, ctx, may, onDone }) {
+function Result({ row, now, ctx, may, noAccess, onDone }) {
   if (row.result === "late") {
     return (
       <Group gap={4} wrap="nowrap">
@@ -51,11 +52,11 @@ function Result({ row, now, ctx, may, onDone }) {
       </Group>
     );
   }
-  if (row.result === "partial" && may) {
+  if (row.result === "partial" && (may || noAccess)) {
     return (
       <Group gap="xs" wrap="nowrap">
         <Badge color="yellow" variant="light">partial</Badge>
-        <AskButton ctx={ctx} routine={row.producer} kind="retry" label="Retry next run" size="compact-xs" onDone={onDone} />
+        <Gated reason={noAccess} inline><AskButton ctx={ctx} routine={row.producer} kind="retry" label="Retry next run" size="compact-xs" onDone={onDone} /></Gated>
       </Group>
     );
   }
@@ -90,6 +91,7 @@ export default function RunsHealth() {
   var rows = m.rows.filter((r) => !only || r.producer === only);
   var producers = (defn && defn.producers) || [];
   var may = canWrite(ctx).ok;
+  var noAccess = accessReason(ctx);
   var waiting = waitingRequests(got.requests, got.runs);
   var again = () => setTick((t) => t + 1);
   return (
@@ -111,12 +113,12 @@ export default function RunsHealth() {
             return (
               <Group key={p.id} gap="sm">
                 <Text size="sm" fw={600}>{p.label || p.id}</Text>
-                {may ? <AskButton ctx={ctx} routine={p.id} kind="run-now" label="Run now" size="xs" onDone={again} /> : null}
+                {may || noAccess ? <Gated reason={noAccess} inline><AskButton ctx={ctx} routine={p.id} kind="run-now" label="Run now" size="xs" onDone={again} /></Gated> : null}
                 {q.length ? <Text size="sm">{QUEUED_LABEL + ", asked " + human(q[0].data.createdAt, now, { style: "sentence" })}</Text> : null}
               </Group>
             );
           })}
-          <Text size="sm" c="dimmed">{may ? REQUEST_LIMITS : "Asking for a run needs a signed-in visit that can write."}</Text>
+          <Text size="sm" c="dimmed">{may || noAccess ? REQUEST_LIMITS : "Asking for a run needs a signed-in visit that can write."}</Text>
         </Stack>
       ) : null}
       <SimpleGrid cols={{ base: 1, sm: m.cost === null ? 3 : 4 }}>
@@ -141,7 +143,7 @@ export default function RunsHealth() {
                   <Table.Td ff="monospace"><Anchor href={"#/runs/" + encodeURIComponent(r.id)}>{r.id}</Anchor></Table.Td>
                   <Table.Td>{producerLabel(defn, r.producer)}</Table.Td>
                   <Table.Td>{human(r.startedAt, now, { style: "sentence" })}</Table.Td>
-                  <Table.Td><Result row={r} now={now} ctx={ctx} may={may} onDone={again} /></Table.Td>
+                  <Table.Td><Result row={r} now={now} ctx={ctx} may={may} noAccess={noAccess} onDone={again} /></Table.Td>
                   <Table.Td>{sourcesLine(r.run.data)}</Table.Td>
                   <Table.Td ta="right">{String(r.new)}</Table.Td>
                   <Table.Td ta="right">{String(r.dropped)}</Table.Td>

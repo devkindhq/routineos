@@ -60,9 +60,10 @@ test("comment needs text and is capped", async () => {
   const a = makeActions(ctxOf(store), ALL);
   await assert.rejects(a.comment("r1", "   "), /Write a comment/);
   await a.comment("r1", "x".repeat(9000));
-  assert.match(store.writes[0][0], /^comments\/ext~[0-9a-z]+~[0-9a-f]{12}$/);
-  assert.equal(store.writes[0][1].entity, "r1");
-  assert.equal(store.writes[0][1].text.length, 4000);
+  assert.equal(store.writes[0][0], "people/u_owner", "the marker doc that makes the author listable");
+  assert.match(store.writes[1][0], /^people\/u_owner\/comments\/r1--[0-9a-z]+$/);
+  assert.equal(store.writes[1][1].by, undefined, "the author is the path, not a field");
+  assert.equal(store.writes[1][1].text.length, 4000);
 });
 
 test("watch accepts only listed collections and its disposer runs once", () => {
@@ -143,7 +144,7 @@ test("on a joined Desk a member cannot decide, drop or keep; the owner can; comm
   await assert.rejects(a.drop("r1", "spam"), /owner/);
   await assert.rejects(a.keep("r1"), /owner/);
   assert.equal(await a.comment("r1", "hello"), true);
-  assert.deepEqual(m.store.writes.map((w) => w[0].split("/")[0]), ["comments"]);
+  assert.deepEqual(m.store.writes.map((w) => w[0].split("/").slice(0, 3).join("/")), ["people/u_member", "people/u_member/comments"]);
   const o = joined("u_owner");
   const b = makeActions(o, ALL);
   assert.equal(await b.keep("r1"), true);
@@ -162,7 +163,7 @@ test("an extension image carries its bytes: https is not an image source", () =>
   assert.equal(extAttr("src", "img", "data:image/png;base64,AAAA", extImageSrc), true);
 });
 
-test("a custom decision never lands on a built-in decisions doc, and comment ids are opaque and distinct", async () => {
+test("a custom decision never lands on a built-in decisions doc, and two comments in the same millisecond get distinct paths under the author", async () => {
   const store = fakeStore();
   const a = makeActions(ctxOf(store), ALL);
   await a.decide("role--a", "approved", "");
@@ -170,8 +171,8 @@ test("a custom decision never lands on a built-in decisions doc, and comment ids
   assert.equal(validId("role--a--x~x"), false);
   await a.comment("role--a--u9--zz", "one");
   await a.comment("role--a--u9--zz", "two");
-  assert.notEqual(store.writes[1][0], store.writes[2][0]);
-  assert.doesNotMatch(store.writes[1][0], /role--a/);
+  assert.notEqual(store.writes[2][0], store.writes[4][0]);
+  assert.match(store.writes[2][0], /^people\/[^/]+\/comments\/role--a--u9--zz--[0-9a-z]+$/);
 });
 
 test("dot ids are not record ids", () => {
@@ -195,4 +196,25 @@ test("with a scope the record must exist and be of a declared type; nothing is w
   assert.equal(store.writes.length, 1);
   const any = makeActions(ctxOf(store), ALL, { types: null });
   assert.equal(await any.comment("co--1", "hi"), true);
+});
+
+test("a viewer refused shared writes cannot comment from an extension, and nothing is written", async () => {
+  const store = fakeStore();
+  const a = makeActions({ store, viewer: "u_c", canWriteShared: false }, ALL);
+  await assert.rejects(a.comment("r1", "hello"), /Contributor access/);
+  await assert.rejects(a.saveField("r1", "f", "v"), /Contributor access/);
+  await assert.rejects(a.decide("r1", "ok-1"), /Contributor access/);
+  await assert.rejects(a.drop("r1", "x"), /Contributor access/);
+  assert.equal(store.writes.length, 0);
+});
+
+test("a read-only or signed-out visit still cannot comment from an extension", async () => {
+  await assert.rejects(makeActions({ store: fakeStore({ readOnly: true }), viewer: "u_c", canWriteShared: false }, ALL).comment("r1", "hi"), /./);
+  await assert.rejects(makeActions({ store: fakeStore(), viewer: null, canWriteShared: false }, ALL).comment("r1", "hi"), /Sign in/);
+});
+
+test("extension components see canWrite and canComment false when shared writes are refused", () => {
+  const c = extCtx({ store: fakeStore(), viewer: "u_c", canWriteShared: false }, () => {}, ["comment"]);
+  assert.equal(c.canWrite, false);
+  assert.equal(c.canComment, false);
 });

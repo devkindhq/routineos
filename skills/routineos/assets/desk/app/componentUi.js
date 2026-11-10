@@ -5,7 +5,7 @@
 // the tree, or an event handler attribute draws the fallback. This narrows the API; it is not a sandbox.
 import { human } from "../core/dates.js";
 import { COMPONENT_TAGS, componentAttr, componentCtx } from "../core/pages/browse.js";
-import { EXT_TAGS, extAttr, extImageSrc, extTag } from "../core/ext.js";
+import { EXT_TAGS, SVG_ATTR_CASE, SVG_NS, extAttr, extImageSrc, extTag, isSvgTag } from "../core/ext.js";
 import { entityHash } from "../core/shared.js";
 import { markdownNode } from "./componentMarkdown.js";
 
@@ -29,11 +29,12 @@ function clear(node) {
 
 // The page's own element maker: attributes only, never a property or a handler.
 function make(tag, attrs, kids) {
-  var node = document.createElement(tag);
+  var svg = isSvgTag(tag);
+  var node = svg ? document.createElementNS(SVG_NS, tag) : document.createElement(tag);
   Object.keys(attrs || {}).forEach(function (k) {
     var v = attrs[k];
     if (v === null || v === undefined || v === false) return;
-    node.setAttribute(k, v === true ? "" : String(v));
+    node.setAttribute(svg && SVG_ATTR_CASE[k] ? SVG_ATTR_CASE[k] : k, v === true ? "" : String(v));
   });
   return append(node, kids);
 }
@@ -137,7 +138,11 @@ function extEl(tag, attrs) {
 // onError(e) gets a verb's rejection or a thrown error from a click, so the host can say it. writable false (a
 // read-only or signed-out visit) draws every button disabled unless the component passes {local: true} for a button
 // that changes nothing shared.
-export function interactiveUi(onError, writable) {
+// Nodes the host made to hold a core block (ui.block). The host draws into them; bodyNodeOk checks what is inside.
+var BLOCK_BODIES = new WeakSet();
+
+// onBlock({body, spec, records}) tells the host to draw a core block into body. Without it ui.block draws nothing.
+export function interactiveUi(onError, writable, onBlock) {
   var base = componentUi();
   function field(tag, attrs) { return extEl(tag, attrs); }
   return Object.assign({}, base, {
@@ -162,9 +167,41 @@ export function interactiveUi(onError, writable) {
       return extImageSrc(src) ? extEl("img", { src: src, alt: alt || "" }) : make("span", { class: "muted" }, alt || "");
     },
     markdown: function (text, opts) { return markdownNode(text, opts); },
+    // A core block (tile, chart, table or text, the spec page format) drawn from records already read, e.g. ctx.list.
+    block: function (spec, records) {
+      var body = make("div", { "data-desk-block": "" });
+      BLOCK_BODIES.add(body);
+      if (typeof onBlock === "function") onBlock({ body: body, spec: spec, records: records });
+      return make("div", { class: "desk-block" }, body);
+    },
     valueOf: function (node) { return node && typeof node.value === "string" ? node.value : ""; },
     status: function (text) { return make("span", { "aria-live": "polite" }, text || ""); },
   });
+}
+
+// A ui.block body is filled by the Desk (React escapes every value), so its tags and styles are the Desk's own and the
+// allow-list of a component's elements does not apply. A component can still hold a reference to the body and append to
+// it, so what could run or load code is refused here: those tags, event handler attributes, srcdoc, and a link or
+// source that is not https or a page anchor. A style element may not load anything (no url or @import).
+var BODY_BANNED_TAGS = ["script", "iframe", "frame", "frameset", "object", "embed", "applet", "link", "meta", "base", "form",
+  "img", "image", "picture", "video", "audio", "source", "track", "foreignobject", "use", "animate", "set", "animatetransform",
+  "animatemotion", "math", "template", "svg:script"];
+var BODY_URL_ATTRS = ["href", "src", "xlink:href", "action", "formaction", "poster", "data", "srcset", "ping"];
+
+function bodyNodeOk(node) {
+  if (node.nodeType === 3) return true;
+  if (node.nodeType !== 1) return false;
+  var tag = node.tagName.toLowerCase();
+  if (BODY_BANNED_TAGS.indexOf(tag) !== -1) return false;
+  if (tag === "style" && /url\s*\(|@import/i.test(node.textContent || "")) return false;
+  for (var i = 0; i < node.attributes.length; i++) {
+    var a = node.attributes[i].name.toLowerCase();
+    var val = node.attributes[i].value;
+    if (a.indexOf("on") === 0 || a === "srcdoc") return false;
+    if (BODY_URL_ATTRS.indexOf(a) !== -1 && val !== "" && val.charAt(0) !== "#" && !isHttpsUrl(val)) return false;
+  }
+  for (var c = node.firstChild; c; c = c.nextSibling) if (!bodyNodeOk(c)) return false;
+  return true;
 }
 
 // True when every element in the tree uses an allowed interactive tag and attribute. The host runs it after the
@@ -172,8 +209,11 @@ export function interactiveUi(onError, writable) {
 export function extTreeOk(node) {
   if (node.nodeType === 3) return true;
   if (node.nodeType !== 1) return false;
+  if (BLOCK_BODIES.has(node)) return bodyNodeOk(node);
   var tag = node.tagName.toLowerCase();
   if (EXT_TAGS.indexOf(tag) === -1) return false;
+  // An SVG tag must be in the SVG namespace and nothing else may be, so an HTML "svg" or an SVG "a" is refused.
+  if (isSvgTag(tag) !== (node.namespaceURI === SVG_NS)) return false;
   for (var i = 0; i < node.attributes.length; i++) {
     var a = node.attributes[i].name.toLowerCase();
     var val = node.attributes[i].value;
@@ -186,13 +226,13 @@ export function extTreeOk(node) {
 }
 
 // The element an extension draws, or null when it is missing, throws, or returns anything unsafe.
-export function renderExtension(id, props, ctx, onError) {
+export function renderExtension(id, props, ctx, onError, onBlock) {
   var reg = typeof window !== "undefined" ? window.DESK_COMPONENTS : null;
   var fn = reg && Object.prototype.hasOwnProperty.call(reg, id) ? reg[id] : null;
   if (typeof fn !== "function") return null;
   var out;
   try {
-    out = fn(ctx, props, interactiveUi(onError, ctx && ctx.canWrite));
+    out = fn(ctx, props, interactiveUi(onError, ctx && ctx.canWrite, onBlock));
   } catch (e) {
     return null;
   }

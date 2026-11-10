@@ -71,9 +71,10 @@ Each template is one pack file listed in `catalog/index.json`. Piloted means a r
 - jobs-watch: piloted, watch. Tracks public job postings for commerce and automation roles, links each role to its company, and puts the few that need a person in the Inbox.
 - meeting-brief: unpiloted, watch. Before each outside meeting, researches the other company and writes a short, cited brief to the Desk.
 - shopify-content-qa: unpiloted, watch. Checks a Shopify store's public pages each day for missing descriptions, alt text, broken links, placeholder text, SEO gaps and price slips, and tracks what changed. It never edits the store.
+- site-compliance-review: unpiloted, watch. Reviews a website's pages each day against a rule pack you supply, flags wording that may breach a rule with severity, a screenshot and boxed notes, and tracks decisions. It never changes the site.
 - support-gap-digest: unpiloted, watch. Each week, groups repeated support questions and flags the ones your help pages do not answer yet.
 - watch: piloted, watch. Watches a list of sources for new and changed items and writes one report per run, even in a quiet week.
-- weekly-marketing-report: unpiloted, watch. Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves.
+- weekly-marketing-report: piloted, watch. Each week, compares marketing metrics with the week before, audits a few key pages, and flags big moves.
 
 ```
 python3 skills/routineos/scripts/routineos.py pack list catalog/index.json

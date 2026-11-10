@@ -85,6 +85,24 @@ class ExtensionLintTest(unittest.TestCase):
         self.assertEqual(code, 1)
 
 
+class ExtensionSizeLintTest(unittest.TestCase):
+    def lint_with_padding(self, size):
+        d = routine()
+        p = os.path.join(d, "desk", "components", "review-box", "review-box.js")
+        text = read(p)
+        write(p, text + "\n// " + "x" * max(0, size - len(text.encode("utf-8")) - 5) + "\n")
+        return main("desk", "lint", "--routine", d)
+
+    def test_component_over_64_kib_fails_lint(self):
+        code, out, _ = self.lint_with_padding(65 * 1024)
+        self.assertEqual(code, 1)
+        self.assertIn("64 KiB", out)
+
+    def test_component_at_the_limit_still_passes(self):
+        code, out, _ = self.lint_with_padding(64 * 1024)
+        self.assertEqual((code, out.strip()), (0, "ok: no problems"))
+
+
 class ExtensionVerbLintTest(unittest.TestCase):
     """The manifest declares the verbs; the lint keeps the code to ctx.actions.<declared verb>( and nothing else."""
 

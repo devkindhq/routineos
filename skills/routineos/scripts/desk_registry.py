@@ -281,6 +281,7 @@ BANNED_APIS = tuple((name, re.compile(r"\b" + re.escape(name).replace(r"\.", r"\
     ("on* handler assignment", re.compile(r"\.on[a-z]+\s*=(?!=)")),
     ("claude.", re.compile(r"\bclaude\s*\.")),
 )
+MAX_COMPONENT_BYTES = 64 * 1024  # a code page is a small drawing function; more than this is a sign it should be a spec page
 URL_LITERAL_RE = re.compile(r"://|^\s*(?:javascript|data|vbscript|blob):", re.I)
 FUNCTION_RE = re.compile(r"^function\s+([A-Za-z_$][\w$]*)\s*\(", re.M)
 # The checks above and below are a text lint: a guard against mistakes, not a security boundary. A determined author
@@ -737,6 +738,8 @@ def lint_component(comp_dir, definition=None, parse=True):
     except OSError:
         return problems + [f"{rel}: missing"]
     slot = m.get("slot", "field-cell")
+    if len(text.encode("utf-8")) > MAX_COMPONENT_BYTES:
+        problems.append(f"{rel}: larger than {MAX_COMPONENT_BYTES // 1024} KiB; split it or use a spec page (desk.pages)")
     problems += _check_custom_js(text, rel, factory_name(cid), routine_names(definition), parse, slot == "field-cell")
     if slot in INTERACTIVE_SLOTS:
         problems += _check_ctx_use(text, rel, factory_name(cid), m.get("verbs") if isinstance(m.get("verbs"), list) else [],

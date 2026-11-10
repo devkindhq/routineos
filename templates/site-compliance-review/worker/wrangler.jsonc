@@ -1,0 +1,30 @@
+// Site review Worker. Replace every REPLACE_ value before deploying.
+// Set the access token with: npx wrangler secret put ACCESS_TOKEN
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "REPLACE_site-review-worker",
+  "main": "src/index.ts",
+  // quickAction() on the browser binding needs 2026-03-24 or later (Cloudflare docs).
+  "compatibility_date": "2026-11-04",
+  "browser": { "binding": "BROWSER" },
+  "r2_buckets": [{ "binding": "REVIEW", "bucket_name": "REPLACE_site-review" }],
+  // Workers AI, for Clef scoring. Each capture with USE_CLEF "true" is one model call on your account.
+  // The rule questions come from ../lib/rules.json at deploy time: redeploy after you change the rules.
+  "ai": { "binding": "AI" },
+  "triggers": { "crons": ["*/30 * * * *"] },
+  "vars": {
+    "ALLOWED_HOSTS": "REPLACE_www.example.com",
+    "SITEMAP_URL": "REPLACE_https://www.example.com/sitemap.xml",
+    "BATCH_SIZE": "5",
+    "MAX_ATTEMPTS": "3",
+    // 5 is a first-deploy test: a small fresh start. Raise it once the first captures and flags look right.
+    "MAX_NEW_PER_SYNC": "5",
+    "RECAPTURE_DAYS": "30",
+    "LINK_TTL_SECONDS": "86400",
+    "USE_CLEF": "true",
+    "CLEF_MODEL": "@cf/cloudflare/clef-flash",
+    "CLEF_FLAG_AT": "0.7",
+    // Image input to Clef is untested on the live endpoint; leave "false" until you have checked it.
+    "CLEF_IMAGE": "false"
+  }
+}

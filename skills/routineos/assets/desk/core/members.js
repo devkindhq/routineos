@@ -1,8 +1,9 @@
 // core/members.js: the people in a workspace, derived (spec 5.9 Members). There is no members list in the store, so
-// a person is any id in by or updatedBy on decisions/, settingsHistory/, settings/ and comments/, any id under
+// a person is any id in by or updatedBy on decisions/, settingsHistory/ and settings/, any id under
 // data/users/<id>/, plus meta/owner.by and the viewer. meta/join is the worker join card and is not read.
 export var MEMBER_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-export var MEMBER_SOURCES = ["decisions", "settingsHistory", "settings", "comments"];
+// Comments are not a source: a comment grants no membership (an earlier Desk let any viewer write a `by` there).
+export var MEMBER_SOURCES = ["decisions", "settingsHistory", "settings"];
 
 export function memberId(id) { return typeof id === "string" && id !== "seed" && MEMBER_ID_RE.test(id) ? id : null; }
 
@@ -36,18 +37,12 @@ export function deriveMembers(docs, ownerId, viewerId) {
     });
 }
 
-// The person to show as a record's owner: who decided it, else who commented last, else null. decisions is a Map or a
-// plain object keyed by record id; comments is a list of comment docs (or their data) naming the record.
-export function ownerOf(recordKey, decisions, comments) {
+// The person to show as a record's owner: who decided it, else null. decisions is a Map or a plain object keyed by
+// record id. A comment never makes anyone an owner: its author is whoever wrote to a path, which says who spoke, not
+// who owns the record. The third argument is kept so callers that still pass comments do not change.
+export function ownerOf(recordKey, decisions) {
   var d = decisions instanceof Map ? decisions.get(recordKey) : decisions ? decisions[recordKey] : null;
   d = d && d.data ? d.data : d;
   if (d && typeof d.by === "string" && d.by) return { id: d.by, name: d.by };
-  var best = null, bestAt = -Infinity;
-  (comments || []).forEach(function (c) {
-    c = c && c.data ? c.data : c;
-    if (!c || (c.entity || c.record) !== recordKey || typeof c.by !== "string" || !c.by) return;
-    var at = Date.parse(c.at);
-    if (best === null || (!isNaN(at) && at >= bestAt)) { best = c.by; bestAt = isNaN(at) ? bestAt : at; }
-  });
-  return best === null ? null : { id: best, name: best };
+  return null;
 }

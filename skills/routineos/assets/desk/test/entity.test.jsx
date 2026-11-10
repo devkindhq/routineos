@@ -142,15 +142,16 @@ test("a joined member who is not the owner sees no decision control", async () =
   expect(screen.queryByRole("radio", { name: "Keep" })).toBeNull();
 });
 
-test("a comment is written under comments/<entity>--<viewer>--<ts36>", async () => {
+test("a comment is written under people/<viewer>/comments/<entity>--<ts36>", async () => {
   var store = writable(staticStore());
   store.set = vi.fn(() => Promise.resolve());
   await mount("#/entity/roles/a", store);
   fireEvent.change(await screen.findByRole("textbox", { name: "Comment" }), { target: { value: "Looks good" } });
   fireEvent.click(screen.getByRole("button", { name: "Post comment" }));
-  await waitFor(() => expect(store.set).toHaveBeenCalledTimes(1));
-  expect(store.set.mock.calls[0][0]).toMatch(/^comments\/roles--a--u1--[0-9a-z]+$/);
-  expect(store.set.mock.calls[0][1]).toMatchObject({ entity: "roles--a", by: "u1", text: "Looks good" });
+  await waitFor(() => expect(store.set).toHaveBeenCalledTimes(2));
+  expect(store.set.mock.calls[0][0]).toBe("people/u1");
+  expect(store.set.mock.calls[1][0]).toMatch(/^people\/u1\/comments\/roles--a--[0-9a-z]+$/);
+  expect(store.set.mock.calls[1][1]).toMatchObject({ text: "Looks good" });
 });
 
 test("the Details rail open state persists under the base rail key", async () => {
@@ -243,8 +244,8 @@ test("a number field with more than one sighting draws a sparkline with first an
 test("the author can edit a comment within 15 minutes; the edit names the original", async () => {
   var ts = (Date.now() - 60000).toString(36), old = (Date.now() - 2 * 9e5).toString(36);
   var store = writable(staticStore({
-    ["comments/roles--a--u1--" + ts]: { data: { entity: "roles--a", by: "u1", at: new Date(Date.now() - 60000).toISOString(), text: "First" } },
-    ["comments/roles--a--u1--" + old]: { data: { entity: "roles--a", by: "u1", at: new Date(Date.now() - 2 * 9e5).toISOString(), text: "Older" } },
+    ["people/u1/comments/roles--a--" + ts]: { data: { at: new Date(Date.now() - 60000).toISOString(), text: "First" } },
+    ["people/u1/comments/roles--a--" + old]: { data: { at: new Date(Date.now() - 2 * 9e5).toISOString(), text: "Older" } },
   }));
   store.set = vi.fn(() => Promise.resolve());
   await mount("#/entity/roles/a", store);
@@ -256,8 +257,8 @@ test("the author can edit a comment within 15 minutes; the edit names the origin
   expect(box.value).toBe("First");
   fireEvent.change(box, { target: { value: "First, fixed" } });
   fireEvent.click(screen.getByRole("button", { name: "Save edit" }));
-  await waitFor(() => expect(store.set).toHaveBeenCalledTimes(1));
-  expect(store.set.mock.calls[0][1]).toMatchObject({ text: "First, fixed", edits: expect.stringContaining("roles--a--u1--" + ts) });
+  await waitFor(() => expect(store.set).toHaveBeenCalledTimes(2));
+  expect(store.set.mock.calls[1][1]).toMatchObject({ text: "First, fixed", edits: expect.stringContaining("roles--a--u1--" + ts) });
 });
 
 var CAP = { image: "data:image/png;base64,iVBORw0KGgo=", notes: [
@@ -570,6 +571,34 @@ test("Copy link says Copied only after the clipboard write goes through", async 
   expect(clip.mock.calls[0][0]).toMatch(/#\/entity\/roles\/a$/);
   expect(await screen.findByText("Copied.")).toBeTruthy();
   expect(screen.queryByRole("textbox", { name: "Text to copy" })).toBeNull();
+});
+
+function inFrameTop(on) {
+  var real = Object.getOwnPropertyDescriptor(window, "top");
+  Object.defineProperty(window, "top", { configurable: true, value: on ? {} : window });
+  return () => { if (real) Object.defineProperty(window, "top", real); else delete window.top; };
+}
+
+test("Copy link in a frame copies the slash-free address and says to put it after the page address", async () => {
+  var restore = inFrameTop(true);
+  try {
+    await mount("#/entity/roles/a");
+    fireEvent.click(await menuItem("Copy link"));
+    await waitFor(() => expect(clip).toHaveBeenCalledTimes(1));
+    expect(clip.mock.calls[0][0]).toBe("#d--entity--roles--a");
+    expect(await screen.findByText(/Copied the end of the address.*after the web address of this page/)).toBeTruthy();
+  } finally { restore(); }
+});
+
+test("Copy link at the top level copies the full address", async () => {
+  var restore = inFrameTop(false);
+  try {
+    await mount("#/entity/roles/a");
+    fireEvent.click(await menuItem("Copy link"));
+    await waitFor(() => expect(clip).toHaveBeenCalledTimes(1));
+    expect(clip.mock.calls[0][0]).toMatch(/^https?:\/\/.+#\/entity\/roles\/a$/);
+    expect(await screen.findByText("Copied.")).toBeTruthy();
+  } finally { restore(); }
 });
 
 test("Copy link with a refused clipboard write opens the text to copy by hand and never says Copied", async () => {

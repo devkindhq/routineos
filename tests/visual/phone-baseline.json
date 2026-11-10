@@ -8,7 +8,7 @@
   },
   "chromium": "153.0.8010.12",
   "machine": "arm64, Apple M4 Pro",
-  "bias": "The local server gzips text and caches static files; the snapshot is a 40-record cut of the v2 fixture and font files are empty, so the times reflect the built code and not the fixture or the fonts.",
+  "bias": "On the real host single-file mode fetches components from a third-party origin (extra DNS and TLS) while split mode fetches from the frame origin, so this test under-states single-file cost. The local server gzips text and caches static files; the snapshot is a 40-record cut of the v2 fixture and font files are empty, so the times reflect the built code and not the fixture or the fonts.",
   "modes": {
     "single": {
       "samples": [

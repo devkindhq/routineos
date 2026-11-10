@@ -64,6 +64,11 @@ ISO_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)
 # only by the artifact's own owner, so meta/owner cannot be planted by anyone else. people/<id>/ is written only
 # by the person whose user id is <id> (nobody else, the owner included), so the path, not a `by` field anyone
 # could type, says who made a decision there. Worker lane decisions (verified, release, gate approvals) live there.
+# Comments ride the same people/{self} rule, at people/<id>/comments/ (a {self} rule covers its whole subtree, seen
+# live), so Contributor and up comment and the path says who wrote a comment; a `by` field is never believed. There is
+# no comments rule: the platform refuses a `write: "view"` rule at publish, and a {self} segment must be the last one.
+# A Commenter or Viewer therefore writes no shared data at all. Comments an earlier Desk wrote flat at comments/ are
+# read as unverified and never used for identity.
 DESK_DB_RULES = [
     {"path": "meta", "read": "view", "write": "owner"},
     {"path": "people", "read": "view", "write": "self"},
@@ -312,7 +317,8 @@ def validate_decision(data):
 
 
 def comment_id(entity, viewer, at):
-    """comments/<entityId>--<viewerId>--<ts36> (spec 7d): the time in ms since the epoch, in base 36."""
+    """The id an earlier Desk gave a flat comment, <entityId>--<viewerId>--<ts36> (spec 7d): the time in ms since the epoch,
+    in base 36. New comments live at people/<viewerId>/comments/<entityId>--<ts36>; this reads old ones."""
     from datetime import datetime
     n = int(datetime.fromisoformat(at.replace("Z", "+00:00")).timestamp() * 1000)
     digits, out = "0123456789abcdefghijklmnopqrstuvwxyz", ""

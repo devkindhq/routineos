@@ -22,7 +22,7 @@ import schema
 
 FORMAT = "routineos.pack.v1"
 CATALOG_FORMAT = "routineos.catalog.v1"
-VERSION = "0.9.0"
+VERSION = "0.11.0"
 USER_AGENT = f"routineos-pack/{VERSION}"
 MAX_PACK_BYTES = 512 * 1024
 MAX_INDEX_BYTES = 1024 * 1024

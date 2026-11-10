@@ -2,11 +2,11 @@
 // GET /desk.html?store=static&snapshot=/snap/demo.json&workspace=Name serves the committed Vite build
 // (skills/routineos/assets/desk/index.html, injected by bundle_desk.inject as routineos.desk_page does) with its
 // desk-config block replaced from the query. GET /snap/<name>.json serves a fixture built from the
-// committed demo snapshot; /snap/v2.json, /snap/walk.json and /snap/lock.json serve the generated v2 fixtures
+// committed demo snapshot; /snap/weekly.json serves the weekly marketing report demo; /snap/v2.json, /snap/walk.json and /snap/lock.json serve the generated v2 fixtures
 // (tests/desk_fixtures/make_v2_demo.py). GET /snap/slow.json never answers, so the loading state stays on screen.
 // &bundle=desk serves the page with the salary-band field cell component injected, for the `desk` snapshot;
 // &bundle=bad-components adds BAD_COMPONENTS to it. &tour=1 sets the tour config key (spec 7f).
-// There is one page: the split build and its lazy pages are gone.
+// There is one page: the split build, its lazy pages and the CDN mirror are gone.
 import { createServer } from "node:http";
 import { gzipSync } from "node:zlib";
 import { execFileSync } from "node:child_process";
@@ -21,6 +21,7 @@ const V2 = join(ROOT, "tests", "desk_fixtures", "v2-demo.json");
 const WALK = join(ROOT, "tests", "desk_fixtures", "v2-walk.json");
 const LOCK = join(ROOT, "tests", "desk_fixtures", "lock-demo.json");
 const TWIN = join(ROOT, "tests", "desk_fixtures", "preview-twin.json");
+const WEEKLY = join(ROOT, "templates", "weekly-marketing-report", "demo", "pages-demo.json");
 const CONFIG_RE = /(<script type="application\/json" id="desk-config">)([\s\S]*?)(<\/script>)/;
 const SCRIPTS = join(ROOT, "skills", "routineos", "scripts");
 const EXT_DIR = join(ROOT, "tests", "desk_fixtures", "ext");
@@ -143,7 +144,7 @@ export function fixtures() {
     demo, empty: {}, "first-run": meta, hostile, desk: withDesk(demo),
     "perf-1000": scaled(demo, 1000), "perf-5000": scaled(demo, 5000),
     v2: JSON.parse(readFileSync(V2, "utf8")), phone: smallV2(JSON.parse(readFileSync(V2, "utf8")), 40), lock: JSON.parse(readFileSync(LOCK, "utf8")), walk: JSON.parse(readFileSync(WALK, "utf8")),
-    "preview-twin": JSON.parse(readFileSync(TWIN, "utf8")),
+    "preview-twin": JSON.parse(readFileSync(TWIN, "utf8")), weekly: JSON.parse(readFileSync(WEEKLY, "utf8")),
   };
 }
 

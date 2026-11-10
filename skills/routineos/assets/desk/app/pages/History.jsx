@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Anchor, Badge, Button, Chip, Group, SegmentedControl, Stack, Table, Text, Timeline, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { watchAll } from "../../core/actions.js";
+import { watchComments } from "../../core/comments.js";
 import { DAY_GROUPS, dayGroup, human } from "../../core/dates.js";
 import { downloadToast, historyCsv } from "../../core/exporter.js";
 import {
@@ -135,7 +136,7 @@ function TimelineView({ got, ctx }) {
                 <Title order={2} size="h5">{g}</Title>
                 <Timeline bulletSize={14} lineWidth={2} aria-label={"History, " + g}>
                   {inGroup.map((i, n) => (
-                    <Timeline.Item key={i.at + ":" + n} title={<Anchor href={i.href} inherit>{(i.by ? personLabel(ctx, profiles, i.by) : "Routine") + " " + i.text}</Anchor>}>
+                    <Timeline.Item key={i.at + ":" + n} title={<Anchor href={i.href} inherit>{i.unverified ? i.text : (i.by ? personLabel(ctx, profiles, i.by) : "Routine") + " " + i.text}</Anchor>}>
                       <Text size="xs" c="dimmed">{human(i.at, now, { style: "sentence" })}</Text>
                     </Timeline.Item>
                   ))}
@@ -163,9 +164,10 @@ export default function History({ route }) {
   useEffect(() => {
     setGot(null);
     var specs = { runs: { collection: "runs" } };
-    if (mode !== "cal") ["decisions", "settingsHistory", "merges", "views", "comments"].forEach((k) => { specs[k] = { collection: k }; });
+    if (mode !== "cal") ["decisions", "settingsHistory", "merges", "views"].forEach((k) => { specs[k] = { collection: k }; });
+    if (mode !== "cal") specs.comments = { watch: (cb, onError) => watchComments(ctx, cb, onError) };
     return watchAll({ store: store }, specs, (g) => { setGot(Object.assign({}, g)); setFailed(false); }, () => setFailed(true));
-  }, [store, mode, tick]);
+  }, [store, ctx, mode, tick]);
 
   var tabs = (
     <SegmentedControl aria-label="History mode" value={mode} data={HISTORY_MODES.map((m) => ({ value: m[0], label: m[1] }))}
