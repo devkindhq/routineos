@@ -37,6 +37,10 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _open = urllib.request.build_opener(_NoRedirect).open
 
 
+# A URL argument is matched against a character allow-list, so only a plain https address is accepted.
+URL_RE = re.compile(r"https://[A-Za-z0-9.-]{1,253}(?::[0-9]{1,5})?(?:/[A-Za-z0-9._~%+/-]{0,300})?(?:\?[A-Za-z0-9._~%+/=-]{0,300})?")
+
+
 def fail(msg):
     print(f"error: {msg}", file=sys.stderr)
     sys.exit(2)
@@ -95,7 +99,7 @@ def download(flags_doc, max_pages, out_dir, get):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0], fromfile_prefix_chars="@")
     ap.add_argument("--worker", required=True)
     ap.add_argument("--flags", required=True)
     ap.add_argument("--max", type=int, default=10)
@@ -104,8 +108,8 @@ def main():
     ap.add_argument("--replay")
     args = ap.parse_args()
     parts = urllib.parse.urlsplit(args.worker)
-    if parts.scheme != "https" or not parts.hostname:
-        fail("--worker must be an https URL")
+    if not URL_RE.fullmatch(args.worker) or parts.scheme != "https" or not parts.hostname:
+        fail("--worker must be a plain https URL")
     if not 0 <= args.max <= 50:
         fail("--max must be between 0 and 50")
     try:

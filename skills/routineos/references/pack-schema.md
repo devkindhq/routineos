@@ -41,7 +41,7 @@ A pack never carries page code. When `workspace.enabled` is true, install writes
 | `routine` | `name`, `type`, `schedule`, `first_run` (absent or `report-only`) |
 | `store` | `adapter` |
 | `workspace` | `enabled`, `name`, `template`, `template_version` (`name` and `template` are slugs; `template_version` is a whole number of 1 or more) |
-| `setting` (array) | `name`, `type`, `label`, `example`, `role`, `default`, `min`, `max`, `choices`, `cost_note` |
+| `setting` (array) | `name`, `type`, `label`, `example`, `role`, `default`, `min`, `max`, `choices`, `cost_note`, `format` |
 | `gate` | `enabled`, `transport`, `timeout_hours` |
 | `action` (array) | `name`, `kind` |
 

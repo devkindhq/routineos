@@ -475,13 +475,14 @@ class Scripts(unittest.TestCase):
         self.assertTrue(data["sitemap_complete"])
         self.assertEqual(data["errors"], [{"url": "sitemap child", "reason": "off-host"}])
 
-    def test_worker_connector_covers_discover_and_the_prompt_quotes_values(self):
+    def test_worker_connector_covers_discover_and_the_prompt_passes_values_as_a_file(self):
         p = pack.export(FOLDER)
         worker = next(c for c in p["connectors"] if c["id"] == "worker")
         self.assertIn("discover", worker["stages"])
         prompt = read("prompt.md")
-        self.assertIn('--store "STORE"', prompt)
-        self.assertIn('--via "WORKER"', prompt)
+        self.assertIn("`--store` and STORE", prompt)
+        self.assertIn("@args.txt", prompt)
+        self.assertIn("`--via`", prompt)
         self.assertIn('--docs snapshot.json --producer shopify-content-qa', prompt)
         self.assertNotIn("The routine does not use it", read("README.md"))
 

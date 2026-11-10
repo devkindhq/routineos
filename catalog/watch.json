@@ -24,6 +24,7 @@
       {
         "name": "sources",
         "type": "list",
+        "format": "https_url",
         "default": [
           "https://example.org/changelog",
           "https://example.org/news"

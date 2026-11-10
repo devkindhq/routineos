@@ -61,6 +61,7 @@
       {
         "name": "help_center_urls",
         "type": "list",
+        "format": "https_url",
         "label": "Help pages",
         "default": [
           "https://example.org/help"

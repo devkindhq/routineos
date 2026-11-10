@@ -15,6 +15,7 @@ template_version = 1
 [[setting]]
 name = "sources"
 type = "list"
+format = "word"
 role = "include"
 label = "Data sources"
 default = ["analytics", "search"]
@@ -23,6 +24,7 @@ cost_note = "analytics is one report, search is two queries"
 [[setting]]
 name = "ga_property"
 type = "list"
+format = "ga_property"
 label = "GA4 property"
 example = "properties/123456789"
 default = []
@@ -31,6 +33,7 @@ cost_note = "the first entry is read; no extra cost"
 [[setting]]
 name = "search_site"
 type = "list"
+format = "gsc_site"
 label = "Search Console site"
 example = "sc-domain:example.com"
 default = []
@@ -39,6 +42,7 @@ cost_note = "the first entry is read; no extra cost"
 [[setting]]
 name = "pages_to_audit"
 type = "list"
+format = "https_url"
 label = "Pages to audit"
 example = "https://example.org/pricing"
 default = []

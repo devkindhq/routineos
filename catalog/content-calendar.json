@@ -59,6 +59,7 @@
       {
         "name": "source_feeds",
         "type": "list",
+        "format": "https_url",
         "label": "Source feeds",
         "default": [
           "https://example.org/feed.xml"

@@ -1,6 +1,8 @@
 """Read new page captures and the Worker's health from the person's own review Worker. Standard library only.
 
-Usage: python3 lib/fetch_results.py --worker https://review.example.com --site https://www.example.com
+Usage (put text values in a file, one argument per line, and pass @file; never type them on a command line):
+       python3 lib/fetch_results.py @args.txt --docs snapshot.json ...
+       python3 lib/fetch_results.py --worker https://review.example.com --site https://www.example.com
        --docs snapshot.json --producer site-compliance-review --max-pages 200 --out results.json
        [--sitemap https://www.example.com/sitemap.xml] [--clef-flag-at PERCENT] [--replay DIR]
 
@@ -37,6 +39,8 @@ USER_AGENT = "RoutineOS-site-review/1 (read-only monitor)"
 MAX_TEXT = 200_000
 PAGE_SIZE = 100
 RULE_ID = re.compile(r"^[a-z][a-z0-9_]{1,40}$")
+# A URL argument is matched against a character allow-list, so only a plain https address is accepted.
+URL_RE = re.compile(r"https://[A-Za-z0-9.-]{1,253}(?::[0-9]{1,5})?(?:/[A-Za-z0-9._~%+/-]{0,300})?(?:\?[A-Za-z0-9._~%+/=-]{0,300})?")
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -55,8 +59,8 @@ def fail(msg):
 
 def https_origin(raw, label):
     parts = urllib.parse.urlsplit(raw or "")
-    if parts.scheme != "https" or not parts.hostname:
-        fail(f"--{label} must be an https URL")
+    if not URL_RE.fullmatch(raw or "") or parts.scheme != "https" or not parts.hostname:
+        fail(f"--{label} must be a plain https URL")
     return parts
 
 
@@ -210,7 +214,7 @@ def collect(call, host, since, max_pages):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0], fromfile_prefix_chars="@")
     ap.add_argument("--worker", required=True)
     ap.add_argument("--site", required=True)
     ap.add_argument("--sitemap")

@@ -13,6 +13,7 @@ enabled = true
 [[setting]]
 name = "sources"
 type = "list"
+format = "https_url"
 default = ["https://example.org/changelog", "https://example.org/news"]
 cost_note = "each source adds at least one page open per run"
 

@@ -34,8 +34,8 @@
       "type": "approval-gated",
       "schedule": "0 21 * * 1,3",
       "path": "content-calendar.json",
-      "bytes": 19251,
-      "sha256": "50ce158446f6b6d92471027b3ffcc3db53123a9edcf84b7c6eecf2631f4c7407",
+      "bytes": 19282,
+      "sha256": "b79c57e3df62c3d88bb2a6dce2010c8da01ba263e1d835610af56b3b6e3cc438",
       "connectors": [
         {
           "id": "web-search",
@@ -223,8 +223,8 @@
       "type": "watch",
       "schedule": "0 20 * * *",
       "path": "shopify-content-qa.json",
-      "bytes": 84194,
-      "sha256": "9964d350a1c55f13d73962f059c3c33594e65df4017c62449b5b3dda65a342f4",
+      "bytes": 85135,
+      "sha256": "551db289c3e2c8b4866c8b43c0205d3390047388c0daf51ca35f54239f5618b8",
       "connectors": [
         {
           "id": "storefront",
@@ -254,8 +254,8 @@
       "type": "watch",
       "schedule": "0 21 * * *",
       "path": "site-compliance-review.json",
-      "bytes": 98607,
-      "sha256": "3505d438f86332eadfff8f7a12dec907d9efab7288f55380bf521ea77d9c0dfb",
+      "bytes": 99722,
+      "sha256": "b48ee52883b88899a513af3ff9c96b6bbce21a625845e0cdc1f471ab254e60c0",
       "connectors": [
         {
           "id": "worker",
@@ -275,8 +275,8 @@
       "type": "watch",
       "schedule": "0 21 * * 4",
       "path": "support-gap-digest.json",
-      "bytes": 13790,
-      "sha256": "4d22d8c53972655b1266858b58317842edbf5a32829d5e45351262d5d4d27e54",
+      "bytes": 13821,
+      "sha256": "221c104fffc236f3651fd18ac2743d78d367b842382a6bb4bba73540e66b7e9e",
       "connectors": [
         {
           "id": "helpdesk",
@@ -305,8 +305,8 @@
       "type": "watch",
       "schedule": "0 22 * * 1-5",
       "path": "watch.json",
-      "bytes": 8799,
-      "sha256": "8aa349393cbd195ae55a269b0d10a9b36e84af61c34da73282416a3b3570f527",
+      "bytes": 8830,
+      "sha256": "f7151a0c54b773957714e139aa916f97fea15fdf634012e755d23ad0233d75a9",
       "connectors": [
         {
           "id": "web",
@@ -326,8 +326,8 @@
       "type": "watch",
       "schedule": "0 21 * * 4",
       "path": "weekly-marketing-report.json",
-      "bytes": 41107,
-      "sha256": "d74b74c160e19b2476bddc45dc447fc2ecd59a0fcab9b2eed19e77118a94ca22",
+      "bytes": 41227,
+      "sha256": "dc871013a9b5113917e6a231ea6c3da2694d77a6e700c52053938f7df881c1e8",
       "connectors": [
         {
           "id": "analytics",

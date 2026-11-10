@@ -13,6 +13,7 @@ import unicodedata
 
 import definition
 import join_card
+import schema
 import worker_kinds
 
 MAX_SLUG = 120
@@ -477,6 +478,9 @@ def _item_change(prop, sdef, current):
             raise ContractError(f"{op} needs a list setting; {setting} is a {stype}")
         if not _plain(value):
             raise ContractError(plain)
+        problem = schema.list_item_problem(sdef, value)
+        if problem:
+            raise ContractError(f"{setting}: {problem}")
         items = list(current or [])
         present = any(str(x).casefold() == value.casefold() for x in items)
         if op == "add":
