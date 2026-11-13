@@ -18,6 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUDGET_FILE = os.path.join(ROOT, "tests", "desk_budgets.json")
 REL = "tests/desk_budgets.json"
 HTML = os.path.join(ROOT, "skills", "routineos", "assets", "desk", "index.html")
+BLUEPRINT_HTML = os.path.join(ROOT, "skills", "routineos", "assets", "desk", "index.blueprint.html")
 
 
 def load_budgets():
@@ -38,7 +39,11 @@ def measures():
     """Measured gzip bytes per budget key: the committed single-file Desk and the CSS inlined in it."""
     with open(HTML, "rb") as fh:
         raw = fh.read()
-    return {"single/index.html": gzip_size(raw), "single/css": gzip_size(inlined_css(raw.decode("utf-8")).encode("utf-8"))}
+    with open(BLUEPRINT_HTML, "rb") as fh:
+        variant = fh.read()
+    return {"single/index.html": gzip_size(raw), "single/css": gzip_size(inlined_css(raw.decode("utf-8")).encode("utf-8")),
+            "blueprint/index.html": gzip_size(variant),
+            "blueprint/css": gzip_size(inlined_css(variant.decode("utf-8")).encode("utf-8"))}
 
 
 def hoard_limit(actual):
@@ -122,8 +127,8 @@ class BudgetTests(unittest.TestCase):
     def test_entries_match_outputs(self):  # rule 4
         self.assertEqual(check_match(self.budgets, self.measured), [])
 
-    def test_only_the_single_file_is_budgeted(self):
-        self.assertEqual(sorted(self.budgets), ["single/css", "single/index.html"])
+    def test_only_the_built_pages_are_budgeted(self):
+        self.assertEqual(sorted(self.budgets), ["blueprint/css", "blueprint/index.html", "single/css", "single/index.html"])
 
     def test_css_is_measured_inside_the_page(self):
         self.assertGreater(self.measured["single/css"], 0)

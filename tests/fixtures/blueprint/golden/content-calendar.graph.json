@@ -1,0 +1,577 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "connector:web",
+      "label": null,
+      "to": "stage:research",
+      "type": "reads"
+    },
+    {
+      "from": "connector:web-search",
+      "label": null,
+      "to": "stage:research",
+      "type": "reads"
+    },
+    {
+      "from": "gate:gate",
+      "label": null,
+      "to": "connector:gate-mail",
+      "type": "passes"
+    },
+    {
+      "from": "gate:gate",
+      "label": null,
+      "to": "mcp:cms",
+      "type": "passes"
+    },
+    {
+      "from": "gate:gate",
+      "label": null,
+      "to": "output:publish-post",
+      "type": "passes"
+    },
+    {
+      "from": "routine:content-calendar",
+      "label": null,
+      "to": "stage:research",
+      "type": "runs"
+    },
+    {
+      "from": "setting:formats",
+      "label": null,
+      "to": "routine:content-calendar",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:content-calendar",
+      "type": "configures"
+    },
+    {
+      "from": "setting:posts_per_week",
+      "label": null,
+      "to": "routine:content-calendar",
+      "type": "configures"
+    },
+    {
+      "from": "setting:source_feeds",
+      "label": null,
+      "to": "routine:content-calendar",
+      "type": "configures"
+    },
+    {
+      "from": "setting:topics",
+      "label": null,
+      "to": "routine:content-calendar",
+      "type": "configures"
+    },
+    {
+      "from": "stage:approve",
+      "label": null,
+      "to": "connector:gate-mail",
+      "type": "writes"
+    },
+    {
+      "from": "stage:approve",
+      "label": null,
+      "to": "stage:publish",
+      "type": "next"
+    },
+    {
+      "from": "stage:cite",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:draft",
+      "label": null,
+      "to": "stage:cite",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:publish",
+      "label": null,
+      "to": "mcp:cms",
+      "type": "writes"
+    },
+    {
+      "from": "stage:research",
+      "label": null,
+      "to": "stage:draft",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": null,
+      "to": "stage:approve",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox, pending",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:draft",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:source",
+      "type": "stores"
+    },
+    {
+      "from": "store:draft",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:source",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:content-calendar",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "write",
+        "alternatives": [
+          "Slack"
+        ],
+        "connector_kind": "connector",
+        "purpose": "Carry each approval request for a draft post.",
+        "required": false
+      },
+      "id": "connector:gate-mail",
+      "kind": "connector",
+      "label": "Mail for approvals",
+      "name": "gate-mail",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[2]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Open each feed and source.",
+        "required": true
+      },
+      "id": "connector:web",
+      "kind": "connector",
+      "label": "Web fetch",
+      "name": "web",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[1]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Find recent material on each topic.",
+        "required": true
+      },
+      "id": "connector:web-search",
+      "kind": "connector",
+      "label": "Web search",
+      "name": "web-search",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "transport": "email"
+      },
+      "id": "gate:gate",
+      "kind": "gate",
+      "label": "Approval gate",
+      "name": "gate",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "gate"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "access": "write",
+        "alternatives": [
+          "Copy the approved draft by hand from the Desk"
+        ],
+        "connector_kind": "mcp",
+        "purpose": "Publish a post a person approved.",
+        "required": false
+      },
+      "id": "mcp:cms",
+      "kind": "mcp",
+      "label": "Publishing platform",
+      "name": "cms",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[3]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "action_kind": "post"
+      },
+      "id": "output:publish-post",
+      "kind": "output",
+      "label": "publish-post",
+      "name": "publish-post",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "action[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "approval-gated"
+      },
+      "id": "routine:content-calendar",
+      "kind": "routine",
+      "label": "content-calendar",
+      "name": "content-calendar",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:formats",
+      "kind": "setting",
+      "label": "Formats",
+      "name": "formats",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:posts_per_week",
+      "kind": "setting",
+      "label": "Posts per week",
+      "name": "posts_per_week",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:source_feeds",
+      "kind": "setting",
+      "label": "Source feeds",
+      "name": "source_feeds",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:topics",
+      "kind": "setting",
+      "label": "Topics",
+      "name": "topics",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "A person approves, edits or declines each draft; the gate times out after 72 hours.",
+        "stage_kind": "gate"
+      },
+      "id": "stage:approve",
+      "kind": "stage",
+      "label": "Approve each post",
+      "name": "approve",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Checks every citation marker has a source and every source is cited.",
+        "stage_kind": "code"
+      },
+      "id": "stage:cite",
+      "kind": "stage",
+      "label": "Check citations",
+      "name": "cite",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Drafts each post in each format in the house style, with a marker per claim.",
+        "stage_kind": "skill"
+      },
+      "id": "stage:draft",
+      "kind": "stage",
+      "label": "Draft posts",
+      "name": "draft",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "On a later run, publishes only the drafts whose decision is approved, exactly as approved.",
+        "stage_kind": "model"
+      },
+      "id": "stage:publish",
+      "kind": "stage",
+      "label": "Publish approved posts",
+      "name": "publish",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[6]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Reads the feeds and searches each topic, keeping every source URL.",
+        "stage_kind": "model"
+      },
+      "id": "stage:research",
+      "kind": "stage",
+      "label": "Research topics",
+      "name": "research",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "draft"
+      },
+      "id": "store:draft",
+      "kind": "store",
+      "label": "Draft",
+      "name": "draft",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.draft"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "source"
+      },
+      "id": "store:source",
+      "kind": "store",
+      "label": "Source",
+      "name": "source",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.source"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 21 * * 1,3"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 21 * * 1,3",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

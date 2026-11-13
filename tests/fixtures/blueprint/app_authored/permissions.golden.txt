@@ -1,0 +1,53 @@
+Permission screen: Authored app
+
+Apps and hosts
+- crm (read): crm.example.com; purpose not stated
+- routine 'one' contacts api.example.com
+
+Connectors
+- crm: read; purpose not stated
+
+Tools the run may use
+- one: no tool list declared in app.toml
+- A run may not use a send tool (push, email, Slack or any other) that this screen does not list.
+
+Logic delivered by
+- one: repo
+
+Schedule
+- one: UTC cron 0 6 * * *, 1 run a day
+- Routine 'one': 1 run a day.
+- Total: 1 run a day against your cap of 1 run a day.
+- The shortest allowed schedule interval is 1 hour.
+- The platform allows 100 scheduled runs per hour across the account and 30 per hour for one task.
+
+Environment and secrets
+- Environment: none
+- Environment settings: not reported. RoutineOS cannot read network access, allowed domains, network secrets, setup script or environment variables; confirm them in the environment dialog on claude.ai.
+- No secrets are declared in app.toml.
+
+Store
+- Kind: artifact-db
+- Collection 'leads' written by one
+
+Budget
+- Ceiling: 1 run a day (prompt-enforced, not guaranteed).
+- When the ceiling is passed, further runs are meant to stop and no alert channel is set, so nobody is told.
+
+First run
+- The first run is report-only: it reads and reports what it would do, and nothing is sent or written outside the store.
+
+Not yet checked
+- Reliance: no platform dependencies are declared in [risks].relies_on, so none are verified.
+- Environment settings: not reported, so no host's reachability is checked.
+
+Nothing is created until you say yes. A change to any line above makes a new screen.
+
+Blueprint
+Parts by state
+  docs: connector:crm
+  needs-research: http:api.example.com
+Gaps
+  no-spam
+Approval
+  not approved

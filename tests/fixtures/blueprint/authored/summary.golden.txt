@@ -1,0 +1,12 @@
+Blueprint: authored
+
+Parts by state
+  docs: http:web
+  needs-building: infra:review-worker
+
+Requirements
+  fresh: covered
+  report: covered
+
+Approval
+  not approved

@@ -2,14 +2,14 @@
 
 Supported: type, const, enum, required, properties, additionalProperties (false or a schema), items,
 minItems, maxItems, pattern, minLength, maxLength, patternProperties, propertyNames, maxProperties,
-minimum, and $ref to "#/$defs/<name>". Any other keyword is an error, so a schema cannot quietly
-depend on something this file does not check.
+minimum, oneOf (exactly one branch matches), and $ref to "#/$defs/<name>". Any other keyword is an
+error, so a schema cannot quietly depend on something this file does not check.
 """
 import re
 
 KNOWN = {"$schema", "$id", "title", "description", "$defs", "type", "const", "enum", "required", "properties",
          "additionalProperties", "items", "minItems", "maxItems", "pattern", "minLength", "maxLength",
-         "patternProperties", "propertyNames", "maxProperties", "minimum", "$ref"}
+         "patternProperties", "propertyNames", "maxProperties", "minimum", "$ref", "oneOf"}
 
 TYPES = {
     "object": lambda v: isinstance(v, dict),
@@ -34,6 +34,10 @@ def validate(value, schema, root=None, path="$"):
             raise ValueError(f"{path}: unsupported $ref {ref}")
         return validate(value, root["$defs"][ref[len("#/$defs/"):]], root, path)
     out = []
+    if "oneOf" in schema:
+        hits = sum(1 for sub in schema["oneOf"] if not validate(value, sub, root, path))
+        if hits != 1:
+            return [f"{path}: must match exactly one of the allowed shapes"]
     if "type" in schema:
         types = schema["type"] if isinstance(schema["type"], list) else [schema["type"]]
         if not any(TYPES[t](value) for t in types):

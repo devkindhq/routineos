@@ -21,5 +21,5 @@ if [ "${PHONE:-}" = "1" ]; then
   exec node "$PKG/cli.js" test phone.spec.mjs --browser=chromium --workers=1 --reporter=line --output=out/results "$@"
 fi
 # One bundle mode: the committed single-file page.
-SPECS="desk.spec.mjs v2pages.spec.mjs walk.spec.mjs ext.spec.mjs fixpass.spec.mjs mobile.spec.mjs zoom.spec.mjs imagenotes.spec.mjs imagenotes-real.spec.mjs"
+SPECS="desk.spec.mjs v2pages.spec.mjs walk.spec.mjs ext.spec.mjs blueprint.spec.mjs fixpass.spec.mjs mobile.spec.mjs zoom.spec.mjs imagenotes.spec.mjs imagenotes-real.spec.mjs"
 exec node "$PKG/cli.js" test ${DESK_SPECS:-$SPECS} --browser=chromium --workers=2 --reporter=line --output=out/results "$@"

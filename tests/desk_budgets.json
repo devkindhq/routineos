@@ -1,4 +1,12 @@
 {
+  "blueprint/css": {
+    "gzip": 43108,
+    "raise_reason": "New 0.12.0 Blueprint build variant: React Flow 12.12.0 and dagre 3.1.3 on top of the main Desk. This is the CSS part: the React Flow stylesheet adds 1,744 bytes gzip over the main Desk CSS. Shipped only in Desks built from a routine with a Blueprint; single/index.html is unchanged."
+  },
+  "blueprint/index.html": {
+    "gzip": 577454,
+    "raise_reason": "New 0.12.0 Blueprint build variant: React Flow 12.12.0 and dagre 3.1.3 on top of the main Desk. Shipped only in Desks built from a routine with a Blueprint; single/index.html is unchanged. Plus 57 bytes for the 'from a pack, unconfirmed' badge (ruling I7)."
+  },
   "single/css": {
     "gzip": 41364,
     "raise_reason": "Desk moved to React and Mantine (spec 2026-11-08-desk-mantine-design)"

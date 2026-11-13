@@ -1,0 +1,9 @@
+{
+  "stages": [
+    {"id": "collect", "kind": "model", "title": "Collect", "does": "Reads the CRM.", "connectors": ["crm"]},
+    {"id": "write", "kind": "code", "title": "Write", "does": "Writes leads.", "writes": ["leads"]}
+  ],
+  "connectors": [
+    {"id": "crm", "label": "CRM", "kind": "connector", "access": "read", "stages": ["collect"]}
+  ]
+}

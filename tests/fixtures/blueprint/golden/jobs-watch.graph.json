@@ -1,0 +1,497 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "connector:web",
+      "label": null,
+      "to": "stage:search",
+      "type": "reads"
+    },
+    {
+      "from": "connector:web-search",
+      "label": null,
+      "to": "stage:search",
+      "type": "reads"
+    },
+    {
+      "from": "gate:gate",
+      "label": null,
+      "to": "connector:mail",
+      "type": "passes"
+    },
+    {
+      "from": "routine:jobs-watch",
+      "label": null,
+      "to": "stage:search",
+      "type": "runs"
+    },
+    {
+      "from": "setting:excluded_companies",
+      "label": null,
+      "to": "routine:jobs-watch",
+      "type": "configures"
+    },
+    {
+      "from": "setting:excluded_title_words",
+      "label": null,
+      "to": "routine:jobs-watch",
+      "type": "configures"
+    },
+    {
+      "from": "setting:lookback_days",
+      "label": null,
+      "to": "routine:jobs-watch",
+      "type": "configures"
+    },
+    {
+      "from": "setting:markets",
+      "label": null,
+      "to": "routine:jobs-watch",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:jobs-watch",
+      "type": "configures"
+    },
+    {
+      "from": "setting:title_keywords",
+      "label": null,
+      "to": "routine:jobs-watch",
+      "type": "configures"
+    },
+    {
+      "from": "stage:approve",
+      "label": null,
+      "to": "connector:mail",
+      "type": "writes"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:record",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:search",
+      "label": null,
+      "to": "stage:record",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": null,
+      "to": "stage:approve",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox, pending",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:company",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:role",
+      "type": "stores"
+    },
+    {
+      "from": "store:company",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:role",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:jobs-watch",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "write",
+        "alternatives": [
+          "Slack"
+        ],
+        "connector_kind": "connector",
+        "purpose": "Carry the approval email for an intro-note gate.",
+        "required": false
+      },
+      "id": "connector:mail",
+      "kind": "connector",
+      "label": "Mail",
+      "name": "mail",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[2]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Open each job page it reports.",
+        "required": true
+      },
+      "id": "connector:web",
+      "kind": "connector",
+      "label": "Web fetch",
+      "name": "web",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[1]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Find job postings by market and title keyword.",
+        "required": true
+      },
+      "id": "connector:web-search",
+      "kind": "connector",
+      "label": "Web search",
+      "name": "web-search",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "transport": "email"
+      },
+      "id": "gate:gate",
+      "kind": "gate",
+      "label": "Approval gate",
+      "name": "gate",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "gate"
+      },
+      "state": null
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:jobs-watch",
+      "kind": "routine",
+      "label": "jobs-watch",
+      "name": "jobs-watch",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:excluded_companies",
+      "kind": "setting",
+      "label": "Excluded companies",
+      "name": "excluded_companies",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:excluded_title_words",
+      "kind": "setting",
+      "label": "Excluded title words",
+      "name": "excluded_title_words",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:lookback_days",
+      "kind": "setting",
+      "label": "Lookback days",
+      "name": "lookback_days",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:markets",
+      "kind": "setting",
+      "label": "Markets",
+      "name": "markets",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:title_keywords",
+      "kind": "setting",
+      "label": "Title keywords",
+      "name": "title_keywords",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "A person approves or declines an intro note by email; the gate times out after 48 hours. Nothing is sent from this routine.",
+        "stage_kind": "gate"
+      },
+      "id": "stage:approve",
+      "kind": "stage",
+      "label": "Approve an intro note",
+      "name": "approve",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Records each role linked to its company and drafts the Inbox messages, inside max_inbox_per_run.",
+        "stage_kind": "model"
+      },
+      "id": "stage:record",
+      "kind": "stage",
+      "label": "Record roles and companies",
+      "name": "record",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Searches each market for postings inside the lookback window whose title matches a keyword, and opens the ones it reports.",
+        "stage_kind": "model"
+      },
+      "id": "stage:search",
+      "kind": "stage",
+      "label": "Search postings",
+      "name": "search",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "company"
+      },
+      "id": "store:company",
+      "kind": "store",
+      "label": "Company",
+      "name": "company",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.company"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "role"
+      },
+      "id": "store:role",
+      "kind": "store",
+      "label": "Role",
+      "name": "role",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.role"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 22 * * 1,4"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 22 * * 1,4",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

@@ -1,0 +1,373 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "mcp:ats",
+      "label": null,
+      "to": "stage:collect",
+      "type": "reads"
+    },
+    {
+      "from": "routine:candidate-shortlist",
+      "label": null,
+      "to": "stage:collect",
+      "type": "runs"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:candidate-shortlist",
+      "type": "configures"
+    },
+    {
+      "from": "setting:must_have",
+      "label": null,
+      "to": "routine:candidate-shortlist",
+      "type": "configures"
+    },
+    {
+      "from": "setting:nice_to_have",
+      "label": null,
+      "to": "routine:candidate-shortlist",
+      "type": "configures"
+    },
+    {
+      "from": "setting:roles",
+      "label": null,
+      "to": "routine:candidate-shortlist",
+      "type": "configures"
+    },
+    {
+      "from": "setting:shortlist_size",
+      "label": null,
+      "to": "routine:candidate-shortlist",
+      "type": "configures"
+    },
+    {
+      "from": "stage:collect",
+      "label": null,
+      "to": "stage:mark",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:mark",
+      "label": null,
+      "to": "stage:score",
+      "type": "next"
+    },
+    {
+      "from": "stage:score",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:candidate",
+      "type": "stores"
+    },
+    {
+      "from": "store:candidate",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:candidate-shortlist",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [
+          "CVs placed in the run folder with an applicant reference each"
+        ],
+        "connector_kind": "mcp",
+        "purpose": "Read new applicants and their CVs.",
+        "required": true
+      },
+      "id": "mcp:ats",
+      "kind": "mcp",
+      "label": "Applicant tracking system",
+      "name": "ats",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:candidate-shortlist",
+      "kind": "routine",
+      "label": "candidate-shortlist",
+      "name": "candidate-shortlist",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:must_have",
+      "kind": "setting",
+      "label": "Must have (weight 2)",
+      "name": "must_have",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:nice_to_have",
+      "kind": "setting",
+      "label": "Nice to have (weight 1)",
+      "name": "nice_to_have",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:roles",
+      "kind": "setting",
+      "label": "Open roles",
+      "name": "roles",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:shortlist_size",
+      "kind": "setting",
+      "label": "Shortlist size",
+      "name": "shortlist_size",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Lists new applicants per role and reads each CV.",
+        "stage_kind": "model"
+      },
+      "id": "stage:collect",
+      "kind": "stage",
+      "label": "Read new applicants",
+      "name": "collect",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Marks each criterion met, partly or not, with a short quote as evidence.",
+        "stage_kind": "model"
+      },
+      "id": "stage:mark",
+      "kind": "stage",
+      "label": "Mark the rubric",
+      "name": "mark",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns the marks into a weighted 0 to 100 score.",
+        "stage_kind": "code"
+      },
+      "id": "stage:score",
+      "kind": "stage",
+      "label": "Score",
+      "name": "score",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "candidate"
+      },
+      "id": "store:candidate",
+      "kind": "store",
+      "label": "Candidate",
+      "name": "candidate",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.candidate"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 21 * * 1-5"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 21 * * 1-5",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

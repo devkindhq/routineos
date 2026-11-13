@@ -1,0 +1,10 @@
+[routine]
+name = "one"
+type = "serverless"
+schedule = "0 6 * * *"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true

@@ -27,7 +27,7 @@ Why conventions: runs are stateless, unattended and read untrusted content. Most
 | Stage | What happens | Exit evidence | Reference |
 |---|---|---|---|
 | Discover (optional) | Interview, or read a brief the person already has | A written brief the person accepted | [discover](references/discover.md) |
-| Design | Read current platform facts, pick routines, the right mix of code and model, store, gates, secrets pattern, cost; list risks | A design the person approved, risks listed | [design](references/design.md) |
+| Design | Read current platform facts, pick routines, the right mix of code and model, store, gates, secrets pattern, cost; list risks | A design the person approved, risks listed; where the Blueprint was taken up, the person accepted the design and the Blueprint (blueprint check matches). Offer the Blueprint for complex routines (references/blueprint.md); it is optional. | [design](references/design.md), [blueprint](references/blueprint.md) |
 | Build | Scaffold, write prompts and scripts, build the Desk | Lint passes; every external contact declared | [components](references/components.md) |
 | Verify | Dry checks, then a real report-only first run | A run record exists and the person looked at the output | [deploy](references/deploy.md) |
 | Deploy | Show the permission screen, create the live routine and triggers with `RemoteTrigger`, load seed data | The routine is listed on the account with the stated schedule | [deploy](references/deploy.md) |
@@ -109,6 +109,7 @@ To turn an existing n8n workflow, Windmill flow or Zap into a routine, use the [
 | Interviewing, a brief, "I spend time on X" | [discover](references/discover.md) |
 | Choosing routines, code versus model, cost, risks | [design](references/design.md) |
 | Where a routine's logic lives (repo, account skill, inline) | [design](references/design.md#where-the-logic-lives) |
+| Blueprint: requirements, parts, states, approval, drift | [blueprint](references/blueprint.md) |
 | Permission screen, creating the routine, first run, promotion | [deploy](references/deploy.md) |
 | Health, budget, approvals, changing or retiring an app | [operate](references/operate.md) |
 | Refreshing or checking platform facts | [platform-refresh](references/platform-refresh.md) |

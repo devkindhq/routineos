@@ -22,7 +22,7 @@ import schema
 
 FORMAT = "routineos.pack.v1"
 CATALOG_FORMAT = "routineos.catalog.v1"
-VERSION = "0.11.1"
+VERSION = "0.12.0"
 USER_AGENT = f"routineos-pack/{VERSION}"
 MAX_PACK_BYTES = 512 * 1024
 MAX_INDEX_BYTES = 1024 * 1024
@@ -31,10 +31,10 @@ MAX_DEPTH = 32
 
 # Top-level keys in the order packs are written (spec D1).
 PACK_KEYS = ("$schema", "format", "id", "version", "title", "summary", "category", "maturity", "license",
-             "inspiration", "routine", "prompt", "readme", "definition", "stages", "connectors", "files")
+             "inspiration", "routine", "prompt", "readme", "definition", "stages", "connectors", "blueprint", "files")
 REQUIRED_KEYS = ("format", "id", "version", "title", "summary", "category", "maturity", "routine", "prompt",
                  "readme", "stages", "connectors")
-BODY_KEYS = ("routine", "prompt", "readme", "definition", "files")
+BODY_KEYS = ("routine", "prompt", "readme", "definition", "blueprint", "files")
 META_KEYS = tuple(k for k in PACK_KEYS if k not in BODY_KEYS)
 CATEGORIES = ("sales", "marketing", "ops", "support", "finance", "recruiting", "content", "dev", "general")
 MATURITY = ("piloted", "unpiloted")
@@ -59,6 +59,20 @@ VIEW_KEYS = ("id", "type", "name", "icon", "filters", "sort", "columns", "window
 STAGE_KEYS = ("id", "kind", "title", "does", "connectors", "reads", "writes", "command", "skill")
 CONNECTOR_KEYS = ("id", "label", "kind", "purpose", "required", "access", "stages", "alternatives", "connect")
 INSPIRATION_KEYS = ("source", "title", "url")
+BLUEPRINT_KEYS = ("infra", "requirements", "states", "integrations")
+REQUIREMENT_KEYS = ("id", "text", "served_by")
+INFRA_KEYS = ("name", "kind", "what", "state", "needs", "deploys", "relies_on", "label")
+PART_STATE_KEYS = ("state", "needs", "relies_on")
+# an exported routine.toml [[integration]] with more than a state, or one that is not a pack connector
+INTEGRATION_KEYS = ("name", "kind", "direction", "gate", "hosts") + PART_STATE_KEYS
+INTEGRATION_KINDS, INTEGRATION_DIRECTIONS, MAX_INTEGRATION_HOSTS = ("connector", "mcp", "http", "secret-host"), ("read", "write"), 20
+# line breaks (including U+0085, U+2028, U+2029) and other controls: pack text is shown one row per line, after its
+# "from a pack" mark, so a break inside it could forge an unmarked line on the approve screen or in lint
+LINE_BREAK_OR_CONTROL_RE = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]")
+HOST_RE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?(:[0-9]{1,5})?\Z")
+INFRA_KINDS = ("worker", "queue", "d1", "r2", "browser-run", "ai", "do", "other")
+MAX_BLUEPRINT_ITEMS, MAX_BLUEPRINT_STATES = 50, 100
+BLUEPRINT_NAME_RE = re.compile(r"^[A-Za-z0-9:_.-]{1,80}\Z")
 INDEX_KEYS = ("format", "templates")
 ENTRY_KEYS = ("id", "version", "title", "summary", "category", "maturity", "type", "schedule", "path", "bytes",
               "sha256", "connectors", "inspiration")
@@ -628,6 +642,123 @@ def _scan(node, path, out):
             _scan(val, f"{path}[{i}]", out)
 
 
+def _id_list(obj, key, where):
+    """A string or a list of strings, each at most 80 characters."""
+    v = obj.get(key)
+    items = [v] if isinstance(v, str) else v
+    if not isinstance(items, list) or not all(isinstance(x, str) and 1 <= len(x) <= 80 for x in items):
+        return [f"{where}.{key} must be text or a list of text, each at most 80 characters"]
+    return []
+
+
+def _strings_in(v):
+    """Every string in v, including list items, dict keys and values at any depth."""
+    if isinstance(v, str):
+        yield v
+    elif isinstance(v, list):
+        for x in v:
+            yield from _strings_in(x)
+    elif isinstance(v, dict):
+        for k, x in v.items():
+            yield from _strings_in(k)
+            yield from _strings_in(x)
+
+
+def _one_line(obj, key, where):
+    if any(LINE_BREAK_OR_CONTROL_RE.search(s) for s in _strings_in(obj.get(key))):
+        return [f"{where}.{key} must be one line of text, with no line breaks or control characters"]
+    return []
+
+
+def _part_state_problems(obj, where):
+    from blueprint import STATES
+    problems = []
+    if "state" in obj and obj["state"] not in STATES:
+        problems.append(f"{where}.state must be one of {', '.join(STATES)}")
+    if "needs" in obj:
+        problems += _text(obj, "needs", where, 300) + _one_line(obj, "needs", where)
+    if "relies_on" in obj:
+        problems += _id_list(obj, "relies_on", where) + _one_line(obj, "relies_on", where)
+    return problems
+
+
+def _blueprint_problems(p):
+    if "blueprint" not in p:
+        return []
+    bp = p["blueprint"]
+    if not isinstance(bp, dict):
+        return ["blueprint must be an object"]
+    problems = _unknown(bp, BLUEPRINT_KEYS, "blueprint")
+    for key, keys, limit in (("requirements", REQUIREMENT_KEYS, MAX_BLUEPRINT_ITEMS), ("infra", INFRA_KEYS, MAX_BLUEPRINT_ITEMS),
+                             ("integrations", INTEGRATION_KEYS, MAX_BLUEPRINT_ITEMS)):
+        rows = bp.get(key, [])
+        if not isinstance(rows, list):
+            problems.append(f"blueprint.{key} must be a list")
+            continue
+        if len(rows) > limit:
+            problems.append(f"blueprint.{key} has more than {limit} entries")
+        for i, row in enumerate(rows[:limit]):
+            where = f"blueprint.{key}[{i}]"
+            if not isinstance(row, dict):
+                problems.append(f"{where} must be an object")
+                continue
+            problems += _unknown(row, keys, where)
+            ident = "id" if key == "requirements" else "name"
+            if not (isinstance(row.get(ident), str) and BLUEPRINT_NAME_RE.match(row[ident])):
+                problems.append(f"{where}.{ident} must be 1 to 80 letters, digits or : _ . -")
+            if key == "requirements":
+                problems += _text(row, "text", where, 300) + _one_line(row, "text", where)
+                if "served_by" in row:
+                    problems += _id_list(row, "served_by", where) + _one_line(row, "served_by", where)
+            elif key == "integrations":
+                if "kind" in row and row["kind"] not in INTEGRATION_KINDS:
+                    problems.append(f"{where}.kind must be one of {', '.join(INTEGRATION_KINDS)}")
+                if "direction" in row and row["direction"] not in INTEGRATION_DIRECTIONS:
+                    problems.append(f"{where}.direction must be one of {', '.join(INTEGRATION_DIRECTIONS)}")
+                if "gate" in row and not isinstance(row["gate"], bool):
+                    problems.append(f"{where}.gate must be true or false")
+                hosts = row.get("hosts", [])
+                if not (isinstance(hosts, list) and len(hosts) <= MAX_INTEGRATION_HOSTS
+                        and all(isinstance(h, str) and HOST_RE.match(h) for h in hosts)):
+                    problems.append(f"{where}.hosts must be a list of at most {MAX_INTEGRATION_HOSTS} host names, such as api.example.com")
+                problems += _part_state_problems(row, where)
+            else:
+                for k, n in (("what", 300), ("deploys", 300), ("label", 80)):
+                    if k in row:
+                        problems += _text(row, k, where, n) + _one_line(row, k, where)
+                if "kind" in row and row["kind"] not in INFRA_KINDS:
+                    problems.append(f"{where}.kind must be one of {', '.join(INFRA_KINDS)}")
+                problems += _part_state_problems(row, where)
+    states = bp.get("states", {})
+    infra_names = {r.get("name") for r in bp.get("infra", []) if isinstance(r, dict)} if isinstance(bp.get("infra"), list) else set()
+    seen = set(infra_names) | (set(states) if isinstance(states, dict) else set())
+    for i, row in enumerate(bp.get("integrations", []) if isinstance(bp.get("integrations"), list) else []):
+        name = row.get("name") if isinstance(row, dict) else None
+        if isinstance(name, str) and name in seen:
+            problems.append(f"blueprint.integrations[{i}]: the name is used twice in the Blueprint")
+        seen.add(name)
+    connector_ids = {c.get("id") for c in p.get("connectors", []) if isinstance(c, dict)} if isinstance(p.get("connectors"), list) else set()
+    if not isinstance(states, dict):
+        problems.append("blueprint.states must be an object")
+    else:
+        if len(states) > MAX_BLUEPRINT_STATES:
+            problems.append(f"blueprint.states has more than {MAX_BLUEPRINT_STATES} entries")
+        for name, st in list(states.items())[:MAX_BLUEPRINT_STATES]:
+            where = f"blueprint.states[{len(str(name))} characters]" if not BLUEPRINT_NAME_RE.match(str(name)) else f"blueprint.states.{name}"
+            if not BLUEPRINT_NAME_RE.match(str(name)):
+                problems.append(f"{where}: the name must be 1 to 80 letters, digits or : _ . -")
+            if name in infra_names:
+                problems.append(f"{where}: the name is also an infra name; put its state on the infra entry")
+            elif name not in connector_ids:
+                problems.append(f"{where}: the name matches no connector in this pack")
+            if not isinstance(st, dict):
+                problems.append(f"{where} must be an object")
+                continue
+            problems += _unknown(st, PART_STATE_KEYS, where)
+            problems += _part_state_problems(st, where)
+    return problems
+
+
 def validate(p):
     """Every problem with a parsed pack, in the order of spec D6. Messages never echo scanned values."""
     if not isinstance(p, dict):
@@ -638,6 +769,7 @@ def validate(p):
     problems += _routine_problems(p)
     problems += _definition_problems(p)
     problems += _stage_connector_problems(p)
+    problems += _blueprint_problems(p)
     problems += _file_problems(p)
     scanned = []
     _scan(p, "", scanned)
@@ -688,6 +820,67 @@ def toml_dumps(routine):
     return "\n\n".join(blocks) + "\n"
 
 
+def lift_blueprint(routine, connector_ids=()):
+    """(routine without the Blueprint tables, the `blueprint` value or None). [approval] is dropped. An [[integration]]
+    that only sets a state on a pack connector goes to `states`; any other goes whole to `integrations`."""
+    from blueprint import BLUEPRINT_TABLES
+    rest = {k: v for k, v in routine.items() if k not in BLUEPRINT_TABLES}
+    bp, states, integrations, problems = {}, {}, [], []
+
+    def rows(table):  # origin is this folder's install mark, not part of what travels
+        v = routine.get(table, [])
+        return [{k: x for k, x in r.items() if k != "origin"} for r in v if isinstance(r, dict)] if isinstance(v, list) else []
+
+    if rows("requirement"):
+        bp["requirements"] = [dict(r) for r in rows("requirement")]
+    if rows("infra"):
+        bp["infra"] = [dict(r) for r in rows("infra")]
+    for r in rows("integration"):
+        name = r.get("name")
+        if not isinstance(name, str):
+            problems.append("routine.toml [[integration]]: name is missing")
+            continue
+        if name in states or any(i.get("name") == name for i in bp.get("infra", []) + integrations):
+            problems.append(f"routine.toml [[integration]] '{name}': the name is used twice in the Blueprint")
+            continue
+        if name in connector_ids and all(k == "name" or k in PART_STATE_KEYS for k in r):
+            states[name] = {k: v for k, v in r.items() if k != "name"}
+        else:
+            integrations.append(dict(r))
+    if problems:
+        raise PackError(problems)
+    if states:
+        bp["states"] = states
+    if integrations:
+        bp["integrations"] = integrations
+    return rest, (bp or None)
+
+
+def lower_blueprint(bp):
+    """The inverse of lift_blueprint: requirement, infra and integration arrays for toml_dumps. A pack is third-party
+    input, so a `verified` state it carries is written as `unverified` and its `relies_on` is not carried: verified
+    needs evidence the installer has seen (a registry record the person points at, or their own authoring), and the
+    pack cannot supply either. Every row is marked origin = "pack": its text is data the person has not confirmed, and
+    the mark stays until they delete it."""
+    def untrusted(row):
+        row = {k: v for k, v in row.items() if k not in ("relies_on", "origin")}
+        return {**row, "state": "unverified", "origin": "pack"} if row.get("state") == "verified" else {**row, "origin": "pack"}
+
+    if any(LINE_BREAK_OR_CONTROL_RE.search(s) for s in _strings_in(bp)):
+        raise PackError("blueprint: pack text must be one line, with no line breaks or control characters")
+    out = {}
+    if bp.get("requirements"):
+        out["requirement"] = [{**{k: v for k, v in r.items() if k != "origin"}, "origin": "pack"} for r in bp["requirements"]]
+    infra = [untrusted(r) for r in bp.get("infra", [])]
+    integrations = [{"name": name, **untrusted(st)} for name, st in bp.get("states", {}).items()]
+    integrations += [untrusted(r) for r in bp.get("integrations", [])]
+    if infra:
+        out["infra"] = infra
+    if integrations:
+        out["integration"] = integrations
+    return out
+
+
 def dumps(p):
     """Pack JSON text: top-level keys in PACK_KEYS order, files sorted by path, indent 2, trailing newline."""
     ordered = {k: p[k] for k in PACK_KEYS if k in p}
@@ -714,7 +907,8 @@ def renamed(p, name):
 
 def folder_files(p, desk_html):
     """{relative path: text} for a routine folder made from a valid pack."""
-    out = {"routine.toml": toml_dumps(p["routine"]), "prompt.md": p["prompt"], "README.md": p["readme"]}
+    routine = {**p["routine"], **lower_blueprint(p["blueprint"])} if "blueprint" in p else p["routine"]
+    out = {"routine.toml": toml_dumps(routine), "prompt.md": p["prompt"], "README.md": p["readme"]}
     if "definition" in p:
         out["definition.json"] = json.dumps(p["definition"], indent=2, ensure_ascii=False) + "\n"
         ws = p["routine"].get("workspace", {})
@@ -856,7 +1050,11 @@ def export(d):
     p = dict(meta)
     for k in BODY_KEYS:
         p.pop(k, None)
+    connectors = meta.get("connectors") if isinstance(meta.get("connectors"), list) else []
+    routine, bp = lift_blueprint(routine, {c.get("id") for c in connectors if isinstance(c, dict)})
     p["routine"] = routine
+    if bp is not None:
+        p["blueprint"] = bp
     prompt_path, readme_path = os.path.join(d, "prompt.md"), os.path.join(d, "README.md")
     p["prompt"] = _read_text(prompt_path) if os.path.isfile(prompt_path) else ""
     p["readme"] = _read_text(readme_path) if os.path.isfile(readme_path) else ""

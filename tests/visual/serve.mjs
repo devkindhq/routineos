@@ -10,7 +10,8 @@
 import { createServer } from "node:http";
 import { gzipSync } from "node:zlib";
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -82,6 +83,18 @@ function extBundle() {
   });
   return injected(comps);
 }
+// The page routineos.desk_page builds for the authored Blueprint fixture plus one requirement nothing serves, so the
+// Blueprint variant, its graph and a gap are all real.
+const BLUEPRINT_FIXTURE = join(ROOT, "tests", "fixtures", "blueprint", "authored");
+function blueprintBundle() {
+  const dir = mkdtempSync(join(tmpdir(), "bp-visual-"));
+  writeFileSync(join(dir, "routine.toml"), readFileSync(join(BLUEPRINT_FIXTURE, "routine.toml"), "utf8") +
+    '\n[[requirement]]\nid = "audit"\ntext = "Every change is audited"\nserved_by = []\n');
+  for (const f of ["prompt.md", "pack.json"]) writeFileSync(join(dir, f), readFileSync(join(BLUEPRINT_FIXTURE, f), "utf8"));
+  const py = "import sys; sys.path.insert(0, sys.argv[1]); import routineos; " +
+    "sys.stdout.write(routineos.desk_page('authored', routine_dir=sys.argv[2]))";
+  return execFileSync("python3", ["-c", py, SCRIPTS, dir], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+}
 export const HOSTILE_ID = "role--https-jobs-example-nz-hostile";
 
 // Text bodies go out gzipped when the client accepts it, as a real host does; `cache` marks files that never
@@ -148,15 +161,16 @@ export function fixtures() {
   };
 }
 
-function deskPage(params, custom, plain, ext) {
+function deskPage(params, custom, plain, ext, blueprint) {
   const cfg = { store: params.get("store") || "static" };
   if (params.get("snapshot")) cfg.snapshot = params.get("snapshot");
   if (params.get("workspace")) cfg.workspace = params.get("workspace");
   if (params.get("components")) cfg.components = params.get("components");
   if (params.get("tour")) cfg.tour = params.get("tour") === "1";
   // JSON inside a script element: escape "<" so a config value cannot close the element.
-  const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
   const bundle = params.get("bundle");
+  if (bundle === "blueprint") return blueprint(); // already carries its own desk-config, graph included
+  const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
   const html = bundle === "ext" ? ext() : bundle === "desk" ? custom() : bundle === "bad-components" ? custom(true) : plain();
   return html.replace(CONFIG_RE, (_m, a, _b, c) => a + json + c);
 }
@@ -166,12 +180,13 @@ export function start(port = 0) {
   const built = {};
   const custom = (bad) => (built[!!bad] = built[!!bad] || deskBundle(bad ? BAD_COMPONENTS : []));
   const ext = () => (built.ext = built.ext || extBundle());
+  const blueprint = () => (built.blueprint = built.blueprint || blueprintBundle());
   const plain = () => (built.plain = built.plain || injected([]));
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     try {
       if (url.pathname === "/desk.html") {
-        send(req, res, "text/html; charset=utf-8", Buffer.from(deskPage(url.searchParams, custom, plain, ext)));
+        send(req, res, "text/html; charset=utf-8", Buffer.from(deskPage(url.searchParams, custom, plain, ext, blueprint)));
         return;
       }
       const m = url.pathname.match(/^\/snap\/([a-z0-9-]+)\.json$/);

@@ -1,0 +1,44 @@
+[app]
+id = "basic"
+title = "Basic"
+status = "not live"
+
+[[routine]]
+name = "one"
+folder = "routines/one"
+type = "serverless"
+schedule = "0 6 * * *"
+connectors = ["crm", "notes"]
+hosts = ["api.example.com"]
+writes = ["leads"]
+
+[[collection]]
+name = "leads"
+writer = "one"
+
+[[integration]]
+name = "crm"
+kind = "connector"
+direction = "read"
+hosts = ["crm.example.com"]
+
+[[integration]]
+name = "notes"
+kind = "mcp"
+direction = "write"
+gate = true
+
+[[integration]]
+name = "billing"
+kind = "secret-host"
+direction = "read"
+hosts = ["api.example.com"]
+
+[[secret]]
+name = "billing-key"
+where = "network-secret"
+host = "api.example.com"
+
+[budget]
+max_runs_per_day = 1
+

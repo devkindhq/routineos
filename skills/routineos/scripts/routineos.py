@@ -11,6 +11,7 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import appmodel  # noqa: E402
+import blueprint  # noqa: E402
 import bundle_desk  # noqa: E402
 import definition  # noqa: E402
 import desk_contract  # noqa: E402
@@ -198,6 +199,7 @@ SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 SKILL_ROOT = os.path.dirname(SCRIPTS)
 TEMPLATES = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(SCRIPTS))), "templates")
 DESK_HTML = os.path.join(os.path.dirname(SCRIPTS), "assets", "desk", "index.html")
+BLUEPRINT_HTML = bundle_desk.BLUEPRINT_HTML
 TEMPLATE_FILES = ("routine.toml", "prompt.md", "README.md", "definition.json")
 
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -232,13 +234,16 @@ class DeskPageError(Exception):
 
 def desk_page(workspace_name, routine_dir=None, tour=None):
     """The built Desk (assets/desk/index.html) with its config block pointing at the artifact db and naming the
-    workspace, and the plugin version filled in.
+    workspace, and the plugin version filled in. A routine with a Blueprint gets the build variant that has the
+    Blueprint page (assets/desk/index.blueprint.html), its config carrying the graph.
 
     When `routine_dir` has a desk/components/ folder, that routine's components are inserted, sorted by id, after the
     routine's own component lint passes (DeskPageError otherwise).
     """
     comps = []
     if routine_dir and os.path.isdir(os.path.join(routine_dir, desk_registry.COMPONENTS_DIR)):
+        if any(c["id"] == "blueprint" for c in desk_registry.custom_components(routine_dir)):
+            raise DeskPageError(["a custom component is named 'blueprint', which the built-in Blueprint page uses; rename it"])
         problems = desk_registry.lint_routine_only(SKILL_ROOT, routine_dir)
         if problems:
             raise DeskPageError(problems)
@@ -248,9 +253,20 @@ def desk_page(workspace_name, routine_dir=None, tour=None):
                                  f"`routineos permissions <dir> --approve`" for i in stale])
         for c in sorted(desk_registry.custom_components(routine_dir), key=lambda c: c["id"]):
             comps.append(bundle_desk.component_js(c["id"], c["factory"], _read(os.path.join(c["path"], c["id"] + ".js")), c))
-    with open(DESK_HTML, encoding="utf-8") as fh:
-        html = fh.read()
     cfg = {"store": "db", "workspace": workspace_name}
+    has_bp = bool(routine_dir) and _has_blueprint_anywhere(routine_dir)
+    if has_bp:
+        records, err = _load_registry()
+        try:
+            # the same graph the CLI shows for this folder (app.toml included), redacted the same way
+            graph = _blueprint_graph(routine_dir, None if err else registry.by_id(records))
+            has_bp = graph is not None
+            if has_bp:
+                cfg["blueprint"] = blueprint.redact_graph(graph)
+        except blueprint.BlueprintError as exc:
+            raise DeskPageError([f"blueprint: cannot be read: {exc}"])
+    with open(BLUEPRINT_HTML if has_bp else DESK_HTML, encoding="utf-8") as fh:
+        html = fh.read()
     if tour is not None:
         cfg["tour"] = tour
     return bundle_desk.inject(html, cfg, bundle_desk.plugin_version(), comps)
@@ -486,12 +502,49 @@ def cmd_lint(args):
             problems += [f"{label}: {p}" for p in desk_registry.lint_routine_only(SKILL_ROOT, rd)]
     else:
         problems += desk_registry.lint_routine_only(SKILL_ROOT, d)
+    notes = _blueprint_warnings(d, multi)
     if problems:
         for p in problems:
             print(f"FAIL {appmodel.redact(p)}")
+        for w in notes:
+            print(f"WARN {blueprint.terminal_safe(blueprint.redact(w))}")
         return 1
+    for w in notes:
+        print(f"WARN {blueprint.terminal_safe(blueprint.redact(w))}")
     print("ok: no problems")
     return 0
+
+
+def _blueprint_graph(d, records):
+    """The Blueprint graph of a routine or app folder, or None when the folder has no routine.toml or app.toml."""
+    if os.path.isfile(os.path.join(d, "app.toml")):
+        return blueprint.derive(d, records=records, routine_dirs=routine_dirs(d))
+    if os.path.isfile(os.path.join(d, "routine.toml")):
+        return blueprint.derive(d, records=records)
+    return None
+
+
+def _has_blueprint_anywhere(d):
+    return blueprint.has_blueprint(d) or any(blueprint.has_blueprint(rd) for rd in routine_dirs(d))
+
+
+def _blueprint_warnings(d, multi):
+    """Blueprint WARN texts for lint. Empty unless Blueprint keys are present. An app's warnings come once, from the app root."""
+    if not _has_blueprint_anywhere(d):
+        return []
+    try:
+        records, err = _load_registry()
+        records = None if err else registry.by_id(records)
+        if multi and not os.path.isfile(os.path.join(d, "app.toml")):
+            out = []
+            for rd in routine_dirs(d):
+                if blueprint.has_blueprint(rd):
+                    out += [f"{os.path.relpath(rd, d)}: {w}" for w in blueprint.derive(rd, records=records)["warnings"]]
+            return out
+        graph = _blueprint_graph(d, records)
+        return graph["warnings"] if graph else []
+    except blueprint.BlueprintError as exc:
+        return [f"blueprint: cannot be read: {exc}"]
 
 
 DESK_DEFAULTS = os.path.join(os.path.dirname(SCRIPTS), "assets", "desk", "modules", "defaults.json")
@@ -845,6 +898,11 @@ def cmd_permissions(args):
         per[rd] = desk_registry.extension_rows(rd)
         rows += per[rd]
     sys.stdout.write(permission.render(app, registry.by_id(records), rows))
+    if _has_blueprint_anywhere(args.dir):
+        try:
+            sys.stdout.write(blueprint.terminal_safe(blueprint.redact(blueprint.permission_section(_blueprint_graph(args.dir, registry.by_id(records))))))
+        except blueprint.BlueprintError as exc:
+            return fail(str(exc))
     if getattr(args, "approve", False):
         if any(r.get("invalid") for r in rows):
             return fail("not approved: a component is INVALID")
@@ -852,6 +910,89 @@ def cmd_permissions(args):
             if rrows:
                 desk_registry.write_approvals(rd, rrows)
         print("approved: the code shown above is recorded by hash; any later change needs a new approval.")
+    return 0
+
+
+def _approval_file(d):
+    """app.toml for an app folder (a routine's own [approval] is never the app's). Otherwise the file that already holds
+    an [approval], else the file that holds the [[requirement]] tables, else the first routine.toml."""
+    import tomllib
+    if os.path.isfile(os.path.join(d, "app.toml")):
+        return os.path.join(d, "app.toml")
+    cands = [os.path.join(d, "app.toml")] + [os.path.join(r, "routine.toml") for r in routine_dirs(d)]
+    first = None
+    cfgs = []
+    for path in cands:
+        try:
+            with open(path, "rb") as fh:
+                cfgs.append((path, tomllib.load(fh)))
+        except (OSError, tomllib.TOMLDecodeError):
+            continue
+    for path, cfg in cfgs:
+        if isinstance(cfg.get("approval"), dict):
+            return path
+    for path, cfg in cfgs:
+        if cfg.get("requirement"):
+            return path
+        if first is None and not path.endswith("app.toml"):
+            first = path
+    return first
+
+
+def cmd_blueprint(args):
+    words = args.words
+    if len(words) > 2 or (len(words) == 2 and words[0] not in ("approve", "check")):
+        return fail("usage: routineos blueprint <dir> [--json] | approve <dir> | check <dir>")
+    action, d = ("show", words[0]) if len(words) == 1 else (words[0], words[1])
+    if action == "approve" and not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return fail("blueprint approve needs an interactive terminal. Ask the person to run: ! routineos blueprint approve <dir>")
+    if not os.path.isdir(d):
+        return fail(f"not a directory: {d}")
+    records, err = _load_registry()
+    records = None if err else registry.by_id(records)
+    try:
+        graph = _blueprint_graph(d, records)
+    except blueprint.BlueprintError as exc:
+        return fail(str(exc))
+    if graph is None:
+        return fail(f"no routine.toml or app.toml in {d}")
+    if action == "show":
+        if args.json:
+            print(blueprint.redact(json.dumps(graph, indent=2, sort_keys=True)))
+        else:
+            sys.stdout.write(blueprint.terminal_safe(blueprint.redact(blueprint.summary(graph))))
+        return 0
+    if action == "check":
+        ap = graph["approval"]
+        if not ap:
+            print("not approved: there is no [approval] to check against")
+            return 1
+        if ap["matches"]:
+            print(blueprint.terminal_safe(f"matches: the Blueprint is the one approved v{ap['version']} on {ap['date']} by {ap['approved_by']}"))
+            return 0
+        print(blueprint.terminal_safe(f"drift: the Blueprint changed since v{ap['version']} was approved on {ap['date']} by {ap['approved_by']}"))
+        return 1
+    if graph["hash"] is None:
+        return fail("no Blueprint keys in this folder, so there is nothing to approve")
+    target = _approval_file(d)
+    if target is None:
+        return fail("no routine.toml or app.toml to record the approval in")
+    sys.stdout.write("You are approving this Blueprint:\n\n" + blueprint.terminal_safe(blueprint.redact(blueprint.approve_screen(graph))) + "\n")
+    try:
+        name = input("Your name: ").strip()
+        word = input("Type approve to record this Blueprint: ").strip()
+    except EOFError:
+        name, word = "", ""
+    if not name or word != "approve":
+        print("aborted: nothing was written")
+        return 1
+    ap = graph["approval"]
+    version = ap["version"] + 1 if ap and isinstance(ap.get("version"), int) else 1
+    try:
+        blueprint.write_approval(target, blueprint.approval_block(version, datetime.date.today().isoformat(), graph["hash"], name))
+    except blueprint.BlueprintError as exc:
+        return fail(str(exc))
+    print(f"approved: v{version} recorded in {target}")
     return 0
 
 
@@ -1873,6 +2014,10 @@ def main(argv=None):
     d.add_argument("dir", nargs="?")
     d.add_argument("--docs", help="JSON snapshot {path: {version, data}} to check against store limits")
     d.set_defaults(fn=cmd_doctor)
+    bp = sub.add_parser("blueprint", help="show, check or approve a routine's or app's Blueprint")
+    bp.add_argument("words", nargs="+", metavar="[approve|check] dir")
+    bp.add_argument("--json", action="store_true", help="print the graph as JSON")
+    bp.set_defaults(fn=cmd_blueprint)
     pm = sub.add_parser("permissions", help="print the permission screen for an app folder")
     pm.add_argument("dir")
     pm.add_argument("--approve", action="store_true", help="record the shown component code as approved (the owner's act)")
