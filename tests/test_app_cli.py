@@ -1,3 +1,4 @@
+import datetime
 import os
 import subprocess
 import sys
@@ -292,9 +293,10 @@ class PlatformCliTests(unittest.TestCase):
     scaffold = AppCliTests.scaffold
 
     def reg(self, status="docs-stated", extra=""):
+        # checked is today, so the record is never stale however long after this was written the tests run
         path = os.path.join(self.d, "reg.toml")
         with open(path, "w") as fh:
-            fh.write('[[capability]]\nid = "cap-a"\nclaim = "c"\nstatus = "%s"\nsource = ["s"]\nchecked = "2026-10-29"\ntested = "t"\ndocs = "d"\n%s' % (status, extra))
+            fh.write('[[capability]]\nid = "cap-a"\nclaim = "c"\nstatus = "%s"\nsource = ["s"]\nchecked = "%s"\ntested = "t"\ndocs = "d"\n%s' % (status, datetime.date.today().isoformat(), extra))
         return path
 
     def app(self, relies="cap-a", name="x"):

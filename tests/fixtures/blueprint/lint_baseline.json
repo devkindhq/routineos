@@ -1,0 +1,58 @@
+{
+  "_permissions_app_plain": {
+    "code": 0,
+    "stdout": "Permission screen: Basic\n\nApps and hosts\n- crm (read): crm.example.com; purpose not stated\n- notes (write): no hosts listed; purpose not stated\n- billing (read): api.example.com; purpose not stated\n- routine 'one' contacts api.example.com\n\nConnectors\n- crm: read; purpose not stated\n\nTools the run may use\n- one: no tool list declared in app.toml\n- A run may not use a send tool (push, email, Slack or any other) that this screen does not list.\n\nLogic delivered by\n- one: repo\n\nSchedule\n- one: UTC cron 0 6 * * *, 1 run a day\n- Routine 'one': 1 run a day.\n- Total: 1 run a day against your cap of 1 run a day.\n- The shortest allowed schedule interval is 1 hour.\n- The platform allows 100 scheduled runs per hour across the account and 30 per hour for one task.\n\nEnvironment and secrets\n- Environment: none\n- Environment settings: not reported. RoutineOS cannot read network access, allowed domains, network secrets, setup script or environment variables; confirm them in the environment dialog on claude.ai.\n- Secret 'billing-key' (network-secret), reaches only api.example.com; the value is never shown\n\nStore\n- Kind: artifact-db\n- Collection 'leads' written by one\n\nBudget\n- Ceiling: 1 run a day (prompt-enforced, not guaranteed).\n- When the ceiling is passed, further runs are meant to stop and no alert channel is set, so nobody is told.\n\nFirst run\n- The first run is report-only: it reads and reports what it would do, and nothing is sent or written outside the store.\n\nNot yet checked\n- Reliance: no platform dependencies are declared in [risks].relies_on, so none are verified.\n- Environment settings: not reported, so no host's reachability is checked.\n\nNothing is created until you say yes. A change to any line above makes a new screen.\n"
+  },
+  "candidate-shortlist": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "coming-soon": {
+    "code": 2,
+    "stdout": ""
+  },
+  "content-calendar": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "engineering-digest": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "inbox-triage": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "invoice-exceptions": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "jobs-watch": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "meeting-brief": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "shopify-content-qa": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "site-compliance-review": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "support-gap-digest": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "watch": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  },
+  "weekly-marketing-report": {
+    "code": 0,
+    "stdout": "ok: no problems\n"
+  }
+}

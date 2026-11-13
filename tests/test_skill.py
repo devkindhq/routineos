@@ -299,10 +299,10 @@ class SelfImprovingTests(unittest.TestCase):
     def test_plugin_version_matches_changelog_citation_and_pack(self):
         import json
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json"), encoding="utf-8") as fh:
-            self.assertEqual(json.load(fh)["version"], "0.11.1")
-        self.assertIn("## 0.11.1", read(os.path.join(ROOT, "CHANGELOG.md")))
-        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.11\.1$")
-        self.assertIn('VERSION = "0.11.1"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
+            self.assertEqual(json.load(fh)["version"], "0.12.0")
+        self.assertIn("## 0.12.0", read(os.path.join(ROOT, "CHANGELOG.md")))
+        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.12\.0$")
+        self.assertIn('VERSION = "0.12.0"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
 
 
 class TemplateDocsTests(unittest.TestCase):
@@ -316,7 +316,8 @@ class TemplateDocsTests(unittest.TestCase):
         sys.path.insert(0, os.path.join(SKILL_DIR, "scripts"))
         import pack
         schema = read(os.path.join(SKILL_DIR, "references", "pack-schema.md"))
-        for key in pack.PACK_KEYS + pack.STAGE_KEYS + pack.CONNECTOR_KEYS + pack.ENTRY_KEYS:
+        for key in pack.PACK_KEYS + pack.STAGE_KEYS + pack.CONNECTOR_KEYS + pack.ENTRY_KEYS \
+                + pack.BLUEPRINT_KEYS + pack.REQUIREMENT_KEYS + pack.INFRA_KEYS + pack.PART_STATE_KEYS:
             self.assertIn(f"`{key}`", schema, key)
         for word in pack.CATEGORIES + pack.MATURITY + pack.STAGE_KINDS + pack.CONNECTOR_KINDS:
             self.assertIn(f"`{word}`", schema, word)

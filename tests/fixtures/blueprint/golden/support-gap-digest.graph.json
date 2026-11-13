@@ -1,0 +1,377 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "connector:web",
+      "label": null,
+      "to": "stage:check",
+      "type": "reads"
+    },
+    {
+      "from": "mcp:helpdesk",
+      "label": null,
+      "to": "stage:collect",
+      "type": "reads"
+    },
+    {
+      "from": "routine:support-gap-digest",
+      "label": null,
+      "to": "stage:collect",
+      "type": "runs"
+    },
+    {
+      "from": "setting:help_center_urls",
+      "label": null,
+      "to": "routine:support-gap-digest",
+      "type": "configures"
+    },
+    {
+      "from": "setting:lookback_days",
+      "label": null,
+      "to": "routine:support-gap-digest",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:support-gap-digest",
+      "type": "configures"
+    },
+    {
+      "from": "setting:min_repeats",
+      "label": null,
+      "to": "routine:support-gap-digest",
+      "type": "configures"
+    },
+    {
+      "from": "stage:check",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:collect",
+      "label": null,
+      "to": "stage:group",
+      "type": "next"
+    },
+    {
+      "from": "stage:group",
+      "label": null,
+      "to": "stage:check",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:question",
+      "type": "stores"
+    },
+    {
+      "from": "store:question",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:support-gap-digest",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Open the help pages.",
+        "required": true
+      },
+      "id": "connector:web",
+      "kind": "connector",
+      "label": "Web fetch",
+      "name": "web",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[1]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [
+          "A JSON export of ticket texts placed in the run folder"
+        ],
+        "connector_kind": "mcp",
+        "purpose": "Read the question text and reference of recent tickets.",
+        "required": true
+      },
+      "id": "mcp:helpdesk",
+      "kind": "mcp",
+      "label": "Help desk",
+      "name": "helpdesk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:support-gap-digest",
+      "kind": "routine",
+      "label": "support-gap-digest",
+      "name": "support-gap-digest",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:help_center_urls",
+      "kind": "setting",
+      "label": "Help pages",
+      "name": "help_center_urls",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:lookback_days",
+      "kind": "setting",
+      "label": "Look back (days)",
+      "name": "lookback_days",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:min_repeats",
+      "kind": "setting",
+      "label": "Minimum repeats",
+      "name": "min_repeats",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Looks for an answer to each repeated question on the help pages.",
+        "stage_kind": "model"
+      },
+      "id": "stage:check",
+      "kind": "stage",
+      "label": "Check the help pages",
+      "name": "check",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Reads each ticket's question text and reference, with customer details removed.",
+        "stage_kind": "model"
+      },
+      "id": "stage:collect",
+      "kind": "stage",
+      "label": "Read tickets",
+      "name": "collect",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Groups questions by a normalised form and counts each group.",
+        "stage_kind": "code"
+      },
+      "id": "stage:group",
+      "kind": "stage",
+      "label": "Group questions",
+      "name": "group",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "question"
+      },
+      "id": "store:question",
+      "kind": "store",
+      "label": "Question",
+      "name": "question",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.question"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 21 * * 4"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 21 * * 4",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

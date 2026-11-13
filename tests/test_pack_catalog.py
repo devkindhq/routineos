@@ -189,6 +189,10 @@ class SchemaTests(unittest.TestCase):
         self.assertEqual(set(defs["type"]["properties"]), set(pack.TYPE_KEYS))
         self.assertEqual(set(defs["view"]["properties"]), set(pack.VIEW_KEYS))
         self.assertEqual(set(defs["routine"]["properties"]), set(pack.ROUTINE_TABLES))
+        self.assertEqual(set(defs["blueprint"]["properties"]), set(pack.BLUEPRINT_KEYS))
+        self.assertEqual(set(defs["requirement"]["properties"]), set(pack.REQUIREMENT_KEYS))
+        self.assertEqual(set(defs["infra"]["properties"]), set(pack.INFRA_KEYS))
+        self.assertEqual(set(defs["part_state"]["properties"]), set(pack.PART_STATE_KEYS))
         for table, keys in pack.ROUTINE_TABLES.items():
             node = defs["routine"]["properties"][table]
             node = node.get("items", node)

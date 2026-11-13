@@ -1,0 +1,590 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "http:worker",
+      "label": null,
+      "to": "stage:fetch",
+      "type": "reads"
+    },
+    {
+      "from": "http:worker",
+      "label": null,
+      "to": "stage:shots",
+      "type": "reads"
+    },
+    {
+      "from": "routine:site-compliance-review",
+      "label": null,
+      "to": "stage:budget",
+      "type": "runs"
+    },
+    {
+      "from": "setting:clef_flag_at",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "setting:include_draft_rules",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_pages_per_run",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_runs_per_day",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_screenshots",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "setting:site_url",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "setting:sitemap_url",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "setting:worker_url",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "configures"
+    },
+    {
+      "from": "stage:budget",
+      "label": null,
+      "to": "stage:fetch",
+      "type": "next"
+    },
+    {
+      "from": "stage:fetch",
+      "label": null,
+      "to": "stage:rules",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:rules",
+      "label": null,
+      "to": "stage:shots",
+      "type": "next"
+    },
+    {
+      "from": "stage:shots",
+      "label": null,
+      "to": "stage:upload",
+      "type": "next"
+    },
+    {
+      "from": "stage:track",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:upload",
+      "label": null,
+      "to": "stage:track",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:flag",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:health",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:page",
+      "type": "stores"
+    },
+    {
+      "from": "store:flag",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:health",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:page",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:site-compliance-review",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "http",
+        "purpose": "Read the Worker's health, its page captures with their Clef scores, and signed screenshot links. The Worker reads your sitemap, captures pages and asks Clef on its own schedule; the routine never asks it to change anything on the site.",
+        "required": true
+      },
+      "id": "http:worker",
+      "kind": "http",
+      "label": "Your review Worker",
+      "name": "worker",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:site-compliance-review",
+      "kind": "routine",
+      "label": "site-compliance-review",
+      "name": "site-compliance-review",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:clef_flag_at",
+      "kind": "setting",
+      "label": "Clef flag line (percent)",
+      "name": "clef_flag_at",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[8]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "toggle"
+      },
+      "id": "setting:include_draft_rules",
+      "kind": "setting",
+      "label": "Also run draft rules",
+      "name": "include_draft_rules",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[7]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_pages_per_run",
+      "kind": "setting",
+      "label": "Captures read per run",
+      "name": "max_pages_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_runs_per_day",
+      "kind": "setting",
+      "label": "Runs allowed per day",
+      "name": "max_runs_per_day",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[6]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_screenshots",
+      "kind": "setting",
+      "label": "Screenshots attached per run",
+      "name": "max_screenshots",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:site_url",
+      "kind": "setting",
+      "label": "Site URL (required, first entry is used)",
+      "name": "site_url",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:sitemap_url",
+      "kind": "setting",
+      "label": "Sitemap URL (first entry; empty means <site>/sitemap.xml)",
+      "name": "sitemap_url",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:worker_url",
+      "kind": "setting",
+      "label": "Review Worker URL (required, first entry is used)",
+      "name": "worker_url",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Counts this routine's runs today in the Desk and stops the run when max_runs_per_day is reached. RUNS is max_runs_per_day.",
+        "stage_kind": "code"
+      },
+      "id": "stage:budget",
+      "kind": "stage",
+      "label": "Budget check",
+      "name": "budget",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Reads the Worker's health and the page captures it made since the last run, on the site host only, each with the Clef scores the Worker asked for. First sends the Clef flag line (clef_flag_at, in percent) to the Worker when the setting is present; a failed push never stops the run. WORKER is worker_url, SITE is site_url, PAGES is max_pages_per_run, FLAGAT is clef_flag_at.",
+        "stage_kind": "code"
+      },
+      "id": "stage:fetch",
+      "kind": "stage",
+      "label": "Read captures",
+      "name": "fetch",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[6]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the swappable rule pack in lib/rules.json to each capture, merges the Clef verdict per rule (a score at or above the flag line is a flag; a rule hit Clef scores below it is kept and marked needs review), builds the Clef scorecard and places a box for each quoted flag on the screenshot.",
+        "stage_kind": "code"
+      },
+      "id": "stage:rules",
+      "kind": "stage",
+      "label": "Apply the rule pack",
+      "name": "rules",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Downloads the screenshots of flagged pages through short-lived signed links. WORKER is worker_url, SHOTS is max_screenshots.",
+        "stage_kind": "code"
+      },
+      "id": "stage:shots",
+      "kind": "stage",
+      "label": "Screenshots",
+      "name": "shots",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Compares with stored pages and flags, honours decisions, resolves a Clef-backed flag only when Clef scored the page, adds Worker and Clef health, and builds records and the Inbox. CAP is max_inbox_per_run.",
+        "stage_kind": "code"
+      },
+      "id": "stage:track",
+      "kind": "stage",
+      "label": "Track changes",
+      "name": "track",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Uploads each downloaded screenshot to this Desk's own asset store, the same store the write step writes to, so the flag boxes can be drawn on it. Skipped on the first run.",
+        "stage_kind": "model"
+      },
+      "id": "stage:upload",
+      "kind": "stage",
+      "label": "Attach screenshots",
+      "name": "upload",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[7]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "flag"
+      },
+      "id": "store:flag",
+      "kind": "store",
+      "label": "Flag",
+      "name": "flag",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.flag"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "health"
+      },
+      "id": "store:health",
+      "kind": "store",
+      "label": "Worker health",
+      "name": "health",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.health"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "page"
+      },
+      "id": "store:page",
+      "kind": "store",
+      "label": "Page",
+      "name": "page",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.page"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 21 * * *"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 21 * * *",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

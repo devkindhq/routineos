@@ -1,0 +1,33 @@
+[routine]
+name = "authored"
+type = "serverless"
+schedule = "0 6 * * *"
+
+[store]
+adapter = "artifact-db"
+
+[workspace]
+enabled = true
+
+[[requirement]]
+id = "fresh"
+text = "Pages are checked every morning"
+served_by = ["fetch", "review-worker"]
+
+[[requirement]]
+id = "report"
+text = "I get a report in the Desk"
+served_by = ["output:desk", "stage:write"]
+
+[[infra]]
+name = "review-worker"
+kind = "worker"
+what = "Fetches and checks each page"
+deploys = "workers/review"
+state = "needs-building"
+needs = "Build the Worker."
+
+[[integration]]
+name = "web"
+state = "docs"
+needs = "Confirm fetch limits."

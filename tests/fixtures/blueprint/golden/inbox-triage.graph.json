@@ -1,0 +1,527 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "connector:mail",
+      "label": null,
+      "to": "stage:read",
+      "type": "reads"
+    },
+    {
+      "from": "gate:gate",
+      "label": null,
+      "to": "connector:gate-mail",
+      "type": "passes"
+    },
+    {
+      "from": "gate:gate",
+      "label": null,
+      "to": "connector:mail-send",
+      "type": "passes"
+    },
+    {
+      "from": "gate:gate",
+      "label": null,
+      "to": "output:send-reply",
+      "type": "passes"
+    },
+    {
+      "from": "routine:inbox-triage",
+      "label": null,
+      "to": "stage:read",
+      "type": "runs"
+    },
+    {
+      "from": "setting:draft_replies",
+      "label": null,
+      "to": "routine:inbox-triage",
+      "type": "configures"
+    },
+    {
+      "from": "setting:labels",
+      "label": null,
+      "to": "routine:inbox-triage",
+      "type": "configures"
+    },
+    {
+      "from": "setting:lookback_hours",
+      "label": null,
+      "to": "routine:inbox-triage",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:inbox-triage",
+      "type": "configures"
+    },
+    {
+      "from": "setting:skip_from_domains",
+      "label": null,
+      "to": "routine:inbox-triage",
+      "type": "configures"
+    },
+    {
+      "from": "stage:approve",
+      "label": null,
+      "to": "connector:gate-mail",
+      "type": "writes"
+    },
+    {
+      "from": "stage:approve",
+      "label": null,
+      "to": "stage:send",
+      "type": "next"
+    },
+    {
+      "from": "stage:draft",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:label",
+      "label": null,
+      "to": "stage:draft",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:read",
+      "label": null,
+      "to": "stage:label",
+      "type": "next"
+    },
+    {
+      "from": "stage:send",
+      "label": null,
+      "to": "connector:mail-send",
+      "type": "writes"
+    },
+    {
+      "from": "stage:write",
+      "label": null,
+      "to": "stage:approve",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox, pending",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:thread",
+      "type": "stores"
+    },
+    {
+      "from": "store:thread",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:inbox-triage",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "write",
+        "alternatives": [
+          "Slack"
+        ],
+        "connector_kind": "connector",
+        "purpose": "Carry each approval request for a draft reply.",
+        "required": false
+      },
+      "id": "connector:gate-mail",
+      "kind": "connector",
+      "label": "Mail for approvals",
+      "name": "gate-mail",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[1]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [
+          "Gmail",
+          "Outlook"
+        ],
+        "connector_kind": "connector",
+        "purpose": "Read new threads in the mailbox.",
+        "required": true
+      },
+      "id": "connector:mail",
+      "kind": "connector",
+      "label": "Mail (read)",
+      "name": "mail",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "write",
+        "alternatives": [
+          "Gmail",
+          "Outlook"
+        ],
+        "connector_kind": "connector",
+        "purpose": "Send a reply a person approved.",
+        "required": false
+      },
+      "id": "connector:mail-send",
+      "kind": "connector",
+      "label": "Mail (send)",
+      "name": "mail-send",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[2]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "transport": "email"
+      },
+      "id": "gate:gate",
+      "kind": "gate",
+      "label": "Approval gate",
+      "name": "gate",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "gate"
+      },
+      "state": null
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "action_kind": "send"
+      },
+      "id": "output:send-reply",
+      "kind": "output",
+      "label": "send-reply",
+      "name": "send-reply",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "action[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "approval-gated"
+      },
+      "id": "routine:inbox-triage",
+      "kind": "routine",
+      "label": "inbox-triage",
+      "name": "inbox-triage",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "toggle"
+      },
+      "id": "setting:draft_replies",
+      "kind": "setting",
+      "label": "Draft replies",
+      "name": "draft_replies",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:labels",
+      "kind": "setting",
+      "label": "Labels",
+      "name": "labels",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:lookback_hours",
+      "kind": "setting",
+      "label": "Look back (hours)",
+      "name": "lookback_hours",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:skip_from_domains",
+      "kind": "setting",
+      "label": "Skip mail from these domains",
+      "name": "skip_from_domains",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "A person approves, edits or declines each draft; the gate times out after 24 hours.",
+        "stage_kind": "gate"
+      },
+      "id": "stage:approve",
+      "kind": "stage",
+      "label": "Approve each reply",
+      "name": "approve",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Drafts a reply for each thread that needs one, in the house reply style.",
+        "stage_kind": "skill"
+      },
+      "id": "stage:draft",
+      "kind": "stage",
+      "label": "Draft replies",
+      "name": "draft",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Gives each thread one label and a short factual summary.",
+        "stage_kind": "model"
+      },
+      "id": "stage:label",
+      "kind": "stage",
+      "label": "Label and summarise",
+      "name": "label",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Lists and reads threads received inside the look-back window.",
+        "stage_kind": "model"
+      },
+      "id": "stage:read",
+      "kind": "stage",
+      "label": "Read new threads",
+      "name": "read",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "On a later run, sends only the drafts whose decision is approved, exactly as approved.",
+        "stage_kind": "model"
+      },
+      "id": "stage:send",
+      "kind": "stage",
+      "label": "Send approved replies",
+      "name": "send",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[6]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "thread"
+      },
+      "id": "store:thread",
+      "kind": "store",
+      "label": "Thread",
+      "name": "thread",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.thread"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 22,4 * * 0-4"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 22,4 * * 0-4",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

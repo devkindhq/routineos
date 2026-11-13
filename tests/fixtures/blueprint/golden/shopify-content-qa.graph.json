@@ -1,0 +1,615 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "http:storefront",
+      "label": null,
+      "to": "stage:discover",
+      "type": "reads"
+    },
+    {
+      "from": "http:worker",
+      "label": null,
+      "to": "stage:discover",
+      "type": "reads"
+    },
+    {
+      "from": "http:worker",
+      "label": null,
+      "to": "stage:shots",
+      "type": "reads"
+    },
+    {
+      "from": "mcp:browser",
+      "label": null,
+      "to": "stage:look",
+      "type": "reads"
+    },
+    {
+      "from": "routine:shopify-content-qa",
+      "label": null,
+      "to": "stage:discover",
+      "type": "runs"
+    },
+    {
+      "from": "setting:fetch_mode",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_link_checks",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_pages",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_screenshots",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:request_delay_ms",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:restricted_phrases",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:store_url",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:thin_description_words",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "setting:worker_url",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "configures"
+    },
+    {
+      "from": "stage:check",
+      "label": null,
+      "to": "stage:shots",
+      "type": "next"
+    },
+    {
+      "from": "stage:discover",
+      "label": null,
+      "to": "stage:check",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:look",
+      "label": null,
+      "to": "stage:track",
+      "type": "next"
+    },
+    {
+      "from": "stage:shots",
+      "label": null,
+      "to": "stage:look",
+      "type": "next"
+    },
+    {
+      "from": "stage:track",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:issue",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:page",
+      "type": "stores"
+    },
+    {
+      "from": "store:issue",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:page",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:shopify-content-qa",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "http",
+        "purpose": "Read the home page, sitemap, products.json feed, pages and product JSON on the store host.",
+        "required": true
+      },
+      "id": "http:storefront",
+      "kind": "http",
+      "label": "Your store's public pages",
+      "name": "storefront",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "http",
+        "purpose": "Fetch store pages through your Worker in worker mode and read screenshot links and notes; queuing a capture changes nothing on the store.",
+        "required": false
+      },
+      "id": "http:worker",
+      "kind": "http",
+      "label": "Your content QA Worker",
+      "name": "worker",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[1]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [
+          "Cloudflare Browser MCP server"
+        ],
+        "connector_kind": "mcp",
+        "purpose": "View a few pages as screenshots without deploying a Worker.",
+        "required": false
+      },
+      "id": "mcp:browser",
+      "kind": "mcp",
+      "label": "Cloudflare Browser",
+      "name": "browser",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[2]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:shopify-content-qa",
+      "kind": "routine",
+      "label": "shopify-content-qa",
+      "name": "shopify-content-qa",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "choice"
+      },
+      "id": "setting:fetch_mode",
+      "kind": "setting",
+      "label": "How pages are fetched",
+      "name": "fetch_mode",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[9]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_link_checks",
+      "kind": "setting",
+      "label": "Links and images checked per run",
+      "name": "max_link_checks",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_pages",
+      "kind": "setting",
+      "label": "Pages read per run",
+      "name": "max_pages",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_screenshots",
+      "kind": "setting",
+      "label": "Screenshots per run",
+      "name": "max_screenshots",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[8]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:request_delay_ms",
+      "kind": "setting",
+      "label": "Pause between requests (ms)",
+      "name": "request_delay_ms",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:restricted_phrases",
+      "kind": "setting",
+      "label": "Restricted phrases",
+      "name": "restricted_phrases",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[7]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:store_url",
+      "kind": "setting",
+      "label": "Store URL (required, first entry is used)",
+      "name": "store_url",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:thin_description_words",
+      "kind": "setting",
+      "label": "Thin description under (words)",
+      "name": "thin_description_words",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[6]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:worker_url",
+      "kind": "setting",
+      "label": "Worker URL (worker mode only)",
+      "name": "worker_url",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the editable rule pack in lib/rules.json; WORDS is thin_description_words.",
+        "stage_kind": "code"
+      },
+      "id": "stage:check",
+      "kind": "stage",
+      "label": "Check content",
+      "name": "check",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Reads the home page, the sitemap, the public products.json feed and each page on the store host, with a pause between requests; never-read and least recently read pages go first under the cap. STORE is store_url, PAGES max_pages, DELAY request_delay_ms, LINKS max_link_checks; in worker mode it fetches through your Worker.",
+        "stage_kind": "code"
+      },
+      "id": "stage:discover",
+      "kind": "stage",
+      "label": "Discover pages",
+      "name": "discover",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "May view a few pages with high issues through the browser connector and add a note to the Inbox; never changes an issue.",
+        "stage_kind": "model"
+      },
+      "id": "stage:look",
+      "kind": "stage",
+      "label": "Look (direct mode, optional)",
+      "name": "look",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Queues captures on your own Worker and reads short-lived links; off unless max_screenshots is above 0.",
+        "stage_kind": "code"
+      },
+      "id": "stage:shots",
+      "kind": "stage",
+      "label": "Screenshots (worker mode)",
+      "name": "shots",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Compares with stored pages and issues, honours decisions and builds records and the Inbox; CAP is max_inbox_per_run.",
+        "stage_kind": "code"
+      },
+      "id": "stage:track",
+      "kind": "stage",
+      "label": "Track changes",
+      "name": "track",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[6]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "issue"
+      },
+      "id": "store:issue",
+      "kind": "store",
+      "label": "Issue",
+      "name": "issue",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.issue"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "page"
+      },
+      "id": "store:page",
+      "kind": "store",
+      "label": "Page",
+      "name": "page",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.page"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 20 * * *"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 20 * * *",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

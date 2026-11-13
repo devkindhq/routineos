@@ -1,6 +1,6 @@
 # Pack schema reference
 
-Contents: top-level keys, routine, definition, desk, stages, connectors, files, content rules, catalog index, fetching.
+Contents: top-level keys, routine, definition, desk, stages, connectors, blueprint, files, content rules, catalog index, fetching.
 
 A routine pack is one JSON file that holds a whole routine: its settings, definition, prompt, stages, schedule, gates, learning and Desk. This page lists every key. The machine-readable versions are `catalog/schema/pack.v1.schema.json` and `catalog/schema/catalog.v1.schema.json` (JSON Schema draft 2020-12). The code in `skills/routineos/scripts/pack.py` is the source of truth, and a test checks that the schemas match it.
 
@@ -28,6 +28,7 @@ Packs are written with the keys in this order.
 | `definition` | when the workspace is on | The `definition.json` object. |
 | `stages` | yes | Ordered workflow stages, 1 to 20. |
 | `connectors` | yes | Declared connectors, 0 to 20. |
+| `blueprint` | no | The Blueprint as data: `infra`, `requirements`, `states`, `integrations`. Offered, not required. |
 | `files` | no | `{relative path: text}`, at most 40 files, under `lib/` or `skills/`. |
 
 Categories: `sales`, `marketing`, `ops`, `support`, `finance`, `recruiting`, `content`, `dev`, `general`.
@@ -126,6 +127,19 @@ A connector is an object with these keys.
 | `connect` | yes | Plain words on how the person connects it. Never a URL with a token, never a key. |
 
 Install connects nothing. It prints a connector report and says that nothing was connected and the pack holds no secret.
+
+## `blueprint`
+
+Optional. A pack without it stays valid, and a validator older than 0.12.0 refuses a pack with it as an unknown key. The format string stays `routineos.pack.v1`. Export lifts the Blueprint tables out of `routine.toml` into this key, and install writes them back; `[approval]` is a person's sign-off on one folder and never travels. A `blueprint` key inside `pack.json` is refused, and `routine` still refuses the Blueprint tables.
+
+| Key | What |
+|---|---|
+| `infra` | Up to 50 entries, each with the keys `name`, `kind`, `what`, `state`, `needs`, `deploys`, `relies_on` and `label`; only `name` is required, `kind` is one of `worker`, `queue`, `d1`, `r2`, `browser-run`, `ai`, `do` or `other`, and `label` is at most 80 characters. |
+| `requirements` | Up to 50 entries, each with the keys `id`, `text` and `served_by`; `text` is at most 300 characters and `served_by` is a part name or a list of them. |
+| `states` | Up to 100 entries keyed by the integration or infra `name`, each with the keys `state`, `needs` and `relies_on`. Each key is an `[[integration]]` name; a key equal to an `infra` name is refused, since an infra entry carries its own state, and a key that is not the `id` of a pack connector is refused. |
+| `integrations` | Up to 50 `[[integration]]` rows that are more than a state on a pack connector, each with the keys `name`, `kind`, `direction`, `gate`, `hosts`, `state`, `needs` and `relies_on`; only `name` is required, `kind` is one of `connector`, `mcp`, `http` or `secret-host`, `direction` is `read` or `write`, `gate` is true or false, and `hosts` is a list of at most 20 host names. A name used in `states` or `infra` is refused. |
+
+`state` is one of `verified`, `docs`, `unverified`, `needs-research`, `needs-building`. Install marks every row it writes with `origin = "pack"` until the person confirms it, and a pack that sets `origin` is refused (see [blueprint](blueprint.md)). A `verified` state in a pack is written as `unverified` on install, since a pack cannot supply the evidence `verified` needs; `relies_on` in a pack is validated and exported but is not carried into the installed tables; the person adds it after install. `needs` is at most 300 characters. Requirement `text`, `needs`, the infra `what`, `deploys` and `label`, and every `served_by` and `relies_on` entry must be one line: a line break or other control character is refused, so pack text cannot forge an unmarked line on the approve screen. `relies_on` is a registry id or a list of registry ids. Export puts an `[[integration]]` that only sets `state`, `needs` or `relies_on` on a pack connector in `states`, and any other `[[integration]]` whole in `integrations`. Any other key is refused.
 
 ## `files`
 

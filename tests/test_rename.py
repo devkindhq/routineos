@@ -73,7 +73,7 @@ class RenameTests(unittest.TestCase):
                     cfg = tomllib.load(fh)
                 except tomllib.TOMLDecodeError:
                     continue  # deliberately malformed fixtures
-            self.assertFalse([k for k in cfg if k not in ("routine", "store", "workspace", "setting", "gate", "action")],
+            self.assertFalse([k for k in cfg if k not in ("routine", "store", "workspace", "setting", "gate", "action", "requirement", "infra", "integration", "approval")],
                              f"unexpected top-level table in {rel}: {list(cfg)}")
             found += len(cfg.get("setting", []))
         self.assertGreater(found, 0)

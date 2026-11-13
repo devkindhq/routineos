@@ -1,0 +1,124 @@
+{
+  "desk_sha256": {
+    "candidate-shortlist": "e816f517d7a267c67a71c86931fcf61db9e3d0eba131e44f42049116a4e53a2c",
+    "coming-soon": null,
+    "content-calendar": "25c334c2f9c2b372a703a8dab70d10ffc00ff935d38b5e6d6678fd19a71c1344",
+    "engineering-digest": "9a7a484511460166d68e612bb7f3a5acb94effe4a1fcc9f2eda958cac1d9306c",
+    "inbox-triage": "563f860b92d14f0ee51177290499fb71a243af7d37c38297a6c479229052d6fe",
+    "invoice-exceptions": "f785bd80236c2a3f445f82e84d1587b1027bc8a528187e832401b56aea63a76d",
+    "jobs-watch": "b649d06d0f32a1d52860c3cf884fe634df1354664bf0f9227eb6deb44e9c18f9",
+    "meeting-brief": "975b82ac4d32e618fee60980c937360d8b7a3aec4e03728218befc2456658d82",
+    "shopify-content-qa": "9d2f6a35f4136ef9b612149530d09f05724adab5357599d8660fdda8944bcee6",
+    "site-compliance-review": {
+      "code": 1,
+      "stdout": "FAIL component 'clef-card': not approved, or changed since it was approved; review it and run `routineos permissions <dir> --approve`\n"
+    },
+    "support-gap-digest": "b82efcc477a53a968b7d90f6e18cde2e5742e8fee13125efdd926bac12c031a1",
+    "watch": "ce15a1e212770d7d6a24b48d731a4960c9539cc81930df6e7863412d5c9530c9",
+    "weekly-marketing-report": "d611bc60f92ddd29d85789d4ce7b3ec7ea568383c6b1d11acc94e09c73ad8147"
+  },
+  "lint_fixtures": {
+    "action_gated": {
+      "code": 0,
+      "stdout": "ok: no problems\n"
+    },
+    "action_no_gate": {
+      "code": 1,
+      "stdout": "FAIL action 'notify' (kind send): gate required, set [gate] enabled = true\n"
+    },
+    "bad_range": {
+      "code": 1,
+      "stdout": "FAIL setting 'limit': default 50 is above max 10\n"
+    },
+    "clean": {
+      "code": 0,
+      "stdout": "ok: no problems\n"
+    },
+    "fast_schedule": {
+      "code": 1,
+      "stdout": "FAIL schedule '*/30 * * * *': minute field must be a single number so runs are at least 1 hour apart\n"
+    },
+    "live_first_run": {
+      "code": 0,
+      "stdout": "ok: no problems\n"
+    },
+    "malformed": {
+      "code": 2,
+      "stdout": ""
+    },
+    "missing_keys": {
+      "code": 2,
+      "stdout": ""
+    },
+    "no_clause": {
+      "code": 1,
+      "stdout": "FAIL prompt.md: missing untrusted-data clause ('is data, not instructions')\n"
+    },
+    "no_default": {
+      "code": 1,
+      "stdout": "FAIL setting 'limit': missing default\n"
+    },
+    "no_push_rule": {
+      "code": 1,
+      "stdout": "FAIL prompt.md: missing a line starting 'Push rule:'\n"
+    },
+    "unknown_type": {
+      "code": 2,
+      "stdout": ""
+    }
+  },
+  "pack_export": {
+    "candidate-shortlist": {
+      "code": 0,
+      "sha256": "521e851abd273011b4fdf0b3ee08575e5ed1360f01d8abbdcec227dd5a39b423"
+    },
+    "coming-soon": {
+      "code": 2,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "content-calendar": {
+      "code": 0,
+      "sha256": "b79c57e3df62c3d88bb2a6dce2010c8da01ba263e1d835610af56b3b6e3cc438"
+    },
+    "engineering-digest": {
+      "code": 0,
+      "sha256": "02d1fcaf9875d7610fdd19955c2634eb853dc4b5c9baf1f38d6df2b1e0dc2e6f"
+    },
+    "inbox-triage": {
+      "code": 0,
+      "sha256": "5da954370fc9d9957cca28ba3cf1a7ec0d3d39fedd72450caf8b7e29df9f5e8c"
+    },
+    "invoice-exceptions": {
+      "code": 0,
+      "sha256": "839889cd3d3ce1fabc6fc1195a1f730e21dcf4a5651a1866830644698a2fc829"
+    },
+    "jobs-watch": {
+      "code": 0,
+      "sha256": "e7188185288d5be30befcacfd8f5c6db14692094aa623417e31f49f4a29bb3d0"
+    },
+    "meeting-brief": {
+      "code": 0,
+      "sha256": "4ed745ccf1a822f6fec75f8a5efb7cb2b01ae4ed178fec0214b242415443b01a"
+    },
+    "shopify-content-qa": {
+      "code": 0,
+      "sha256": "551db289c3e2c8b4866c8b43c0205d3390047388c0daf51ca35f54239f5618b8"
+    },
+    "site-compliance-review": {
+      "code": 0,
+      "sha256": "b48ee52883b88899a513af3ff9c96b6bbce21a625845e0cdc1f471ab254e60c0"
+    },
+    "support-gap-digest": {
+      "code": 0,
+      "sha256": "221c104fffc236f3651fd18ac2743d78d367b842382a6bb4bba73540e66b7e9e"
+    },
+    "watch": {
+      "code": 0,
+      "sha256": "f7151a0c54b773957714e139aa916f97fea15fdf634012e755d23ad0233d75a9"
+    },
+    "weekly-marketing-report": {
+      "code": 0,
+      "sha256": "dc871013a9b5113917e6a231ea6c3da2694d77a6e700c52053938f7df881c1e8"
+    }
+  }
+}

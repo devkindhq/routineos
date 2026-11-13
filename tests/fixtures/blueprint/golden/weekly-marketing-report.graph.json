@@ -1,0 +1,548 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "connector:web",
+      "label": null,
+      "to": "stage:audit",
+      "type": "reads"
+    },
+    {
+      "from": "mcp:analytics",
+      "label": null,
+      "to": "stage:collect",
+      "type": "reads"
+    },
+    {
+      "from": "mcp:search",
+      "label": null,
+      "to": "stage:collect",
+      "type": "reads"
+    },
+    {
+      "from": "routine:weekly-marketing-report",
+      "label": null,
+      "to": "stage:windows",
+      "type": "runs"
+    },
+    {
+      "from": "setting:change_alert_pct",
+      "label": null,
+      "to": "routine:weekly-marketing-report",
+      "type": "configures"
+    },
+    {
+      "from": "setting:ga_property",
+      "label": null,
+      "to": "routine:weekly-marketing-report",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:weekly-marketing-report",
+      "type": "configures"
+    },
+    {
+      "from": "setting:pages_to_audit",
+      "label": null,
+      "to": "routine:weekly-marketing-report",
+      "type": "configures"
+    },
+    {
+      "from": "setting:search_site",
+      "label": null,
+      "to": "routine:weekly-marketing-report",
+      "type": "configures"
+    },
+    {
+      "from": "setting:sources",
+      "label": null,
+      "to": "routine:weekly-marketing-report",
+      "type": "configures"
+    },
+    {
+      "from": "stage:audit",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:collect",
+      "label": null,
+      "to": "stage:normalize",
+      "type": "next"
+    },
+    {
+      "from": "stage:compare",
+      "label": null,
+      "to": "stage:audit",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:normalize",
+      "label": null,
+      "to": "stage:normalize-search",
+      "type": "next"
+    },
+    {
+      "from": "stage:normalize-search",
+      "label": null,
+      "to": "stage:compare",
+      "type": "next"
+    },
+    {
+      "from": "stage:windows",
+      "label": null,
+      "to": "stage:collect",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:audit",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:metric",
+      "type": "stores"
+    },
+    {
+      "from": "store:audit",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:metric",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:weekly-marketing-report",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Open each page to audit.",
+        "required": false
+      },
+      "id": "connector:web",
+      "kind": "connector",
+      "label": "Web fetch",
+      "name": "web",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[2]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [
+          "Another Google Analytics 4 report tool",
+          "A saved response: ga-report.json"
+        ],
+        "connector_kind": "mcp",
+        "purpose": "Run one read-only report comparing this week with last week.",
+        "required": false
+      },
+      "id": "mcp:analytics",
+      "kind": "mcp",
+      "label": "Google Analytics (GA4)",
+      "name": "analytics",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [
+          "Another Search Console query tool",
+          "Saved responses: gsc-this.json and gsc-last.json"
+        ],
+        "connector_kind": "mcp",
+        "purpose": "Run two read-only search analytics queries, one per week, for the clicks, impressions, click rate and average position of one site.",
+        "required": false
+      },
+      "id": "mcp:search",
+      "kind": "mcp",
+      "label": "Google Search Console",
+      "name": "search",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[1]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:weekly-marketing-report",
+      "kind": "routine",
+      "label": "weekly-marketing-report",
+      "name": "weekly-marketing-report",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:change_alert_pct",
+      "kind": "setting",
+      "label": "Alert on change (%)",
+      "name": "change_alert_pct",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:ga_property",
+      "kind": "setting",
+      "label": "GA4 property",
+      "name": "ga_property",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:pages_to_audit",
+      "kind": "setting",
+      "label": "Pages to audit",
+      "name": "pages_to_audit",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:search_site",
+      "kind": "setting",
+      "label": "Search Console site",
+      "name": "search_site",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:sources",
+      "kind": "setting",
+      "label": "Data sources",
+      "name": "sources",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Opens each page to audit and notes visible issues.",
+        "stage_kind": "model"
+      },
+      "id": "stage:audit",
+      "kind": "stage",
+      "label": "Audit key pages",
+      "name": "audit",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[5]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Runs one read-only Google Analytics report and two read-only Search Console queries, for the two weeks from the windows stage, and saves the responses.",
+        "stage_kind": "model"
+      },
+      "id": "stage:collect",
+      "kind": "stage",
+      "label": "Read both weeks",
+      "name": "collect",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Computes the change per source and metric, so no figure is the model's arithmetic.",
+        "stage_kind": "code"
+      },
+      "id": "stage:compare",
+      "kind": "stage",
+      "label": "Compare weeks",
+      "name": "compare",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[4]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[6]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns the analytics report into this-week.json and last-week.json, so no figure is the model's arithmetic.",
+        "stage_kind": "code"
+      },
+      "id": "stage:normalize",
+      "kind": "stage",
+      "label": "Split the weeks",
+      "name": "normalize",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Adds the two Search Console responses to this-week.json and last-week.json under the search source, so no figure is the model's arithmetic.",
+        "stage_kind": "code"
+      },
+      "id": "stage:normalize-search",
+      "kind": "stage",
+      "label": "Add Search Console",
+      "name": "normalize-search",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Works out the last completed Monday to Sunday week and the week before it, so both sources use the same dates.",
+        "stage_kind": "code"
+      },
+      "id": "stage:windows",
+      "kind": "stage",
+      "label": "Pick the dates",
+      "name": "windows",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[7]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "audit"
+      },
+      "id": "store:audit",
+      "kind": "store",
+      "label": "Page audit",
+      "name": "audit",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.audit"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "metric"
+      },
+      "id": "store:metric",
+      "kind": "store",
+      "label": "Metric",
+      "name": "metric",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.metric"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 21 * * 4"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 21 * * 4",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

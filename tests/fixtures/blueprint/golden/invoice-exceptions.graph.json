@@ -1,0 +1,358 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "connector:invoices",
+      "label": null,
+      "to": "stage:collect",
+      "type": "reads"
+    },
+    {
+      "from": "routine:invoice-exceptions",
+      "label": null,
+      "to": "stage:collect",
+      "type": "runs"
+    },
+    {
+      "from": "setting:amount_threshold",
+      "label": null,
+      "to": "routine:invoice-exceptions",
+      "type": "configures"
+    },
+    {
+      "from": "setting:known_vendors",
+      "label": null,
+      "to": "routine:invoice-exceptions",
+      "type": "configures"
+    },
+    {
+      "from": "setting:lookback_days",
+      "label": null,
+      "to": "routine:invoice-exceptions",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:invoice-exceptions",
+      "type": "configures"
+    },
+    {
+      "from": "stage:check",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:collect",
+      "label": null,
+      "to": "stage:check",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:invoice",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:vendor",
+      "type": "stores"
+    },
+    {
+      "from": "store:invoice",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:vendor",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:invoice-exceptions",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [
+          "Gmail",
+          "Outlook",
+          "Google Drive"
+        ],
+        "connector_kind": "connector",
+        "purpose": "Read incoming invoices.",
+        "required": true
+      },
+      "id": "connector:invoices",
+      "kind": "connector",
+      "label": "Invoice mailbox or folder",
+      "name": "invoices",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:invoice-exceptions",
+      "kind": "routine",
+      "label": "invoice-exceptions",
+      "name": "invoice-exceptions",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:amount_threshold",
+      "kind": "setting",
+      "label": "Flag amounts over",
+      "name": "amount_threshold",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:known_vendors",
+      "kind": "setting",
+      "label": "Known vendor domains",
+      "name": "known_vendors",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:lookback_days",
+      "kind": "setting",
+      "label": "Look back (days)",
+      "name": "lookback_days",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Flags duplicates, amounts over the threshold and new vendors; AMOUNT is the amount_threshold setting.",
+        "stage_kind": "code"
+      },
+      "id": "stage:check",
+      "kind": "stage",
+      "label": "Check for exceptions",
+      "name": "check",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Lists recent invoices and reads each into structured fields, leaving out anything unclear.",
+        "stage_kind": "model"
+      },
+      "id": "stage:collect",
+      "kind": "stage",
+      "label": "Read invoices",
+      "name": "collect",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "invoice"
+      },
+      "id": "store:invoice",
+      "kind": "store",
+      "label": "Invoice",
+      "name": "invoice",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.invoice"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "vendor"
+      },
+      "id": "store:vendor",
+      "kind": "store",
+      "label": "Vendor",
+      "name": "vendor",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.vendor"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 22 * * 1-5"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 22 * * 1-5",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

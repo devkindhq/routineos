@@ -1,0 +1,9 @@
+{
+  "stages": [
+    {"id": "fetch", "kind": "code", "title": "Fetch", "does": "Fetches pages.", "connectors": ["web"]},
+    {"id": "write", "kind": "code", "title": "Write", "does": "Writes results.", "writes": ["runs"]}
+  ],
+  "connectors": [
+    {"id": "web", "label": "Web", "kind": "http", "access": "read", "stages": ["fetch"]}
+  ]
+}

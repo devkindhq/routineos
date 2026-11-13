@@ -1,0 +1,38 @@
+[app]
+id = "authored-app"
+title = "Authored app"
+status = "not live"
+
+[[routine]]
+name = "one"
+folder = "routines/one"
+type = "serverless"
+schedule = "0 6 * * *"
+connectors = ["crm"]
+hosts = ["api.example.com"]
+writes = ["leads"]
+
+[[collection]]
+name = "leads"
+writer = "one"
+
+[[integration]]
+name = "crm"
+kind = "connector"
+direction = "read"
+hosts = ["crm.example.com"]
+state = "docs"
+needs = "Confirm read scope."
+
+[[requirement]]
+id = "leads-in"
+text = "New leads reach the leads list"
+served_by = ["store:leads"]
+
+[[requirement]]
+id = "no-spam"
+text = "Spam never reaches the list"
+served_by = ["spam-filter"]
+
+[budget]
+max_runs_per_day = 1

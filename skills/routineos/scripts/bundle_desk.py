@@ -6,7 +6,8 @@ committed. Python never rebuilds it: inject() writes the config block, the plugi
 components into that file.
 
 Usage: bundle_desk.py [--check]
---check exits 1 when assets/desk/index.html was not built from the current sources (its desk-src-hash meta tag).
+--check exits 1 when assets/desk/index.html or assets/desk/index.blueprint.html (the build variant with the Blueprint
+page, npm run build:blueprint) was not built from the current sources (its desk-src-hash meta tag).
 When a local site/ folder exists beside skills/ (the landing page, not tracked here) a default run writes
 site/desk.html: the same page on the static adapter.
 """
@@ -19,7 +20,8 @@ import sys
 
 DESK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "desk")
 HTML = os.path.join(DESK, "index.html")
-CONFIG_KEYS = ("store", "snapshot", "workspace", "components", "tour")
+BLUEPRINT_HTML = os.path.join(DESK, "index.blueprint.html")
+CONFIG_KEYS = ("store", "snapshot", "workspace", "components", "tour", "blueprint")
 CONFIG_RE = re.compile(r'(<script type="application/json" id="desk-config">)(.*?)(</script>)', re.S)
 COMPONENTS_MARK = "<!-- desk-components -->"
 SITE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(DESK)))), "site")
@@ -31,6 +33,9 @@ COMPONENT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{1,31}$")
 # The inputs of the Vite build. vite.config.js computes the same hash and writes it into the page.
 HASH_DIRS = ("core", "app")
 HASH_FILES = ("package.json", "package-lock.json", "vite.config.js", "index.template.html")
+# The Blueprint variant also builds blueprint/ and its own template.
+BLUEPRINT_DIRS = ("core", "app", "blueprint")
+BLUEPRINT_FILES = HASH_FILES + ("blueprint.template.html",)
 META_RE = re.compile(r'<meta name="desk-src-hash" content="([0-9a-f]{64})">')
 
 
@@ -43,14 +48,14 @@ def _read(path):
         return fh.read()
 
 
-def src_hash(root=DESK):
+def src_hash(root=DESK, dirs=HASH_DIRS, files=HASH_FILES):
     """sha256 hex over the build inputs under `root`: each file's "/" relative path and bytes, in sorted path order.
     Dotfiles are skipped."""
-    paths = [f for f in HASH_FILES if os.path.isfile(os.path.join(root, f))]
-    for top in HASH_DIRS:
-        for base, dirs, files in os.walk(os.path.join(root, top)):
-            dirs[:] = [d for d in dirs if not d.startswith(".")]
-            paths += [os.path.relpath(os.path.join(base, f), root).replace(os.sep, "/") for f in files
+    paths = [f for f in files if os.path.isfile(os.path.join(root, f))]
+    for top in dirs:
+        for base, subdirs, names in os.walk(os.path.join(root, top)):
+            subdirs[:] = [d for d in subdirs if not d.startswith(".")]
+            paths += [os.path.relpath(os.path.join(base, f), root).replace(os.sep, "/") for f in names
                       if not f.startswith(".")]
     h = hashlib.sha256()
     for rel in sorted(paths):
@@ -242,13 +247,21 @@ def main(argv=None):
     except OSError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
-    m = META_RE.search(html)
     if args.check:
-        if not m or m.group(1) != src_hash(DESK):
-            print(f"stale: {HTML} was not built from the current sources; run npm --prefix {DESK} run build")
-            return 1
-        print(f"ok: {HTML} is current")
-        return 0
+        stale = 0
+        for path, dirs, files in ((HTML, HASH_DIRS, HASH_FILES), (BLUEPRINT_HTML, BLUEPRINT_DIRS, BLUEPRINT_FILES)):
+            try:
+                m = META_RE.search(_read(path))
+            except OSError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
+            if not m or m.group(1) != src_hash(DESK, dirs, files):
+                print(f"stale: {path} was not built from the current sources; run npm --prefix {DESK} run "
+                      f"{'build' if path == HTML else 'build:blueprint'}")
+                stale = 1
+            else:
+                print(f"ok: {path} is current")
+        return stale
     if not os.path.isdir(SITE):
         print(f"ok: nothing to write; {HTML} is built by npm --prefix {DESK} run build")
         return 0

@@ -1,0 +1,409 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "connector:calendar",
+      "label": null,
+      "to": "stage:calendar",
+      "type": "reads"
+    },
+    {
+      "from": "connector:web",
+      "label": null,
+      "to": "stage:research",
+      "type": "reads"
+    },
+    {
+      "from": "connector:web-search",
+      "label": null,
+      "to": "stage:research",
+      "type": "reads"
+    },
+    {
+      "from": "routine:meeting-brief",
+      "label": null,
+      "to": "stage:calendar",
+      "type": "runs"
+    },
+    {
+      "from": "setting:internal_domains",
+      "label": null,
+      "to": "routine:meeting-brief",
+      "type": "configures"
+    },
+    {
+      "from": "setting:lookahead_hours",
+      "label": null,
+      "to": "routine:meeting-brief",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_inbox_per_run",
+      "label": null,
+      "to": "routine:meeting-brief",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_research_pages",
+      "label": null,
+      "to": "routine:meeting-brief",
+      "type": "configures"
+    },
+    {
+      "from": "stage:calendar",
+      "label": null,
+      "to": "stage:research",
+      "type": "next"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:research",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "runs, entities, inbox",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:company",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:meeting",
+      "type": "stores"
+    },
+    {
+      "from": "store:company",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:meeting",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:meeting-brief",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [
+          "Google Calendar",
+          "Outlook calendar"
+        ],
+        "connector_kind": "connector",
+        "purpose": "List upcoming meetings and their attendee domains.",
+        "required": true
+      },
+      "id": "connector:calendar",
+      "kind": "connector",
+      "label": "Calendar",
+      "name": "calendar",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Open the company's pages.",
+        "required": true
+      },
+      "id": "connector:web",
+      "kind": "connector",
+      "label": "Web fetch",
+      "name": "web",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[2]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Find each outside company.",
+        "required": true
+      },
+      "id": "connector:web-search",
+      "kind": "connector",
+      "label": "Web search",
+      "name": "web-search",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[1]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:meeting-brief",
+      "kind": "routine",
+      "label": "meeting-brief",
+      "name": "meeting-brief",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:internal_domains",
+      "kind": "setting",
+      "label": "Internal domains",
+      "name": "internal_domains",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:lookahead_hours",
+      "kind": "setting",
+      "label": "Look ahead (hours)",
+      "name": "lookahead_hours",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_inbox_per_run",
+      "kind": "setting",
+      "label": "Inbox messages per run",
+      "name": "max_inbox_per_run",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_research_pages",
+      "kind": "setting",
+      "label": "Pages per company",
+      "name": "max_research_pages",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Lists meetings inside the look-ahead window that include an outside domain.",
+        "stage_kind": "model"
+      },
+      "id": "stage:calendar",
+      "kind": "stage",
+      "label": "Find outside meetings",
+      "name": "calendar",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning and proposals before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Searches for each outside company and reads a few pages, keeping each source URL.",
+        "stage_kind": "model"
+      },
+      "id": "stage:research",
+      "kind": "stage",
+      "label": "Research each company",
+      "name": "research",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Applies the run input under the write contract.",
+        "stage_kind": "code"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "company"
+      },
+      "id": "store:company",
+      "kind": "store",
+      "label": "Company",
+      "name": "company",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.company"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "meeting"
+      },
+      "id": "store:meeting",
+      "kind": "store",
+      "label": "Meeting",
+      "name": "meeting",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.meeting"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 20 * * 0-4"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 20 * * 0-4",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

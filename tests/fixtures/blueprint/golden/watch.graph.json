@@ -1,0 +1,303 @@
+{
+  "approval": null,
+  "edges": [
+    {
+      "from": "connector:web",
+      "label": null,
+      "to": "stage:read",
+      "type": "reads"
+    },
+    {
+      "from": "routine:watch",
+      "label": null,
+      "to": "stage:read",
+      "type": "runs"
+    },
+    {
+      "from": "setting:lookback_days",
+      "label": null,
+      "to": "routine:watch",
+      "type": "configures"
+    },
+    {
+      "from": "setting:max_items",
+      "label": null,
+      "to": "routine:watch",
+      "type": "configures"
+    },
+    {
+      "from": "setting:report_when_empty",
+      "label": null,
+      "to": "routine:watch",
+      "type": "configures"
+    },
+    {
+      "from": "setting:sources",
+      "label": null,
+      "to": "routine:watch",
+      "type": "configures"
+    },
+    {
+      "from": "stage:learn",
+      "label": null,
+      "to": "stage:write",
+      "type": "next"
+    },
+    {
+      "from": "stage:read",
+      "label": null,
+      "to": "stage:learn",
+      "type": "next"
+    },
+    {
+      "from": "stage:write",
+      "label": "reports, state",
+      "to": "store:artifact-db",
+      "type": "stores"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "store:artifact-db",
+      "label": null,
+      "to": "store:item",
+      "type": "stores"
+    },
+    {
+      "from": "store:item",
+      "label": null,
+      "to": "output:desk",
+      "type": "shows"
+    },
+    {
+      "from": "trigger:schedule",
+      "label": null,
+      "to": "routine:watch",
+      "type": "starts"
+    }
+  ],
+  "format": "routineos.blueprint.v1",
+  "hash": null,
+  "nodes": [
+    {
+      "detail": {
+        "access": "read",
+        "alternatives": [],
+        "connector_kind": "builtin",
+        "purpose": "Open each source page.",
+        "required": true
+      },
+      "id": "connector:web",
+      "kind": "connector",
+      "label": "Web fetch",
+      "name": "web",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "connectors[0]"
+      },
+      "state": "needs-research"
+    },
+    {
+      "detail": {},
+      "id": "output:desk",
+      "kind": "output",
+      "label": "Desk",
+      "name": "desk",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "workspace"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "first_run": "report-only",
+        "type": "watch"
+      },
+      "id": "routine:watch",
+      "kind": "routine",
+      "label": "watch",
+      "name": "watch",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:lookback_days",
+      "kind": "setting",
+      "label": "lookback_days",
+      "name": "lookback_days",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "number"
+      },
+      "id": "setting:max_items",
+      "kind": "setting",
+      "label": "max_items",
+      "name": "max_items",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "toggle"
+      },
+      "id": "setting:report_when_empty",
+      "kind": "setting",
+      "label": "report_when_empty",
+      "name": "report_when_empty",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[3]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "type": "list"
+      },
+      "id": "setting:sources",
+      "kind": "setting",
+      "label": "sources",
+      "name": "sources",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "setting[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Turns feedback on earlier runs into learning before the write.",
+        "stage_kind": "code"
+      },
+      "id": "stage:learn",
+      "kind": "stage",
+      "label": "Learn",
+      "name": "learn",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[1]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Opens each source and lists items dated inside the lookback window, up to max_items.",
+        "stage_kind": "model"
+      },
+      "id": "stage:read",
+      "kind": "stage",
+      "label": "Read sources",
+      "name": "read",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[0]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "does": "Writes the report, then updates the seen list last.",
+        "stage_kind": "model"
+      },
+      "id": "stage:write",
+      "kind": "stage",
+      "label": "Write the report",
+      "name": "write",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "pack.json",
+        "key": "stages[2]"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "adapter": "artifact-db"
+      },
+      "id": "store:artifact-db",
+      "kind": "store",
+      "label": "artifact-db",
+      "name": "artifact-db",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "store.adapter"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "record_type": "item"
+      },
+      "id": "store:item",
+      "kind": "store",
+      "label": "Item",
+      "name": "item",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "definition.json",
+        "key": "types.item"
+      },
+      "state": null
+    },
+    {
+      "detail": {
+        "cron": "0 22 * * 1-5"
+      },
+      "id": "trigger:schedule",
+      "kind": "trigger",
+      "label": "0 22 * * 1-5",
+      "name": "schedule",
+      "needs": null,
+      "serves": [],
+      "source": {
+        "file": "routine.toml",
+        "key": "routine.schedule"
+      },
+      "state": null
+    }
+  ],
+  "requirements": [],
+  "warnings": []
+}

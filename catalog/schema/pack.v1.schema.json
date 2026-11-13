@@ -101,6 +101,9 @@
         "$ref": "#/$defs/connector"
       }
     },
+    "blueprint": {
+      "$ref": "#/$defs/blueprint"
+    },
     "files": {
       "type": "object",
       "maxProperties": 40,
@@ -878,6 +881,256 @@
           "type": "string",
           "pattern": "^https://",
           "maxLength": 300
+        }
+      }
+    },
+    "blueprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "infra": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/infra"
+          }
+        },
+        "requirements": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        },
+        "states": {
+          "type": "object",
+          "maxProperties": 100,
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9:_.-]{1,80}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/part_state"
+          }
+        },
+        "integrations": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/integration"
+          }
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9:_.-]{1,80}$"
+        },
+        "kind": {
+          "enum": [
+            "connector",
+            "mcp",
+            "http",
+            "secret-host"
+          ]
+        },
+        "direction": {
+          "enum": [
+            "read",
+            "write"
+          ]
+        },
+        "gate": {
+          "type": "boolean"
+        },
+        "hosts": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?(:[0-9]{1,5})?$"
+          }
+        },
+        "state": {
+          "enum": [
+            "verified",
+            "docs",
+            "unverified",
+            "needs-research",
+            "needs-building"
+          ]
+        },
+        "needs": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "relies_on": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          ]
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9:_.-]{1,80}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "served_by": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          ]
+        }
+      }
+    },
+    "infra": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9:_.-]{1,80}$"
+        },
+        "kind": {
+          "enum": [
+            "worker",
+            "queue",
+            "d1",
+            "r2",
+            "browser-run",
+            "ai",
+            "do",
+            "other"
+          ]
+        },
+        "what": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "state": {
+          "enum": [
+            "verified",
+            "docs",
+            "unverified",
+            "needs-research",
+            "needs-building"
+          ]
+        },
+        "needs": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "deploys": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "relies_on": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      }
+    },
+    "part_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": [
+            "verified",
+            "docs",
+            "unverified",
+            "needs-research",
+            "needs-building"
+          ]
+        },
+        "needs": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "relies_on": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          ]
         }
       }
     }
