@@ -886,6 +886,14 @@ def plan_run(defn, docs, run_input):
     if (p.data(p.run_path) or {}).get("phase") == "done":
         return [{"name": n, "ops": []} for n in ("started", "entities", "summary", "inbox", "done")]
     inp = run_input
+    # A producer writes only the types it owns. A shared type (issue #32) is written by people,
+    # workers and producers alike, so it is exempt.
+    for rec in inp.get("records", []):
+        tdef = p.type_def(rec.get("type"))
+        owners = tdef.get("producers")
+        if not tdef.get("shared") and owners is not None and p.pid not in owners:
+            raise ContractError(
+                f"producer '{p.pid}' does not own type '{rec.get('type')}' (owned by {', '.join(owners) or 'nobody'})")
     base = {
         "runId": p.run_id, "producer": p.pid, "startedAt": inp.get("startedAt"),
         "definitionVersion": defn.get("version"), "settingsUsed": p.settings, "mergePolicy": p.policy,
