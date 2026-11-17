@@ -368,3 +368,20 @@ test("in a frame the viewer's last route still wins over desk.start", async () =
   expect(await screen.findByRole("heading", { level: 1, name: "Not found" })).toBeTruthy();
   expect(canonicalHash(window.location.hash)).toBe("#/p/missing");
 });
+
+test("in a frame with no remembered route desk.start opens", async () => {
+  at("/");
+  openDesk(startDocs("p/overview"), "u1");
+  expect(await screen.findByRole("heading", { level: 1, name: "Weekly overview" })).toBeTruthy();
+  // Give the remembered-route read time to answer; with nothing saved the start page stays.
+  await new Promise((done) => setTimeout(done, 50));
+  expect(canonicalHash(window.location.hash)).toBe("#/p/overview");
+});
+
+test("in a frame an invalid remembered route falls back to desk.start", async () => {
+  at("/");
+  openDesk(startDocs("p/overview", "javascript:alert(1)"), "u1");
+  expect(await screen.findByRole("heading", { level: 1, name: "Weekly overview" })).toBeTruthy();
+  await new Promise((done) => setTimeout(done, 50));
+  expect(canonicalHash(window.location.hash)).toBe("#/p/overview");
+});
