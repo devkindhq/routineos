@@ -724,3 +724,27 @@ class ExtensionPlacementAndPrefsTest(unittest.TestCase):
         self.assertIn("placement top", line)
         plain = [x for x in permission.desk_extension_lines(desk_registry.extension_rows(routine())) if "review-box" in x][0]
         self.assertNotIn("remembers a setting", plain)
+
+
+class DeskStartComponentTest(unittest.TestCase):
+    """desk.start x/<id>: the id must be a page component in desk/components/ (the definition lint cannot see it)."""
+
+    def started(self, start):
+        d = routine()
+        write(os.path.join(d, "definition.json"), json.dumps(dict(DEFN_ROLE, desk={"start": start})))
+        return d
+
+    def test_page_component_passes(self):
+        self.assertEqual(desk_registry.lint_routine({}, self.started("x/review-page")), [])
+        self.assertEqual(desk_registry.lint_routine({}, self.started("today")), [])
+
+    def test_missing_component_refused(self):
+        found = desk_registry.lint_routine({}, self.started("x/reveiw-page"))
+        hit = [p for p in found if "desk.start 'x/reveiw-page'" in p]
+        self.assertTrue(hit, found)
+        self.assertIn("no page component 'reveiw-page'", hit[0])
+        self.assertIn("review-page", hit[0])
+
+    def test_non_page_component_refused(self):
+        found = desk_registry.lint_routine({}, self.started("x/review-panel"))
+        self.assertTrue([p for p in found if "no page component 'review-panel'" in p], found)

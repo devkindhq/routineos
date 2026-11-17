@@ -1,7 +1,7 @@
 // app/useRoute.js: the hash route (core/router.js). An old address is swapped for its v2 one with replaceState, so
 // Back does not loop. replaceParams rewrites the query without adding a history entry.
-import { useCallback, useEffect, useRef, useState } from "react";
-import { canonicalHash, queryString_, route, toFrameHash } from "../core/router.js";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { canonicalHash, emptyAddress, queryString_, route, startHash, toFrameHash } from "../core/router.js";
 import { entityIdFromRoute } from "../core/pages/entity.js";
 import { clearRoute, loadRoute, saveRoute, validRoute } from "../core/viewerstate.js";
 
@@ -83,6 +83,25 @@ export function inFrame() {
   try { return window.top !== window.self; } catch (e) { return true; }
 }
 
+// The address desk.start wrote in place of an empty one. Restoring treats it as still empty, so in a frame the
+// viewer's saved route keeps its place ahead of the start page.
+var startedTo = null;
+
+// Opens the definition's desk.start when the address is empty, once the definition is loaded. A replaceState in the
+// frame's form, so Back does not step through it. Any address in the URL wins; without desk.start nothing changes.
+export function useStartRoute(definition) {
+  const to = startHash(definition);
+  useLayoutEffect(() => {
+    if (!definition || to === "#/today" || !emptyAddress(window.location.hash)) return;
+    replaceAddress(to);
+    startedTo = window.location.hash;
+  }, [definition, to]);
+}
+
+function unset(hash) {
+  return emptyAddress(hash) || (startedTo !== null && hash === startedTo);
+}
+
 var SETTLE_MS = 1500;
 
 // A saved record route is kept only while the record exists; a deleted one would open a not-found page.
@@ -109,11 +128,9 @@ export function useRestoreRoute(ctx, hash) {
     loadRoute(ref.current).then((v) => {
       if (!live) return;
       if (saved.current === undefined) saved.current = v;
-      var now = window.location.hash;
-      if (!v || (now && now !== "#" && now !== "#/")) return;
+      if (!v || !unset(window.location.hash)) return;
       stillThere(ref.current, v).then((ok) => {
-        var again = window.location.hash;
-        if (!live || !ok || (again && again !== "#" && again !== "#/")) return;
+        if (!live || !ok || !unset(window.location.hash)) return;
         window.history.replaceState(window.history.state, "", v);
         window.dispatchEvent(new Event(ROUTE_EVENT));
       });

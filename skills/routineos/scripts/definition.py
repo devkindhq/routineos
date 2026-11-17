@@ -38,6 +38,8 @@ MODULE_LABEL_MAX = 40
 PAGE_IDS = ("today", "approvals", "runs", "workers", "history", "settings", "browse", "entity")
 # v1 pages whose addresses now redirect to a v2 page; a module still cannot take their ids.
 RETIRED_PAGE_IDS = ("inbox", "suggestions", "views")
+# Built-in pages desk.start may name; a custom page is x/<page component id> or p/<spec page id>.
+START_PAGES = ("today", "approvals", "runs", "history")
 CODE_KEYS = ("script", "html", "js", "code", "template", "style")
 # Copy words the Desk never uses; tests/test_desk_bundle.py scans the bundle for the same list.
 BANNED_WORDS = ("ai-powered", "smart", "magic", "effortless", "unlock", "supercharge")
@@ -561,11 +563,33 @@ def lint_pages(pages, types, module_ids=()):
     return problems
 
 
+def lint_start(start, page_ids=()):
+    """Problems with desk.start, the page an empty Desk address opens. `page_ids` are the definition's spec page ids.
+    An x/<id> is checked for shape only here; desk_registry.lint_routine checks it names a page component."""
+    if not isinstance(start, str):
+        return ["desk.start must be a page address string"]
+    if start in START_PAGES:
+        return []
+    kind, _, pid = start.partition("/")
+    if kind == "x" and MODULE_ID_RE.match(pid):
+        return []
+    if kind == "p" and pid in page_ids:
+        return []
+    allowed = ", ".join(START_PAGES) + ", x/<page component id> or p/<spec page id>"
+    known = sorted(f"p/{p}" for p in page_ids)
+    return [f"desk.start '{start}' is not a page; use {allowed}"
+            + (f" (spec pages here: {', '.join(known)})" if known else "")]
+
+
 def lint_desk(desk, types):
-    """Problems with a definition's desk block: {modules: [view module, ...], health: {...}, record: {strip}}."""
+    """Problems with a definition's desk block: {modules: [view module, ...], health: {...}, record: {strip},
+    pages: [...], start: "<page>"}."""
     if not isinstance(desk, dict):
         return ["desk must be an object with a modules list"]
-    problems = [f"desk: unknown key '{k}'" for k in desk if k not in ("modules", "health", "record", "pages")]
+    problems = [f"desk: unknown key '{k}'" for k in desk if k not in ("modules", "health", "record", "pages", "start")]
+    if "start" in desk:
+        pages = desk.get("pages") if isinstance(desk.get("pages"), list) else []
+        problems += lint_start(desk["start"], {p.get("id") for p in pages if isinstance(p, dict) and isinstance(p.get("id"), str)})
     if "pages" in desk:
         mods = desk.get("modules") if isinstance(desk.get("modules"), list) else []
         problems += lint_pages(desk["pages"], types, {m.get("id") for m in mods if isinstance(m, dict) and isinstance(m.get("id"), str)})
@@ -700,6 +724,7 @@ def compile(producers) -> dict:
     health, health_owner = {}, {}
     strips, strip_owner = {}, {}
     pages, page_owner = [], {}
+    start, start_owner = None, None
     for p in producers:
         pid, defn, settings = p["id"], p["definition"], list(p.get("settings", []))
         problems += [f"{pid}: {msg}" for msg in lint(defn, settings)]
@@ -781,6 +806,12 @@ def compile(producers) -> dict:
                     problems.append(f"desk page '{gid}' is declared by {page_owner[gid]} and {pid}")
                 page_owner.setdefault(gid, pid)
             pages.append(dict(pg, producer=pid))
+        if isinstance(desk, dict) and isinstance(desk.get("start"), str):
+            if start is not None and start != desk["start"]:
+                problems.append(f"desk.start is '{start}' in {start_owner} but '{desk['start']}' in {pid}; "
+                                f"producers that name a start page must name the same one")
+            elif start is None:
+                start, start_owner = desk["start"], pid
         rules = desk.get("health") if isinstance(desk, dict) else None
         for tname, rule in sorted(rules.items()) if isinstance(rules, dict) else []:
             if tname in health and health[tname] != rule:
@@ -817,6 +848,8 @@ def compile(producers) -> dict:
         body.setdefault("desk", {})["health"] = json.loads(json.dumps(health))
     if strips:
         body.setdefault("desk", {})["record"] = {"strip": json.loads(json.dumps(strips))}
+    if start is not None:
+        body.setdefault("desk", {})["start"] = start
     digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode("utf-8")).hexdigest()[:12]
     compiled = dict(body, version=digest, schema=1)
     size = doc_bytes(compiled)

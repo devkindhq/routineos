@@ -863,4 +863,10 @@ def lint_routine(reg, routine):
             if isinstance(cid, str) and cid not in have:
                 problems.append(f"desk module '{mod.get('id')}' field '{field}': no custom component '{cid}' "
                                 f"in desk/components/")
+    start = desk.get("start")
+    if isinstance(start, str) and start.startswith("x/"):
+        pages = sorted(os.path.basename(d) for d in _component_dirs(routine) if (_manifest(d) or {}).get("slot") == "page")
+        if start[2:] not in pages:
+            problems.append(f"desk.start '{start}': no page component '{start[2:]}' in desk/components/ "
+                            f"(page components: {', '.join(pages) or 'none'})")
     return problems

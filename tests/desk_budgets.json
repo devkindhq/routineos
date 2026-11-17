@@ -4,15 +4,15 @@
     "raise_reason": "0.13.0 raw React pages: Mantine core, hooks, charts, notifications, datatable, dates, dayjs and a curated icon subset exposed to approved pages (owner decision R1)"
   },
   "blueprint/index.html": {
-    "gzip": 744554,
-    "raise_reason": "0.13.0 raw React pages: Mantine core, hooks, charts, notifications, datatable, dates, dayjs and a curated icon subset exposed to approved pages (owner decision R1); 0.13.0 raw page host"
+    "gzip": 744630,
+    "raise_reason": "0.13.0 raw React pages: Mantine core, hooks, charts, notifications, datatable, dates, dayjs and a curated icon subset exposed to approved pages (owner decision R1); 0.13.0 raw page host; 0.13.2 desk.start landing page (+76)"
   },
   "single/css": {
     "gzip": 44209,
     "raise_reason": "0.13.0 raw React pages: Mantine core, hooks, charts, notifications, datatable, dates, dayjs and a curated icon subset exposed to approved pages (owner decision R1)"
   },
   "single/index.html": {
-    "gzip": 670474,
-    "raise_reason": "0.13.0 raw React pages: Mantine core, hooks, charts, notifications, datatable, dates, dayjs and a curated icon subset exposed to approved pages (owner decision R1); 0.13.0 raw page host"
+    "gzip": 670590,
+    "raise_reason": "0.13.0 raw React pages: Mantine core, hooks, charts, notifications, datatable, dates, dayjs and a curated icon subset exposed to approved pages (owner decision R1); 0.13.0 raw page host; 0.13.2 desk.start landing page (+116)"
   }
 }

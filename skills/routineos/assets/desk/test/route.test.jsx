@@ -2,7 +2,7 @@ import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-libr
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "../app/App.jsx";
 import { go, inFrame, replaceAddress, replaceParams, useRestoreRoute, useRoute } from "../app/useRoute.js";
-import { toFrameHash } from "../core/router.js";
+import { canonicalHash, startHash, toFrameHash } from "../core/router.js";
 import { createStore } from "../core/store.js";
 import { loadRoute, routeKey, saveRoute } from "../core/viewerstate.js";
 
@@ -291,4 +291,97 @@ test("the p route draws a spec page title and a missing page says not found", as
   at("#/p/missing");
   render(<App store={createStore("static", { docs: docs })} config={config} />);
   expect(await screen.findByRole("heading", { level: 1, name: "Not found" })).toBeTruthy();
+});
+
+// desk.start: the page an empty address opens. Only the empty address uses it.
+function startDocs(start, last) {
+  const DEF = { types: { metric: { plural: "Metrics", fields: { week: { type: "date" }, value: { type: "number" } } } },
+    producers: [{ id: "m", label: "M", types: ["metric"] }],
+    desk: { pages: [{ id: "overview", title: "Weekly overview", blocks: [] }] } };
+  if (start !== undefined) DEF.desk.start = start;
+  const docs = { "meta/definition": { data: DEF }, "meta/workspace": { data: { name: "Test workspace" } } };
+  if (last) docs["data/users/u1/state/route/last"] = { data: { hash: last } };
+  return docs;
+}
+function openDesk(docs, viewer) {
+  const store = createStore("static", { docs: docs });
+  if (viewer) { store.readOnly = false; store.viewer = () => Promise.resolve(viewer); }
+  return render(<App store={store} config={{ store: "static", workspace: "Test workspace" }} />);
+}
+
+test("startHash reads desk.start and falls back to Today", () => {
+  expect(startHash(null)).toBe("#/today");
+  expect(startHash({})).toBe("#/today");
+  expect(startHash({ desk: {} })).toBe("#/today");
+  ["today", "approvals", "runs", "history", "x/review-page", "p/overview"].forEach((s) => {
+    expect(startHash({ desk: { start: s } })).toBe("#/" + s);
+  });
+  ["", "settings", "#/runs", "x/", "p/Bad Id", "x/a/b", "entity/roles/a", 5, null].forEach((s) => {
+    expect(startHash({ desk: { start: s } })).toBe("#/today");
+  });
+});
+
+test("the Desk opens on desk.start when the address is empty, with no history entry", async () => {
+  asTab();
+  at("/");
+  var before = window.history.length;
+  openDesk(startDocs("p/overview"));
+  expect(await screen.findByRole("heading", { level: 1, name: "Weekly overview" })).toBeTruthy();
+  expect(window.location.hash).toBe("#/p/overview");
+  expect(window.history.length).toBe(before);
+  expect(screen.queryByRole("heading", { level: 1, name: "Today" })).toBeNull();
+});
+
+test("without desk.start an empty address opens Today, as before", async () => {
+  asTab();
+  at("/");
+  openDesk(startDocs(undefined));
+  expect(await screen.findByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
+  expect(window.location.hash).toBe("");
+});
+
+test("an address wins over desk.start, and an unknown address still lands on Today", async () => {
+  asTab();
+  at("#/p/missing");
+  const view = openDesk(startDocs("p/overview"));
+  expect(await screen.findByRole("heading", { level: 1, name: "Not found" })).toBeTruthy();
+  expect(window.location.hash).toBe("#/p/missing");
+  view.unmount();
+  at("#/nowhere");
+  openDesk(startDocs("p/overview"));
+  expect(await screen.findByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
+  expect(window.location.hash).toBe("#/nowhere");
+});
+
+test("in a frame desk.start opens in the slash-free form with no history entry", async () => {
+  at("/");
+  var before = window.history.length;
+  openDesk(startDocs("p/overview"));
+  expect(await screen.findByRole("heading", { level: 1, name: "Weekly overview" })).toBeTruthy();
+  expect(window.location.hash).toBe("#d--p--overview");
+  expect(window.history.length).toBe(before);
+});
+
+test("in a frame the viewer's last route still wins over desk.start", async () => {
+  at("/");
+  openDesk(startDocs("p/overview", "#/p/missing"), "u1");
+  expect(await screen.findByRole("heading", { level: 1, name: "Not found" })).toBeTruthy();
+  expect(canonicalHash(window.location.hash)).toBe("#/p/missing");
+});
+
+test("in a frame with no remembered route desk.start opens", async () => {
+  at("/");
+  openDesk(startDocs("p/overview"), "u1");
+  expect(await screen.findByRole("heading", { level: 1, name: "Weekly overview" })).toBeTruthy();
+  // Give the remembered-route read time to answer; with nothing saved the start page stays.
+  await new Promise((done) => setTimeout(done, 50));
+  expect(canonicalHash(window.location.hash)).toBe("#/p/overview");
+});
+
+test("in a frame an invalid remembered route falls back to desk.start", async () => {
+  at("/");
+  openDesk(startDocs("p/overview", "javascript:alert(1)"), "u1");
+  expect(await screen.findByRole("heading", { level: 1, name: "Weekly overview" })).toBeTruthy();
+  await new Promise((done) => setTimeout(done, 50));
+  expect(canonicalHash(window.location.hash)).toBe("#/p/overview");
 });
