@@ -16,7 +16,7 @@
 
 ### Removed
 
-- None shipped. The sanitised `ui.mount` work from earlier branch tasks was never released.
+- Nothing removed.
 
 ### Security notes
 
@@ -58,7 +58,7 @@
 
 ### Notes
 
-- Stages carry no state. This deviates from the spec's goal 3 (ruling D1): a stage is the routine's own step, and only parts that can be missing carry state.
+- Stages carry no state. A stage is the routine's own step, and only parts that can be missing carry state.
 - The Desk page shows the same graph, redacted the same way, that `routineos blueprint` prints for its folder, including `app.toml` parts when the folder has one.
 - Blueprint text (requirements, labels, `needs`, infra fields) is redacted in lint WARN lines, `routineos blueprint` and its `--json`, the approve screen, the permission section and the Desk config. Redaction covers the shared secret shapes plus the extra shapes `migrate` knows: `ghp_` and other GitHub tokens, `xox*-` Slack tokens, bearer tokens, JWTs, Stripe keys, bot tokens and credentials in a URL.
 - Only the schedule trigger is derived. Event and manual triggers (`[[trigger]]`) are deferred to a later release.

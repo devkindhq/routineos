@@ -655,9 +655,6 @@ class WriteWorkerCliTests(unittest.TestCase):
         self.assertFalse(os.path.exists(out))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class WorkerSharedTests(unittest.TestCase):
     """Issue #32: a lane whose join card names shared types may write those entities."""
@@ -838,3 +835,7 @@ class WorkerSharedTests(unittest.TestCase):
                 store.apply(ph["ops"])
         self.assertNotIn("score", store.docs["entities/draft--d1"]["data"]["fields"])
         self.assertEqual(store.docs["entities/draft--d1"]["data"]["updatedBy"], "u-2")
+
+
+if __name__ == "__main__":
+    unittest.main()
