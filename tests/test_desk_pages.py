@@ -282,5 +282,72 @@ class PageCompile(unittest.TestCase):
         self.assertTrue(says(ctx.exception.problems, "desk page 'recent' is also a desk module id"), ctx.exception.problems)
 
 
+def started(start, *pages):
+    d = defn(*pages)
+    d["desk"]["start"] = start
+    return d
+
+
+class DeskStartLint(unittest.TestCase):
+    def test_builtin_pages_pass(self):
+        for start in ("today", "approvals", "runs", "history"):
+            self.assertEqual(definition.lint(started(start), []), [], start)
+
+    def test_spec_page_passes(self):
+        self.assertEqual(definition.lint(started("p/overview", PAGE), []), [])
+
+    def test_unknown_spec_page_refused(self):
+        found = definition.lint(started("p/overveiw", PAGE), [])
+        self.assertTrue(says(found, "desk.start 'p/overveiw' is not a page"), found)
+        self.assertTrue(says(found, "p/overview"), found)
+
+    def test_component_shape_passes(self):
+        # A page component's id is checked against desk/components/ by the routine lint, not here.
+        self.assertEqual(definition.lint(started("x/review-page"), []), [])
+        self.assertTrue(says(definition.lint(started("x/Not An Id"), []), "desk.start 'x/Not An Id' is not a page"))
+        self.assertTrue(says(definition.lint(started("x/a/b"), []), "desk.start 'x/a/b' is not a page"))
+
+    def test_not_a_string_refused(self):
+        for bad in (None, 5, ["today"], {"page": "today"}, True):
+            found = definition.lint(started(bad), [])
+            self.assertTrue(says(found, "desk.start must be a page address string"), (bad, found))
+
+    def test_unknown_value_names_value_and_choices(self):
+        for bad in ("overview", "#/today", "/today", "settings", "Today", "p/", "x/", ""):
+            found = definition.lint(started(bad), [])
+            hit = says(found, f"desk.start '{bad}' is not a page")
+            self.assertTrue(hit, (bad, found))
+            self.assertIn("today, approvals, runs, history", hit[0])
+            self.assertIn("x/<page component id>", hit[0])
+            self.assertIn("p/<spec page id>", hit[0])
+
+    def test_no_start_lints_as_before(self):
+        self.assertEqual(definition.lint(defn(PAGE), []), [])
+        self.assertEqual(definition.lint_desk({"start": "today"}, TYPES), [])
+
+
+class DeskStartCompile(unittest.TestCase):
+    def producers(self, a, b=None):
+        return PageCompile.producers(self, a, b)
+
+    def test_start_is_compiled(self):
+        compiled = definition.compile(self.producers(started("p/overview", PAGE)))
+        self.assertEqual(compiled["desk"]["start"], "p/overview")
+
+    def test_same_start_across_producers_passes(self):
+        compiled = definition.compile(self.producers(started("runs"), started("runs")))
+        self.assertEqual(compiled["desk"]["start"], "runs")
+
+    def test_different_starts_refused(self):
+        with self.assertRaises(definition.DefinitionError) as ctx:
+            definition.compile(self.producers(started("runs"), started("history")))
+        self.assertTrue(says(ctx.exception.problems, "desk.start is 'runs' in alpha but 'history' in beta"),
+                        ctx.exception.problems)
+
+    def test_no_start_compiles_as_before(self):
+        compiled = definition.compile(self.producers(defn(PAGE)))
+        self.assertNotIn("start", compiled["desk"])
+
+
 if __name__ == "__main__":
     unittest.main()
