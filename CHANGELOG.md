@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.2
+
+### Added
+
+- A definition can name its landing page with desk.start. Set `desk.start` to `today`, `approvals`, `runs`, `history`, `x/<page component id>` or `p/<spec page id>` and an empty Desk address opens that page in place of Today. Where the Desk remembers the viewer's last page, that page still opens first; desk.start is used when there is none. Any other address, including an unknown one, behaves as before, and lint names a bad value and lists what is allowed. Definitions without the key are unchanged.
+
 ## 0.13.1
 
 ### Fixed

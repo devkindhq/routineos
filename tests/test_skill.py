@@ -300,10 +300,10 @@ class SelfImprovingTests(unittest.TestCase):
     def test_plugin_version_matches_changelog_citation_and_pack(self):
         import json
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json"), encoding="utf-8") as fh:
-            self.assertEqual(json.load(fh)["version"], "0.13.1")
-        self.assertIn("## 0.13.1", read(os.path.join(ROOT, "CHANGELOG.md")))
-        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.13\.1$")
-        self.assertIn('VERSION = "0.13.1"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
+            self.assertEqual(json.load(fh)["version"], "0.13.2")
+        self.assertIn("## 0.13.2", read(os.path.join(ROOT, "CHANGELOG.md")))
+        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.13\.2$")
+        self.assertIn('VERSION = "0.13.2"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
 
 
 class TemplateDocsTests(unittest.TestCase):
