@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.13.0
+
+### Added
+
+- Raw React pages: a Desk page can be a full React component, written like a page in any React app, with Mantine components and hooks, charts, datatable, dates and a curated icon subset. A component manifest marks it `"raw": true` and the page is built into the Desk bundle. Raw pages fill the `page`, `record-section` and `panel` slots; a `field-cell` with `raw` is refused. See `references/desk-raw-pages.md`.
+- Library registry: `assets/desk/libraries.json` lists every library a raw page may import (react, Mantine core, hooks, charts, notifications, datatable, dates, dayjs and the icon subset), each with a pinned version that must equal `package.json`, a licence, a gzip cost field (measured for the icon subset; the other libraries are covered by the group total in Notes) and a `raise_reason`. `assets/desk/lib-exports.json` holds export names only. A page imports from these specifiers, and the approval hash includes each library version, so a version change asks for approval again.
+- `DESK_LIB`: the frozen set of registry namespaces the Desk exposes to approved pages. Every library is bundled once into the Desk, nothing loads from a network, and no `node_modules` is needed on the user's machine.
+- Compiler: a `.jsx` page is compiled by a vendored sucrase transformer run by node (`TRANSFORMER_ID` `sucrase-3.35.1-jsx-classic`). Without node, `.jsx` is refused and a createElement `.js` page builds. One import form per statement is allowed; a page with both `<id>.jsx` and `<id>.js`, or neither, is refused with one clear problem, and a page containing `<!--` or `</script` is refused with its source line.
+- `RawPageHost`: mounts a raw page inside an error boundary with a "Try again" action, so a page that throws at mount or in render leaves the Desk shell, nav and other routes working.
+- Page context: `ctx.query(query)` runs a spec page block query, `ui.navigate("#/...")` goes to a Desk address, and `ui.block` draws a spec block from a spec and records with the same look as a spec page.
+- Sample raw page routine, covered by tests, and a visual acceptance suite for raw pages with screenshots.
+- Docs and platform fact: `references/desk-raw-pages.md`, the SKILL.md pointer, and a platform fact (`desk-code-viewer-realm`) for Desk code running in the artifact realm with the viewer's capabilities, verified for this repo and unverified for the claude.ai frame CSP and sandbox.
+- Approval screen: a raw page gets its own permission line in capitals naming full access to the Desk, the viewing person it acts as, and the libraries it imports.
+
+### Removed
+
+- Nothing removed.
+
+### Security notes
+
+- Approving a raw page is the same act as merging code into the Desk. The page runs in the Desk's own document and React tree, as whoever is viewing: it can read every record that person can see, save anything their Claude role allows (manifest `verbs` and `ctx.actions` are a convenience, not a limit), post comments and offer downloads, without them pressing anything. It can draw over any part of the Desk, including screens that look like RoutineOS or Claude. Nothing checks what it does after approval, and only the owner's approval of the code is the gate.
+- Whether the claude.ai frame adds its own CSP or sandbox limits is unverified.
+
+### Notes
+
+- The single-page Desk grows by 167,023 gzip bytes (503,451 to 670,474) and the Blueprint Desk by 166,494 (578,060 to 744,554), measured at release; budgets in `tests/desk_budgets.json` were raised with a `raise_reason`. The icon subset accounts for 12,314 of the single-page growth.
+- Factory component hashes and existing approvals are unchanged.
+
+## 0.12.1
+
+### Added
+
+- Shared record types (#32): a record type in `definition.json` can set `"shared": true`. Its entity docs are then writable by any viewer, not only the one named in the path, so a team can keep one set of facts together (a watch list, a shared note). Types without the flag keep the existing per-person rule.
+- Page `upsert(type, id, fields)`: writes the fields onto the record `type` and `id`, creating it when it does not exist. It refuses a type that is not marked shared. The id must match `^[A-Za-z0-9_-]{1,120}$`, and string field values are cut to 2000 characters. Each saved record carries `updatedBy` and `updatedAt` stamps, and the page re-reads the record after saving and reports a conflict when the stamps are not its own.
+- Worker `upserts`: a join card lane can name `"shared": ["<type>", ...]`, and that lane's AI worker then writes those records through `upserts [{id, fields}]` in its run input. Each type must also be marked shared in the definition, so a lane cannot widen what a producer kept people-only. Worker writes stamp `updatedBy` as `worker:<laneKey>` and are version-pinned, so an interleaved write fails the pin and the run replans. Page and worker validate the id slug and field names with the same charset and length rules, and the Desk contract matches them in full.
+- Producer `display` is overlaid with the upserted `fields`, so a record a person has upserted shows their values, and a later producer correction never reaches `display` for an upserted key.
+
+### Notes
+
+- Page `upsert` is a get-then-set, not an atomic write. Two people saving the same record at nearly the same time give last writer wins. Keep one fact per document, so two people rarely write the same record.
+- No change for routines whose types are not marked shared.
+
 ## 0.12.0
 
 ### Added
@@ -16,12 +58,12 @@
 
 ### Notes
 
-- Stages carry no state: a stage is the routine's own step, and only parts that can be missing carry state.
+- Stages carry no state. A stage is the routine's own step, and only parts that can be missing carry state.
 - The Desk page shows the same graph, redacted the same way, that `routineos blueprint` prints for its folder, including `app.toml` parts when the folder has one.
 - Blueprint text (requirements, labels, `needs`, infra fields) is redacted in lint WARN lines, `routineos blueprint` and its `--json`, the approve screen, the permission section and the Desk config. Redaction covers the shared secret shapes plus the extra shapes `migrate` knows: `ghp_` and other GitHub tokens, `xox*-` Slack tokens, bearer tokens, JWTs, Stripe keys, bot tokens and credentials in a URL.
 - Only the schedule trigger is derived. Event and manual triggers (`[[trigger]]`) are deferred to a later release.
 - `pack install` writes the standard Desk page only. For the Blueprint variant, run `routineos bundle --routine <dir>` on the installed folder.
-- The approval hash covers the schedule label, each integration's `hosts` list, the routine's `type` and `first_run`, the gate's `transport` and edge labels as well as names, edges and requirements, so a change to any of them shows as drift (a dry-run routine switched to live is drift). `state` and `needs` are not hashed.
+- The approval hash covers the schedule label, each integration's `hosts` list, the routine's `type` and `first_run`, the gate's `transport` and edge labels as well as names, edges and requirements, so a change to any of them shows as drift (a dry-run routine switched to live is drift). `state` and `needs` are not hashed. The canonical form gained these fields late in 0.12.0 development, so an approval written by an earlier 0.12.0 build reports drift once; run `routineos blueprint approve` again.
 - In an app, a routine's own `served_by` names resolve inside that routine first, and only `app.toml` holds the app's `[approval]`.
 - Packs: `infra` `kind` is one of `worker`, `queue`, `d1`, `r2`, `browser-run`, `ai`, `do`, `other`; `label` is at most 80 characters; a `states` key must be the id of a pack connector; a `verified` state in a pack is installed as `unverified`; `relies_on` in a pack is not carried into the installed tables, the person adds it.
 - `blueprint approve` finds the `[approval]` table by parsing the file (a bare or quoted header, never one inside a multiline string) and parses the new text before replacing the file. It refuses, without writing, when the file does not parse, when `approval` is an inline table, dotted keys or a sub-table, or when the result would change any other table; it keeps comments in the old table and the file's line endings, and writes non-ASCII names as they are.

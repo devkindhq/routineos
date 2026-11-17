@@ -1,0 +1,12 @@
+{
+  "id": "s2-detail-section",
+  "kind": "custom",
+  "slot": "record-section",
+  "raw": true,
+  "summary": "A compact task card for a task record: status badge and a short timeline.",
+  "why": "The record page has no timeline of when a task was seen.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "types": ["task"],
+  "title": "Activity"
+}

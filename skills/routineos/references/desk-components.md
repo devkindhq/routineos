@@ -11,6 +11,8 @@ app, prebuilt into one file. The list below is generated from `assets/desk/compo
 - Order of preference: an existing default module, then a view module, then a custom field cell component on a
   view module. Write a custom component only when the default cell text does not serve the field, and say why in
   its manifest.
+- A full React page (any Mantine component, hooks, charts) is a raw page, the last tier and a different contract: it
+  imports React and Mantine from the library registry. See [desk-raw-pages](desk-raw-pages.md).
 - A custom component builds plain elements with the `ui` helpers (`ui.button`, `ui.badge` and the rest). It never
   imports React or Mantine.
 - `routineos desk lint` checks the registry, that each core `factory` is a `ui` helper, and that the generated block
@@ -823,6 +825,7 @@ edits `routine.toml` for you.
 | `drop(id, reason)` | the built-in drop | same as the Drop action |
 | `keep(id)` | the built-in keep | same as the Keep action |
 | `request(kind, {routine, note})` | `requests/req~<time>~<random>` | `kind` is `run-now` or `retry`; `routine` must be listed on the Desk. Queued, read at the routine's next scheduled run; it needs no record id. |
+| `upsert(type, id, fields)` | `entities/<type>--<id>` (`fields`, mirrored to `display`) | only a type the definition marks `shared: true`. `fields` are plain values (text cut to 2,000 characters, numbers, true or false); `id` is 1 to 120 characters and a field name 1 to 64, of letters, digits, `_` and `-`. Stamps `updatedBy` (the viewer) and `updatedAt`; never touches the producers' `bySource`, `sightings`, `status` or `key`. A section or panel may act only on the record types its manifest names, like every other verb; a page may act on any shared type. Read-modify-write with no version pin, so a concurrent write to the same document can be lost: the verb re-reads after saving and warns (`console.warn`) when the stored stamps are not the writer's own. Keep one fact per document. |
 
 Every verb except `request` needs an existing record; a section or panel may act only on the record types its manifest names. A page may act on any record. `drop`, `keep` and `decide` follow the same owner rule as the built-in controls on a joined Desk. `decide`, `comment`, `saveField`, `drop` and `keep` write documents every member of the Desk sees.
 

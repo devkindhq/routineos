@@ -62,9 +62,9 @@ def snapshot(verified=True, owner="u-owner"):
     return docs
 
 
-def run_input(lk=LK, outcomes=(), gates=(), run_id="r1", by="u-b"):
+def run_input(lk=LK, outcomes=(), gates=(), run_id="r1", by="u-b", upserts=()):
     return {"runId": run_id, "laneKey": lk, "by": by, "startedAt": START, "endedAt": END,
-            "outcomes": list(outcomes), "gates": list(gates),
+            "outcomes": list(outcomes), "gates": list(gates), "upserts": list(upserts),
             "health": {"outcome": "ok", "itemsHandled": len(outcomes), "alert": None, "overrides": []}}
 
 
@@ -653,6 +653,188 @@ class WriteWorkerCliTests(unittest.TestCase):
         res, out = self.run_cli(snapshot(), run_input(LKG), lk=LK)
         self.assertNotEqual(res.returncode, 0)
         self.assertFalse(os.path.exists(out))
+
+
+
+class WorkerSharedTests(unittest.TestCase):
+    """Issue #32: a lane whose join card names shared types may write those entities."""
+
+    def shared_card(self):
+        card = copy.deepcopy(TWO_LANE_CARD)
+        card["lanes"][0]["shared"] = ["draft"]
+        return card
+
+    def shared_snapshot(self):
+        docs = snapshot()
+        docs["meta/join"] = doc(copy.deepcopy(self.shared_card()))
+        docs["meta/definition"] = doc({"version": 1, "producers": [], "types": {
+            "draft": {"label": "Draft", "identity": "field:subject", "shared": True,
+                      "fields": {"subject": {"type": "text"}, "assignee": {"type": "text"}}}}})
+        return docs
+
+    def test_guard_allows_a_lanes_shared_entities_and_refuses_the_rest(self):
+        shared = frozenset({"draft"})
+        lk = "sender--x"
+        dc.guard([set_op("entities/draft--d1")], worker=lk, shared=shared)
+        for path in ("entities/topic--d1", "entities/draft", "entities/draft--d1--extra"):
+            with self.subTest(path=path):
+                with self.assertRaises(dc.LanePathError):
+                    dc.guard([set_op(path)], worker=lk, shared=shared)
+
+    def test_worker_shared_types_reads_the_lane_and_the_definition(self):
+        docs = self.shared_snapshot()
+        lk = dc.lane_key("sender", PARAMS)
+        defn = docs["meta/definition"]["data"]
+        self.assertEqual(dc.worker_shared_types(copy.deepcopy(self.shared_card()), docs, defn, lk), frozenset({"draft"}))
+        # a definition that does not mark the type shared, or a lane that names none, allows nothing
+        plain = copy.deepcopy(defn)
+        del plain["types"]["draft"]["shared"]
+        self.assertEqual(dc.worker_shared_types(copy.deepcopy(self.shared_card()), docs, plain, lk), frozenset())
+        self.assertEqual(dc.worker_shared_types(copy.deepcopy(TWO_LANE_CARD), docs, defn, lk), frozenset())
+
+    def test_plan_worker_run_upserts_shared_entities_with_stamps(self):
+        docs = self.shared_snapshot()
+        inp = run_input(upserts=[{"id": "draft--d1", "fields": {"status_note": "sent fine", "score": 2}}])
+        phases = dc.plan_worker_run(copy.deepcopy(self.shared_card()), docs, inp)
+        ops = ops_of(phases, "upserts")
+        self.assertEqual(paths(ops), ["entities/draft--d1"])
+        data = ops[0]["data"]
+        self.assertEqual(data["fields"], {"status_note": "sent fine", "score": 2})
+        self.assertEqual(data["display"]["status_note"], "sent fine")
+        self.assertEqual(data["updatedBy"], f"worker:{LK}")
+        self.assertEqual(data["updatedAt"], END)
+        self.assertNotIn("bySource", data)  # a fresh doc; producer machinery is never invented here
+        shared = dc.worker_shared_types(self.shared_card(), docs, docs["meta/definition"]["data"], LK)
+        for ph in phases:
+            dc.guard(ph["ops"], worker=LK, shared=shared)
+        after = apply(docs, phases)
+        self.assertEqual(after["entities/draft--d1"]["data"]["updatedBy"], f"worker:{LK}")
+        # rerun with the same input plans no further entity write (stamps equal, values equal)
+        self.assertEqual(ops_of(dc.plan_worker_run(copy.deepcopy(self.shared_card()), after, inp), "upserts"), [])
+
+    def test_plan_worker_run_merges_into_an_existing_doc_without_touching_machinery(self):
+        docs = self.shared_snapshot()
+        docs["entities/draft--d1"] = doc({"type": "draft", "key": "d1", "status": "active",
+                                          "bySource": {"p": {"subject": "Hello"}},
+                                          "sightings": [{"run": "r0"}],
+                                          "display": {"subject": "Hello"}, "fields": {"subject": "Hello"}})
+        inp = run_input(upserts=[{"id": "draft--d1", "fields": {"score": 5}}])
+        ops = ops_of(dc.plan_worker_run(copy.deepcopy(self.shared_card()), docs, inp), "upserts")
+        data = ops[0]["data"]
+        self.assertEqual(data["bySource"], {"p": {"subject": "Hello"}})
+        self.assertEqual(data["sightings"], [{"run": "r0"}])
+        self.assertEqual(data["fields"], {"subject": "Hello", "score": 5})
+        self.assertEqual(data["display"], {"subject": "Hello", "score": 5})
+
+    def test_plan_worker_run_refuses_upserts_outside_the_lanes_shared_types(self):
+        docs = self.shared_snapshot()
+        for bad in ({"id": "topic--t1", "fields": {"a": 1}},          # type not shared
+                    {"id": "draft", "fields": {"a": 1}},              # not an entity id
+                    {"id": "draft--d1", "fields": {"a": {"nested": 1}}},  # nested value
+                    {"id": "draft--d1", "fields": "nope"}):           # not an object
+            with self.subTest(bad=bad):
+                with self.assertRaises(dc.ContractError):
+                    dc.plan_worker_run(copy.deepcopy(self.shared_card()), docs, run_input(upserts=[bad]))
+        # a lane that names no shared types refuses every upsert
+        with self.assertRaises(dc.ContractError):
+            dc.plan_worker_run(copy.deepcopy(TWO_LANE_CARD), docs, run_input(upserts=[{"id": "draft--d1", "fields": {"a": 1}}]))
+
+    def test_plan_worker_run_refuses_upsert_ids_outside_the_desk_charset(self):
+        """Review item 3: the Python path enforces the same id rule as the Desk's upsert verb."""
+        docs = self.shared_snapshot()
+        for eid in ("draft--a/b", "draft--..", "draft--two words", "draft--x" * 25, "draft--é",
+                    "draft--d1\n", "draft--" + "a" * 121):
+            with self.subTest(eid=eid):
+                with self.assertRaises(dc.ContractError) as cm:
+                    dc.plan_worker_run(copy.deepcopy(self.shared_card()), docs,
+                                       run_input(upserts=[{"id": eid, "fields": {"a": 1}}]))
+                self.assertIn(repr(eid)[1:-1], str(cm.exception))
+
+    def test_plan_worker_run_pins_the_upsert_id_length_limit_at_120(self):
+        """A valid-charset slug (single --) is accepted at 120 characters and refused at 121."""
+        docs = self.shared_snapshot()
+        dc.plan_worker_run(copy.deepcopy(self.shared_card()), docs,
+                           run_input(upserts=[{"id": "draft--" + "a" * 120, "fields": {"a": 1}}]))
+        with self.assertRaises(dc.ContractError):
+            dc.plan_worker_run(copy.deepcopy(self.shared_card()), docs,
+                               run_input(upserts=[{"id": "draft--" + "a" * 121, "fields": {"a": 1}}]))
+
+    def test_plan_worker_run_refuses_upsert_field_names_outside_the_desk_charset(self):
+        """Review item 3: field names follow the Desk verb's [A-Za-z0-9_-]{1,64}, not the looser
+        1-64-chars-without-controls rule this path first shipped with."""
+        docs = self.shared_snapshot()
+        for name in ("status note", "a/b", "..", "x" * 65, "café", "score\n"):
+            with self.subTest(name=name):
+                with self.assertRaises(dc.ContractError) as cm:
+                    dc.plan_worker_run(copy.deepcopy(self.shared_card()), docs,
+                                       run_input(upserts=[{"id": "draft--d1", "fields": {name: 1}}]))
+                self.assertIn("draft--d1", str(cm.exception))
+
+    def test_guard_refuses_a_shared_entity_doc_whose_id_escapes_the_charset(self):
+        shared = frozenset({"draft"})
+        lk = "sender--x"
+        dc.guard([set_op("entities/draft--d1")], worker=lk, shared=shared)
+        for path in ("entities/draft--a/b", "entities/draft--..", "entities/draft--two words",
+                     "entities/draft--d1\n"):
+            with self.subTest(path=path):
+                with self.assertRaises(dc.LanePathError):
+                    dc.guard([set_op(path)], worker=lk, shared=shared)
+
+    def test_worker_upsert_stamp_flips_when_a_person_writes_the_same_doc(self):
+        """Review item 4: updatedBy tells the last writer; a person write after a worker upsert
+        flips the stamp on the doc."""
+        docs = self.shared_snapshot()
+        docs["entities/draft--d1"] = doc({"type": "draft", "key": "d1", "fields": {}, "display": {},
+                                          "updatedBy": f"worker:{LK}", "updatedAt": START})
+        phases = dc.plan_worker_run(copy.deepcopy(self.shared_card()), copy.deepcopy(docs),
+                                    run_input(upserts=[{"id": "draft--d1", "fields": {"score": 5}}]))
+        after = apply(docs, phases)
+        self.assertEqual(after["entities/draft--d1"]["data"]["updatedBy"], f"worker:{LK}")
+        # a person writes the same doc after the worker (page upsert: last writer wins, no pin)
+        doc_after = copy.deepcopy(after["entities/draft--d1"])
+        docs2 = dict(after)
+        docs2["entities/draft--d1"] = {"version": doc_after["version"] + 1,
+                                       "data": dict(doc_after["data"], fields={"score": 6},
+                                                    display={"score": 6}, updatedBy="u-9",
+                                                    updatedAt="2026-10-31T10:00:00Z")}
+        self.assertEqual(docs2["entities/draft--d1"]["data"]["updatedBy"], "u-9")  # the person's stamp stands
+        # the worker's next run restamps even when its values are already stored (updatedAt differs),
+        # and a new value takes the stamp anyway: updatedBy is simply the last writer
+        phases2 = dc.plan_worker_run(copy.deepcopy(self.shared_card()), docs2,
+                                     run_input(upserts=[{"id": "draft--d1", "fields": {"score": 6}}]))
+        data2 = ops_of(phases2, "upserts")[0]["data"]
+        self.assertEqual(data2["fields"]["score"], 6)
+        self.assertEqual(data2["updatedBy"], f"worker:{LK}")
+        after2 = apply(docs2, phases2)
+        self.assertEqual(after2["entities/draft--d1"]["data"]["updatedBy"], f"worker:{LK}")
+
+    def test_worker_upsert_interleaved_write_fails_the_version_pin_not_silently(self):
+        """Review item 2 (worker path): the upsert op on an existing doc is version-pinned like
+        every worker write, so a doc changed between the plan and the apply fails the pin
+        instead of the person's write being lost. (A first create carries no pin, exactly as
+        for every ArtifactData create; the Desk-side race is warned about on the page path.)"""
+        docs = self.shared_snapshot()
+        docs["entities/draft--d1"] = doc({"type": "draft", "key": "d1", "fields": {"note": "seen"},
+                                          "display": {"note": "seen"}, "updatedBy": "u-1",
+                                          "updatedAt": START})
+        phases = dc.plan_worker_run(copy.deepcopy(self.shared_card()), copy.deepcopy(docs),
+                                    run_input(upserts=[{"id": "draft--d1", "fields": {"score": 5}}]))
+        up_ops = ops_of(phases, "upserts")
+        self.assertEqual(up_ops[0]["if_version"], docs["entities/draft--d1"]["version"])
+        # another writer lands a new version of the doc between the read and the apply
+        interleaved = copy.deepcopy(docs)
+        interleaved["entities/draft--d1"] = {"version": docs["entities/draft--d1"]["version"] + 1,
+                                             "data": dict(docs["entities/draft--d1"]["data"],
+                                                          fields={"note": "mine"}, updatedBy="u-2",
+                                                          updatedAt="2026-10-31T09:02:00Z")}
+        store = dc.FakeStore()
+        for p, d in interleaved.items():
+            store.docs[p] = copy.deepcopy(d)
+        with self.assertRaises(dc.VersionMismatch):
+            for ph in phases:
+                store.apply(ph["ops"])
+        self.assertNotIn("score", store.docs["entities/draft--d1"]["data"]["fields"])
+        self.assertEqual(store.docs["entities/draft--d1"]["data"]["updatedBy"], "u-2")
 
 
 if __name__ == "__main__":

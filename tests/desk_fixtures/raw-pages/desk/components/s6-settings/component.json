@@ -1,0 +1,13 @@
+{
+  "id": "s6-settings",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "Personal display settings kept in this browser, with a confirm dialog for reset.",
+  "why": "The Desk settings page edits routine settings, not a viewer's own display choices.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Display settings",
+  "nav": true,
+  "prefs": true
+}

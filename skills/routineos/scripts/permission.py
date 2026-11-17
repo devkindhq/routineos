@@ -195,7 +195,21 @@ def desk_extension_lines(rows):
     """Lines for the permission screen: every custom Desk component and page with the host verbs its manifest
     declares. A row that failed the lint is printed as INVALID, with no claim taken from its manifest."""
     out = []
-    for r in rows:
+    for r in sorted(rows, key=lambda r: not (r.get("raw") and not r.get("invalid"))):
+        if r.get("raw") and not r.get("invalid"):
+            verbs = ", ".join(_clean(x) for x in r["verbs"]) or "none"
+            libs = ", ".join(_clean(x) for x in r.get("libraries") or [])
+            out += [f"- RAW PAGE {_clean(r['slot'])} '{_clean(r['id'])}' (code hash {_clean(r.get('hash', '')[:12])})",
+                    "  RUNS ITS OWN CODE INSIDE THE DESK WITH FULL ACCESS TO THE DESK.",
+                    "  It acts as whoever is viewing: it can read every record they can see, save",
+                    "  anything their role allows (not only the writes it declares), post comments",
+                    "  and offer downloads, without them pressing anything.",
+                    "  It can draw over any part of the Desk, including screens that look like",
+                    "  RoutineOS or Claude.",
+                    "  Nothing checks what it does after you approve it. Approve only code you have",
+                    f"  read and trust. Libraries: {libs}. Declared writes",
+                    f"  (advisory): {verbs}."]
+            continue
         if r.get("invalid"):
             first = _clean(r["problems"][0], 160) if r.get("problems") else "component.json is missing or not an object"
             out.append(f"- INVALID component folder '{_clean(r['id'])}': it fails the Desk lint and is not shown as "
@@ -212,7 +226,7 @@ def desk_extension_lines(rows):
     return out
 
 
-def render(app, records, desk_rows=None):
+def render(app, records, desk_rows=None, shared_types=None):
     meta = app.get("app") or {}
     out = [f"Permission screen: {meta.get('title', meta.get('id', 'app'))}", ""]
     routines = _routines(app)
@@ -285,11 +299,17 @@ def render(app, records, desk_rows=None):
     out.append(f"- Kind: {store.get('kind', 'artifact-db')}")
     for c in _dicts(app, "collection"):
         out.append(f"- Collection '{c.get('name', '?')}' written by {c.get('writer', '?')}")
+    shared = shared_types or {}
+    named = sorted({_clean(t) for types in shared.values() for t in types})
+    if named:
+        out.append(f"- Shared record types: {', '.join(named)}. People, joined AI workers and the "
+                   f"routine's producers all write these records; each write stamps who made it and "
+                   f"when (updatedBy, updatedAt). The last writer wins.")
 
     if desk_rows:
         out += ["", "Desk components and pages written by an agent"]
         out += desk_extension_lines(desk_rows)
-        out.append("- You are approving the code itself. It runs inside the Desk page with your rights. The Desk hands it "
+        out.append("- You are approving the code itself. It runs inside the Desk page as whoever is viewing. The Desk hands it "
                    "only the verbs it declares, and the lint is a guard against mistakes, not containment: code written "
                    "to get around the lint can reach more than this list shows, including reading and writing anything "
                    "you can.")
@@ -297,6 +317,9 @@ def render(app, records, desk_rows=None):
                    "record that every member of the Desk sees.")
         out.append("- request writes a Run now or Retry request into requests/ that the routine reads at its next "
                    "scheduled run; every member of the Desk sees it, and a declared request verb can queue them.")
+        if named:
+            out.append(f"- upsert writes the shared record types ({', '.join(named)}) directly: the person, AI or "
+                       f"producer that wrote last wins, and the record carries who did.")
 
     out += ["", "Budget"]
     budget = app.get("budget") or {}

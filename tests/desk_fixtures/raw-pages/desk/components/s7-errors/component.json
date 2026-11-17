@@ -1,0 +1,13 @@
+{
+  "id": "s7-errors",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "Shows success and error notifications, a refused write and the page error boundary.",
+  "why": "A test page for the notification stack, write refusals and the Try again recovery.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Notifications and errors",
+  "nav": true,
+  "verbs": ["saveField"]
+}

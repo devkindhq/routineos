@@ -1,0 +1,2197 @@
+{
+ "entities/task--t01": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 120,
+     "due": "2026-10-01",
+     "owner": "Avery Test",
+     "status": "todo",
+     "title": "Draft pricing page 01"
+    }
+   },
+   "display": {
+    "amount": 120,
+    "due": "2026-10-01",
+    "owner": "Avery Test",
+    "status": "todo",
+    "title": "Draft pricing page 01"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 120,
+    "due": "2026-10-01",
+    "owner": "Avery Test",
+    "status": "todo",
+    "title": "Draft pricing page 01"
+   },
+   "firstSeen": "2026-09-01T09:00:00Z",
+   "key": "t01",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-01T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 120,
+      "due": "2026-10-01",
+      "owner": "Avery Test",
+      "status": "todo",
+      "title": "Draft pricing page 01"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 120,
+      "due": "2026-10-01",
+      "owner": "Avery Test",
+      "status": "todo",
+      "title": "Draft pricing page 01"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t02": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 157,
+     "due": "2026-11-04",
+     "owner": "Blake Sample",
+     "status": "doing",
+     "title": "Review support macro 02"
+    }
+   },
+   "display": {
+    "amount": 157,
+    "due": "2026-11-04",
+    "owner": "Blake Sample",
+    "status": "doing",
+    "title": "Review support macro 02"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 157,
+    "due": "2026-11-04",
+    "owner": "Blake Sample",
+    "status": "doing",
+    "title": "Review support macro 02"
+   },
+   "firstSeen": "2026-10-02T09:00:00Z",
+   "key": "t02",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-02T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 157,
+      "due": "2026-11-04",
+      "owner": "Blake Sample",
+      "status": "doing",
+      "title": "Review support macro 02"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 157,
+      "due": "2026-11-04",
+      "owner": "Blake Sample",
+      "status": "doing",
+      "title": "Review support macro 02"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t03": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 194,
+     "due": "2026-12-07",
+     "owner": "Casey Demo",
+     "status": "done",
+     "title": "Ship invoice export 03"
+    }
+   },
+   "display": {
+    "amount": 194,
+    "due": "2026-12-07",
+    "owner": "Casey Demo",
+    "status": "done",
+    "title": "Ship invoice export 03"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 194,
+    "due": "2026-12-07",
+    "owner": "Casey Demo",
+    "status": "done",
+    "title": "Ship invoice export 03"
+   },
+   "firstSeen": "2026-09-03T09:00:00Z",
+   "key": "t03",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-03T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 194,
+      "due": "2026-12-07",
+      "owner": "Casey Demo",
+      "status": "done",
+      "title": "Ship invoice export 03"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 194,
+      "due": "2026-12-07",
+      "owner": "Casey Demo",
+      "status": "done",
+      "title": "Ship invoice export 03"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t04": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 231,
+     "due": "2026-10-10",
+     "owner": "Drew Example",
+     "status": "doing",
+     "title": "Audit backup job 04"
+    }
+   },
+   "display": {
+    "amount": 231,
+    "due": "2026-10-10",
+    "owner": "Drew Example",
+    "status": "doing",
+    "title": "Audit backup job 04"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 231,
+    "due": "2026-10-10",
+    "owner": "Drew Example",
+    "status": "doing",
+    "title": "Audit backup job 04"
+   },
+   "firstSeen": "2026-10-04T09:00:00Z",
+   "key": "t04",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-04T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 231,
+      "due": "2026-10-10",
+      "owner": "Drew Example",
+      "status": "doing",
+      "title": "Audit backup job 04"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 231,
+      "due": "2026-10-10",
+      "owner": "Drew Example",
+      "status": "doing",
+      "title": "Audit backup job 04"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t05": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 268,
+     "due": "2026-11-13",
+     "owner": "Avery Test",
+     "status": "done",
+     "title": "Plan release notes 05"
+    }
+   },
+   "display": {
+    "amount": 268,
+    "due": "2026-11-13",
+    "owner": "Avery Test",
+    "status": "done",
+    "title": "Plan release notes 05"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 268,
+    "due": "2026-11-13",
+    "owner": "Avery Test",
+    "status": "done",
+    "title": "Plan release notes 05"
+   },
+   "firstSeen": "2026-09-05T09:00:00Z",
+   "key": "t05",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-05T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 268,
+      "due": "2026-11-13",
+      "owner": "Avery Test",
+      "status": "done",
+      "title": "Plan release notes 05"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 268,
+      "due": "2026-11-13",
+      "owner": "Avery Test",
+      "status": "done",
+      "title": "Plan release notes 05"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t06": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 305,
+     "due": "2026-12-16",
+     "owner": "Blake Sample",
+     "status": "todo",
+     "title": "Fix onboarding email 06"
+    }
+   },
+   "display": {
+    "amount": 305,
+    "due": "2026-12-16",
+    "owner": "Blake Sample",
+    "status": "todo",
+    "title": "Fix onboarding email 06"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 305,
+    "due": "2026-12-16",
+    "owner": "Blake Sample",
+    "status": "todo",
+    "title": "Fix onboarding email 06"
+   },
+   "firstSeen": "2026-10-06T09:00:00Z",
+   "key": "t06",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-06T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 305,
+      "due": "2026-12-16",
+      "owner": "Blake Sample",
+      "status": "todo",
+      "title": "Fix onboarding email 06"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 305,
+      "due": "2026-12-16",
+      "owner": "Blake Sample",
+      "status": "todo",
+      "title": "Fix onboarding email 06"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t07": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 342,
+     "due": "2026-10-19",
+     "owner": "Casey Demo",
+     "status": "done",
+     "title": "Draft pricing page 07"
+    }
+   },
+   "display": {
+    "amount": 342,
+    "due": "2026-10-19",
+    "owner": "Casey Demo",
+    "status": "done",
+    "title": "Draft pricing page 07"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 342,
+    "due": "2026-10-19",
+    "owner": "Casey Demo",
+    "status": "done",
+    "title": "Draft pricing page 07"
+   },
+   "firstSeen": "2026-09-07T09:00:00Z",
+   "key": "t07",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-07T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 342,
+      "due": "2026-10-19",
+      "owner": "Casey Demo",
+      "status": "done",
+      "title": "Draft pricing page 07"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 342,
+      "due": "2026-10-19",
+      "owner": "Casey Demo",
+      "status": "done",
+      "title": "Draft pricing page 07"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t08": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 379,
+     "due": "2026-11-22",
+     "owner": "Drew Example",
+     "status": "todo",
+     "title": "Review support macro 08"
+    }
+   },
+   "display": {
+    "amount": 379,
+    "due": "2026-11-22",
+    "owner": "Drew Example",
+    "status": "todo",
+    "title": "Review support macro 08"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 379,
+    "due": "2026-11-22",
+    "owner": "Drew Example",
+    "status": "todo",
+    "title": "Review support macro 08"
+   },
+   "firstSeen": "2026-10-08T09:00:00Z",
+   "key": "t08",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-08T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 379,
+      "due": "2026-11-22",
+      "owner": "Drew Example",
+      "status": "todo",
+      "title": "Review support macro 08"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 379,
+      "due": "2026-11-22",
+      "owner": "Drew Example",
+      "status": "todo",
+      "title": "Review support macro 08"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t09": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 416,
+     "due": "2026-12-25",
+     "owner": "Avery Test",
+     "status": "doing",
+     "title": "Ship invoice export 09"
+    }
+   },
+   "display": {
+    "amount": 416,
+    "due": "2026-12-25",
+    "owner": "Avery Test",
+    "status": "doing",
+    "title": "Ship invoice export 09"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 416,
+    "due": "2026-12-25",
+    "owner": "Avery Test",
+    "status": "doing",
+    "title": "Ship invoice export 09"
+   },
+   "firstSeen": "2026-09-09T09:00:00Z",
+   "key": "t09",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-09T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 416,
+      "due": "2026-12-25",
+      "owner": "Avery Test",
+      "status": "doing",
+      "title": "Ship invoice export 09"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 416,
+      "due": "2026-12-25",
+      "owner": "Avery Test",
+      "status": "doing",
+      "title": "Ship invoice export 09"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t10": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 453,
+     "due": "2026-10-28",
+     "owner": "Blake Sample",
+     "status": "todo",
+     "title": "Audit backup job 10"
+    }
+   },
+   "display": {
+    "amount": 453,
+    "due": "2026-10-28",
+    "owner": "Blake Sample",
+    "status": "todo",
+    "title": "Audit backup job 10"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 453,
+    "due": "2026-10-28",
+    "owner": "Blake Sample",
+    "status": "todo",
+    "title": "Audit backup job 10"
+   },
+   "firstSeen": "2026-10-10T09:00:00Z",
+   "key": "t10",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-10T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 453,
+      "due": "2026-10-28",
+      "owner": "Blake Sample",
+      "status": "todo",
+      "title": "Audit backup job 10"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 453,
+      "due": "2026-10-28",
+      "owner": "Blake Sample",
+      "status": "todo",
+      "title": "Audit backup job 10"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t11": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 490,
+     "due": "2026-11-03",
+     "owner": "Casey Demo",
+     "status": "doing",
+     "title": "Plan release notes 11"
+    }
+   },
+   "display": {
+    "amount": 490,
+    "due": "2026-11-03",
+    "owner": "Casey Demo",
+    "status": "doing",
+    "title": "Plan release notes 11"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 490,
+    "due": "2026-11-03",
+    "owner": "Casey Demo",
+    "status": "doing",
+    "title": "Plan release notes 11"
+   },
+   "firstSeen": "2026-09-11T09:00:00Z",
+   "key": "t11",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-11T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 490,
+      "due": "2026-11-03",
+      "owner": "Casey Demo",
+      "status": "doing",
+      "title": "Plan release notes 11"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 490,
+      "due": "2026-11-03",
+      "owner": "Casey Demo",
+      "status": "doing",
+      "title": "Plan release notes 11"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t12": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 527,
+     "due": "2026-12-06",
+     "owner": "Drew Example",
+     "status": "done",
+     "title": "Fix onboarding email 12"
+    }
+   },
+   "display": {
+    "amount": 527,
+    "due": "2026-12-06",
+    "owner": "Drew Example",
+    "status": "done",
+    "title": "Fix onboarding email 12"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 527,
+    "due": "2026-12-06",
+    "owner": "Drew Example",
+    "status": "done",
+    "title": "Fix onboarding email 12"
+   },
+   "firstSeen": "2026-10-12T09:00:00Z",
+   "key": "t12",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-12T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 527,
+      "due": "2026-12-06",
+      "owner": "Drew Example",
+      "status": "done",
+      "title": "Fix onboarding email 12"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 527,
+      "due": "2026-12-06",
+      "owner": "Drew Example",
+      "status": "done",
+      "title": "Fix onboarding email 12"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t13": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 564,
+     "due": "2026-10-09",
+     "owner": "Avery Test",
+     "status": "doing",
+     "title": "Draft pricing page 13"
+    }
+   },
+   "display": {
+    "amount": 564,
+    "due": "2026-10-09",
+    "owner": "Avery Test",
+    "status": "doing",
+    "title": "Draft pricing page 13"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 564,
+    "due": "2026-10-09",
+    "owner": "Avery Test",
+    "status": "doing",
+    "title": "Draft pricing page 13"
+   },
+   "firstSeen": "2026-09-13T09:00:00Z",
+   "key": "t13",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-13T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 564,
+      "due": "2026-10-09",
+      "owner": "Avery Test",
+      "status": "doing",
+      "title": "Draft pricing page 13"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 564,
+      "due": "2026-10-09",
+      "owner": "Avery Test",
+      "status": "doing",
+      "title": "Draft pricing page 13"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t14": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 601,
+     "due": "2026-11-12",
+     "owner": "Blake Sample",
+     "status": "done",
+     "title": "Review support macro 14"
+    }
+   },
+   "display": {
+    "amount": 601,
+    "due": "2026-11-12",
+    "owner": "Blake Sample",
+    "status": "done",
+    "title": "Review support macro 14"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 601,
+    "due": "2026-11-12",
+    "owner": "Blake Sample",
+    "status": "done",
+    "title": "Review support macro 14"
+   },
+   "firstSeen": "2026-10-14T09:00:00Z",
+   "key": "t14",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-14T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 601,
+      "due": "2026-11-12",
+      "owner": "Blake Sample",
+      "status": "done",
+      "title": "Review support macro 14"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 601,
+      "due": "2026-11-12",
+      "owner": "Blake Sample",
+      "status": "done",
+      "title": "Review support macro 14"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t15": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 638,
+     "due": "2026-12-15",
+     "owner": "Casey Demo",
+     "status": "todo",
+     "title": "Ship invoice export 15"
+    }
+   },
+   "display": {
+    "amount": 638,
+    "due": "2026-12-15",
+    "owner": "Casey Demo",
+    "status": "todo",
+    "title": "Ship invoice export 15"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 638,
+    "due": "2026-12-15",
+    "owner": "Casey Demo",
+    "status": "todo",
+    "title": "Ship invoice export 15"
+   },
+   "firstSeen": "2026-09-15T09:00:00Z",
+   "key": "t15",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-15T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 638,
+      "due": "2026-12-15",
+      "owner": "Casey Demo",
+      "status": "todo",
+      "title": "Ship invoice export 15"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 638,
+      "due": "2026-12-15",
+      "owner": "Casey Demo",
+      "status": "todo",
+      "title": "Ship invoice export 15"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t16": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 675,
+     "due": "2026-10-18",
+     "owner": "Drew Example",
+     "status": "done",
+     "title": "Audit backup job 16"
+    }
+   },
+   "display": {
+    "amount": 675,
+    "due": "2026-10-18",
+    "owner": "Drew Example",
+    "status": "done",
+    "title": "Audit backup job 16"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 675,
+    "due": "2026-10-18",
+    "owner": "Drew Example",
+    "status": "done",
+    "title": "Audit backup job 16"
+   },
+   "firstSeen": "2026-10-16T09:00:00Z",
+   "key": "t16",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-16T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 675,
+      "due": "2026-10-18",
+      "owner": "Drew Example",
+      "status": "done",
+      "title": "Audit backup job 16"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 675,
+      "due": "2026-10-18",
+      "owner": "Drew Example",
+      "status": "done",
+      "title": "Audit backup job 16"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t17": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 712,
+     "due": "2026-11-21",
+     "owner": "Avery Test",
+     "status": "todo",
+     "title": "Plan release notes 17"
+    }
+   },
+   "display": {
+    "amount": 712,
+    "due": "2026-11-21",
+    "owner": "Avery Test",
+    "status": "todo",
+    "title": "Plan release notes 17"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 712,
+    "due": "2026-11-21",
+    "owner": "Avery Test",
+    "status": "todo",
+    "title": "Plan release notes 17"
+   },
+   "firstSeen": "2026-09-17T09:00:00Z",
+   "key": "t17",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-17T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 712,
+      "due": "2026-11-21",
+      "owner": "Avery Test",
+      "status": "todo",
+      "title": "Plan release notes 17"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 712,
+      "due": "2026-11-21",
+      "owner": "Avery Test",
+      "status": "todo",
+      "title": "Plan release notes 17"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t18": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 749,
+     "due": "2026-12-24",
+     "owner": "Blake Sample",
+     "status": "doing",
+     "title": "Fix onboarding email 18"
+    }
+   },
+   "display": {
+    "amount": 749,
+    "due": "2026-12-24",
+    "owner": "Blake Sample",
+    "status": "doing",
+    "title": "Fix onboarding email 18"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 749,
+    "due": "2026-12-24",
+    "owner": "Blake Sample",
+    "status": "doing",
+    "title": "Fix onboarding email 18"
+   },
+   "firstSeen": "2026-10-18T09:00:00Z",
+   "key": "t18",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-18T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 749,
+      "due": "2026-12-24",
+      "owner": "Blake Sample",
+      "status": "doing",
+      "title": "Fix onboarding email 18"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 749,
+      "due": "2026-12-24",
+      "owner": "Blake Sample",
+      "status": "doing",
+      "title": "Fix onboarding email 18"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t19": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 786,
+     "due": "2026-10-27",
+     "owner": "Casey Demo",
+     "status": "todo",
+     "title": "Draft pricing page 19"
+    }
+   },
+   "display": {
+    "amount": 786,
+    "due": "2026-10-27",
+    "owner": "Casey Demo",
+    "status": "todo",
+    "title": "Draft pricing page 19"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 786,
+    "due": "2026-10-27",
+    "owner": "Casey Demo",
+    "status": "todo",
+    "title": "Draft pricing page 19"
+   },
+   "firstSeen": "2026-09-19T09:00:00Z",
+   "key": "t19",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-19T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 786,
+      "due": "2026-10-27",
+      "owner": "Casey Demo",
+      "status": "todo",
+      "title": "Draft pricing page 19"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 786,
+      "due": "2026-10-27",
+      "owner": "Casey Demo",
+      "status": "todo",
+      "title": "Draft pricing page 19"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t20": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 823,
+     "due": "2026-11-02",
+     "owner": "Drew Example",
+     "status": "doing",
+     "title": "Review support macro 20"
+    }
+   },
+   "display": {
+    "amount": 823,
+    "due": "2026-11-02",
+    "owner": "Drew Example",
+    "status": "doing",
+    "title": "Review support macro 20"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 823,
+    "due": "2026-11-02",
+    "owner": "Drew Example",
+    "status": "doing",
+    "title": "Review support macro 20"
+   },
+   "firstSeen": "2026-10-20T09:00:00Z",
+   "key": "t20",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-20T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 823,
+      "due": "2026-11-02",
+      "owner": "Drew Example",
+      "status": "doing",
+      "title": "Review support macro 20"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 823,
+      "due": "2026-11-02",
+      "owner": "Drew Example",
+      "status": "doing",
+      "title": "Review support macro 20"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t21": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 860,
+     "due": "2026-12-05",
+     "owner": "Avery Test",
+     "status": "done",
+     "title": "Ship invoice export 21"
+    }
+   },
+   "display": {
+    "amount": 860,
+    "due": "2026-12-05",
+    "owner": "Avery Test",
+    "status": "done",
+    "title": "Ship invoice export 21"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 860,
+    "due": "2026-12-05",
+    "owner": "Avery Test",
+    "status": "done",
+    "title": "Ship invoice export 21"
+   },
+   "firstSeen": "2026-09-21T09:00:00Z",
+   "key": "t21",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-21T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 860,
+      "due": "2026-12-05",
+      "owner": "Avery Test",
+      "status": "done",
+      "title": "Ship invoice export 21"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 860,
+      "due": "2026-12-05",
+      "owner": "Avery Test",
+      "status": "done",
+      "title": "Ship invoice export 21"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t22": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 897,
+     "due": "2026-10-08",
+     "owner": "Blake Sample",
+     "status": "doing",
+     "title": "Audit backup job 22"
+    }
+   },
+   "display": {
+    "amount": 897,
+    "due": "2026-10-08",
+    "owner": "Blake Sample",
+    "status": "doing",
+    "title": "Audit backup job 22"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 897,
+    "due": "2026-10-08",
+    "owner": "Blake Sample",
+    "status": "doing",
+    "title": "Audit backup job 22"
+   },
+   "firstSeen": "2026-10-22T09:00:00Z",
+   "key": "t22",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-22T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 897,
+      "due": "2026-10-08",
+      "owner": "Blake Sample",
+      "status": "doing",
+      "title": "Audit backup job 22"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 897,
+      "due": "2026-10-08",
+      "owner": "Blake Sample",
+      "status": "doing",
+      "title": "Audit backup job 22"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t23": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 934,
+     "due": "2026-11-11",
+     "owner": "Casey Demo",
+     "status": "done",
+     "title": "Plan release notes 23"
+    }
+   },
+   "display": {
+    "amount": 934,
+    "due": "2026-11-11",
+    "owner": "Casey Demo",
+    "status": "done",
+    "title": "Plan release notes 23"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 934,
+    "due": "2026-11-11",
+    "owner": "Casey Demo",
+    "status": "done",
+    "title": "Plan release notes 23"
+   },
+   "firstSeen": "2026-09-23T09:00:00Z",
+   "key": "t23",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-23T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 934,
+      "due": "2026-11-11",
+      "owner": "Casey Demo",
+      "status": "done",
+      "title": "Plan release notes 23"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 934,
+      "due": "2026-11-11",
+      "owner": "Casey Demo",
+      "status": "done",
+      "title": "Plan release notes 23"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t24": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 971,
+     "due": "2026-12-14",
+     "owner": "Drew Example",
+     "status": "todo",
+     "title": "Fix onboarding email 24"
+    }
+   },
+   "display": {
+    "amount": 971,
+    "due": "2026-12-14",
+    "owner": "Drew Example",
+    "status": "todo",
+    "title": "Fix onboarding email 24"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 971,
+    "due": "2026-12-14",
+    "owner": "Drew Example",
+    "status": "todo",
+    "title": "Fix onboarding email 24"
+   },
+   "firstSeen": "2026-10-24T09:00:00Z",
+   "key": "t24",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-24T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 971,
+      "due": "2026-12-14",
+      "owner": "Drew Example",
+      "status": "todo",
+      "title": "Fix onboarding email 24"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 971,
+      "due": "2026-12-14",
+      "owner": "Drew Example",
+      "status": "todo",
+      "title": "Fix onboarding email 24"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t25": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 1008,
+     "due": "2026-10-17",
+     "owner": "Avery Test",
+     "status": "done",
+     "title": "Draft pricing page 25"
+    }
+   },
+   "display": {
+    "amount": 1008,
+    "due": "2026-10-17",
+    "owner": "Avery Test",
+    "status": "done",
+    "title": "Draft pricing page 25"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 1008,
+    "due": "2026-10-17",
+    "owner": "Avery Test",
+    "status": "done",
+    "title": "Draft pricing page 25"
+   },
+   "firstSeen": "2026-09-25T09:00:00Z",
+   "key": "t25",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-25T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 1008,
+      "due": "2026-10-17",
+      "owner": "Avery Test",
+      "status": "done",
+      "title": "Draft pricing page 25"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 1008,
+      "due": "2026-10-17",
+      "owner": "Avery Test",
+      "status": "done",
+      "title": "Draft pricing page 25"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t26": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 145,
+     "due": "2026-11-20",
+     "owner": "Blake Sample",
+     "status": "todo",
+     "title": "Review support macro 26"
+    }
+   },
+   "display": {
+    "amount": 145,
+    "due": "2026-11-20",
+    "owner": "Blake Sample",
+    "status": "todo",
+    "title": "Review support macro 26"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 145,
+    "due": "2026-11-20",
+    "owner": "Blake Sample",
+    "status": "todo",
+    "title": "Review support macro 26"
+   },
+   "firstSeen": "2026-10-26T09:00:00Z",
+   "key": "t26",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-26T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 145,
+      "due": "2026-11-20",
+      "owner": "Blake Sample",
+      "status": "todo",
+      "title": "Review support macro 26"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 145,
+      "due": "2026-11-20",
+      "owner": "Blake Sample",
+      "status": "todo",
+      "title": "Review support macro 26"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t27": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 182,
+     "due": "2026-12-23",
+     "owner": "Casey Demo",
+     "status": "doing",
+     "title": "Ship invoice export 27"
+    }
+   },
+   "display": {
+    "amount": 182,
+    "due": "2026-12-23",
+    "owner": "Casey Demo",
+    "status": "doing",
+    "title": "Ship invoice export 27"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 182,
+    "due": "2026-12-23",
+    "owner": "Casey Demo",
+    "status": "doing",
+    "title": "Ship invoice export 27"
+   },
+   "firstSeen": "2026-09-27T09:00:00Z",
+   "key": "t27",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-27T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 182,
+      "due": "2026-12-23",
+      "owner": "Casey Demo",
+      "status": "doing",
+      "title": "Ship invoice export 27"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 182,
+      "due": "2026-12-23",
+      "owner": "Casey Demo",
+      "status": "doing",
+      "title": "Ship invoice export 27"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t28": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 219,
+     "due": "2026-10-26",
+     "owner": "Drew Example",
+     "status": "todo",
+     "title": "Audit backup job 28"
+    }
+   },
+   "display": {
+    "amount": 219,
+    "due": "2026-10-26",
+    "owner": "Drew Example",
+    "status": "todo",
+    "title": "Audit backup job 28"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 219,
+    "due": "2026-10-26",
+    "owner": "Drew Example",
+    "status": "todo",
+    "title": "Audit backup job 28"
+   },
+   "firstSeen": "2026-10-01T09:00:00Z",
+   "key": "t28",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-01T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 219,
+      "due": "2026-10-26",
+      "owner": "Drew Example",
+      "status": "todo",
+      "title": "Audit backup job 28"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 219,
+      "due": "2026-10-26",
+      "owner": "Drew Example",
+      "status": "todo",
+      "title": "Audit backup job 28"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t29": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 256,
+     "due": "2026-11-01",
+     "owner": "Avery Test",
+     "status": "doing",
+     "title": "Plan release notes 29"
+    }
+   },
+   "display": {
+    "amount": 256,
+    "due": "2026-11-01",
+    "owner": "Avery Test",
+    "status": "doing",
+    "title": "Plan release notes 29"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 256,
+    "due": "2026-11-01",
+    "owner": "Avery Test",
+    "status": "doing",
+    "title": "Plan release notes 29"
+   },
+   "firstSeen": "2026-09-02T09:00:00Z",
+   "key": "t29",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-09-02T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 256,
+      "due": "2026-11-01",
+      "owner": "Avery Test",
+      "status": "doing",
+      "title": "Plan release notes 29"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 256,
+      "due": "2026-11-01",
+      "owner": "Avery Test",
+      "status": "doing",
+      "title": "Plan release notes 29"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "entities/task--t30": {
+  "data": {
+   "agentFields": {},
+   "bySource": {
+    "demo": {
+     "amount": 293,
+     "due": "2026-12-04",
+     "owner": "Blake Sample",
+     "status": "done",
+     "title": "Fix onboarding email 30"
+    }
+   },
+   "display": {
+    "amount": 293,
+    "due": "2026-12-04",
+    "owner": "Blake Sample",
+    "status": "done",
+    "title": "Fix onboarding email 30"
+   },
+   "dropReason": null,
+   "fields": {
+    "amount": 293,
+    "due": "2026-12-04",
+    "owner": "Blake Sample",
+    "status": "done",
+    "title": "Fix onboarding email 30"
+   },
+   "firstSeen": "2026-10-03T09:00:00Z",
+   "key": "t30",
+   "lastSeen": "2026-10-30T09:00:00Z",
+   "links": [],
+   "schema": 1,
+   "seenCount": 2,
+   "sightings": [
+    {
+     "at": "2026-10-03T09:00:00Z",
+     "dropReason": null,
+     "outcome": "new",
+     "producer": "demo",
+     "run": "demo-1",
+     "values": {
+      "amount": 293,
+      "due": "2026-12-04",
+      "owner": "Blake Sample",
+      "status": "done",
+      "title": "Fix onboarding email 30"
+     }
+    },
+    {
+     "at": "2026-10-30T09:00:00Z",
+     "dropReason": null,
+     "outcome": "updated",
+     "producer": "demo",
+     "run": "demo-2",
+     "values": {
+      "amount": 293,
+      "due": "2026-12-04",
+      "owner": "Blake Sample",
+      "status": "done",
+      "title": "Fix onboarding email 30"
+     }
+    }
+   ],
+   "sources": [
+    "demo"
+   ],
+   "status": "active",
+   "type": "task"
+  },
+  "version": 1
+ },
+ "meta/definition": {
+  "data": {
+   "label": "Raw page samples",
+   "producers": [],
+   "schema": 1,
+   "types": {
+    "task": {
+     "fields": {
+      "amount": {
+       "label": "Amount",
+       "type": "number"
+      },
+      "due": {
+       "label": "Due",
+       "type": "date"
+      },
+      "owner": {
+       "label": "Owner",
+       "summary": true,
+       "type": "text"
+      },
+      "status": {
+       "choices": [
+        "todo",
+        "doing",
+        "done"
+       ],
+       "label": "Status",
+       "summary": true,
+       "type": "choice"
+      },
+      "title": {
+       "label": "Title",
+       "summary": true,
+       "type": "text"
+      }
+     },
+     "identity": "field:title",
+     "label": "Task",
+     "plural": "Tasks",
+     "shared": true
+    }
+   },
+   "version": 1,
+   "views": []
+  },
+  "version": 1
+ },
+ "meta/owner": {
+  "data": {
+   "at": "2026-09-01T09:00:00Z",
+   "by": "u_owner"
+  },
+  "version": 1
+ },
+ "meta/workspace": {
+  "data": {
+   "createdAt": "2026-09-01T09:00:00Z",
+   "createdBy": "routineos new",
+   "name": "Raw page samples",
+   "producers": [],
+   "schema": 1
+  },
+  "version": 1
+ }
+}

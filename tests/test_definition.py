@@ -202,6 +202,23 @@ class SettingKeyTests(unittest.TestCase):
         self.assertTrue(self.lint({"name": "n", "type": "toggle", "default": True, "label": 3}))
 
 
+    def test_shared_must_be_true_when_present(self):
+        d = company_defn()
+        d["types"]["company"]["shared"] = "yes"
+        problems = definition.lint(d, [])
+        self.assertTrue([p for p in problems if "shared" in p and "company" in p], problems)
+
+    def test_shared_true_lints_clean(self):
+        d = company_defn()
+        d["types"]["company"]["shared"] = True
+        self.assertEqual(definition.lint(d, []), [])
+
+    def test_shared_false_lints_clean(self):
+        d = company_defn()
+        d["types"]["company"]["shared"] = False
+        self.assertEqual(definition.lint(d, []), [])
+
+
 class CompileTests(unittest.TestCase):
     def test_conflicting_identity_rules_fail(self):
         with self.assertRaises(definition.DefinitionError) as cm:
@@ -258,6 +275,25 @@ class CompileTests(unittest.TestCase):
         del bad["types"]["company"]["identity"]
         with self.assertRaises(definition.DefinitionError):
             definition.compile([producer("a", bad)])
+
+    def test_shared_carries_into_compiled_type(self):
+        d = company_defn()
+        d["types"]["company"]["shared"] = True
+        other = company_defn()
+        other["types"]["company"]["shared"] = True
+        out = definition.compile([producer("a", d), producer("b", other)])
+        self.assertTrue(out["types"]["company"]["shared"])
+        plain = definition.compile([producer("a", company_defn())])
+        self.assertNotIn("shared", plain["types"]["company"])
+
+    def test_shared_disagreement_between_producers_fails(self):
+        a = company_defn()
+        a["types"]["company"]["shared"] = True
+        b = company_defn()
+        b["types"]["company"]["shared"] = False
+        with self.assertRaises(definition.DefinitionError) as cm:
+            definition.compile([producer("a", a), producer("b", b)])
+        self.assertIn("shared", str(cm.exception))
 
     def test_oversized_definition_fails(self):
         big = copy.deepcopy(company_defn())

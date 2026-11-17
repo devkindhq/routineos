@@ -40,7 +40,7 @@ const PAGES = [
   ["settings-about", "#/settings/about", /About/],
 ];
 
-// States from recon 1.2 (the lazy-loading and CDN states went with the split build).
+// States from recon 1.2 (the lazy-loading and CDN states went with the split build and Web Awesome).
 const STATES = [
   ["not-set-up", { snap: "empty" }, /is not set up yet/],
   ["first-run", { snap: "first-run" }, /Nothing has run yet/],

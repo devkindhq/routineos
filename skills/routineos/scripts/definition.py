@@ -108,6 +108,9 @@ def _lint_type(tname, tdef, types, settings):
         elif ftype == "choice" and not (isinstance(fdef.get("choices"), list) and fdef["choices"]):
             problems.append(f"type '{tname}' field '{fname}': choice field needs a choices list")
     problems += _lint_identity(tname, tdef)
+    if "shared" in tdef and not isinstance(tdef["shared"], bool):
+        problems.append(f"type '{tname}': shared must be true or false (true lets people, AI workers and "
+                        f"producers write the same records)")
     if "icon" in tdef:
         problems += lint_icon(f"type '{tname}'", tdef["icon"])
     if tdef.get("merge", "merge") not in MERGE_POLICIES:
@@ -731,6 +734,8 @@ def compile(producers) -> dict:
                 }
                 if "icon" in tdef:
                     types[tname]["icon"] = tdef["icon"]
+                if tdef.get("shared"):
+                    types[tname]["shared"] = True
                 continue
             if cur["identity"] != tdef.get("identity"):
                 problems.append(
@@ -738,6 +743,9 @@ def compile(producers) -> dict:
                     f"but '{tdef.get('identity')}' in {pid}")
             if cur["merge"] != merge:
                 problems.append(f"type '{tname}': merge default differs between {cur['producers'][0]} and {pid}")
+            if bool(cur.get("shared")) != bool(tdef.get("shared")):
+                problems.append(f"type '{tname}': shared differs between {cur['producers'][0]} and {pid}; "
+                                f"producers of one type must agree")
             for fname, fdef in tdef.get("fields", {}).items():
                 old = cur["fields"].get(fname)
                 if old is not None and old.get("type") != fdef.get("type"):

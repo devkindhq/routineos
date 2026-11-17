@@ -15,6 +15,8 @@ import tempfile
 import tomllib
 
 import definition
+import desk_libs
+import desk_raw
 
 REGISTRY = os.path.join("assets", "desk", "components", "registry.json")
 DESK = os.path.join("assets", "desk")
@@ -250,14 +252,15 @@ def lint_routine_only(root, routine):
 COMPONENTS_DIR = os.path.join("desk", "components")
 # "wa" is accepted and ignored: manifests written before the Mantine Desk carry it.
 CUSTOM_KEYS = ("id", "kind", "slot", "factory", "summary", "why", "wa", "fallback", "since",
-               "types", "view", "title", "nav", "verbs", "placement", "prefs")
+               "types", "view", "title", "nav", "verbs", "placement", "prefs", "raw")
 CUSTOM_REQUIRED = ("id", "kind", "slot", "factory", "summary", "why", "fallback", "since")
 SLOTS = ("field-cell", "record-section", "panel", "page")
+RAW_SLOTS = ("record-section", "panel", "page")
 # Extra manifest keys each slot may carry, and the ones it must carry.
 SLOT_KEYS = {"field-cell": (), "record-section": ("types", "title", "verbs", "placement", "prefs"),
              "panel": ("view", "title", "verbs", "prefs"), "page": ("title", "nav", "verbs", "prefs")}
 PLACEMENTS = ("top", "after-summary", "after-fields")
-VERBS = ("decide", "comment", "saveField", "drop", "keep", "request")
+VERBS = ("decide", "comment", "saveField", "drop", "keep", "request", "upsert")
 SLOT_REQUIRED = {"field-cell": (), "record-section": ("types",), "panel": ("view",), "page": ("title",)}
 INTERACTIVE_SLOTS = ("record-section", "panel", "page")
 WHY_MIN = 40
@@ -339,25 +342,58 @@ def extension_rows(routine_dir):
         if problems or m is None:
             rows.append({"id": folder, "invalid": True, "problems": problems})
             continue
+        raw = is_raw(m)
         try:
-            text = _read(os.path.join(d, folder + ".js"))
+            text = "" if raw else _read(os.path.join(d, folder + ".js"))
         except OSError:
             text = ""
         slot = m["slot"]
-        rows.append({"id": folder, "invalid": False, "slot": slot, "where": WHERE.get(slot, "?"),
-                     "verbs": list(m.get("verbs") or []), "prefs": m.get("prefs") is True,
-                     "placement": m.get("placement", "after-summary") if slot == "record-section" else None, "hash": component_hash(d),
-                     "reads": sorted({a or b for a, b in READ_RE.findall(text)}),
-                     "types": list(m["types"]) if slot == "record-section" else
-                     [m["view"]["type"]] if slot == "panel" else []})
+        row = {"id": folder, "invalid": False, "slot": slot, "where": WHERE.get(slot, "?"),
+               "verbs": list(m.get("verbs") or []), "prefs": m.get("prefs") is True,
+               "placement": m.get("placement", "after-summary") if slot == "record-section" else None, "hash": component_hash(d),
+               "reads": sorted({a or b for a, b in READ_RE.findall(text)}),
+               "types": list(m["types"]) if slot == "record-section" else
+               [m["view"]["type"]] if slot == "panel" else []}
+        if raw:
+            row.update(raw=True, libraries=raw_libraries(d))
+        rows.append(row)
     return rows
 
 
 APPROVALS_FILE = "approvals.json"
 
 
+def is_raw(manifest):
+    """True when the manifest opts in to a raw React page with raw: true."""
+    return isinstance(manifest, dict) and manifest.get("raw") is True
+
+
+def raw_source(comp_dir):
+    """Path of the one raw page source (<id>.jsx or <id>.js) in comp_dir, or None when there is none or both."""
+    folder = os.path.basename(os.path.normpath(comp_dir))
+    found = [os.path.join(comp_dir, folder + ext) for ext in (".jsx", ".js")
+             if os.path.isfile(os.path.join(comp_dir, folder + ext))]
+    return found[0] if len(found) == 1 else None
+
+
+def raw_libraries(comp_dir):
+    """Sorted "specifier@version" for each registry library the raw page imports; [] when it cannot be read."""
+    path = raw_source(comp_dir)
+    if not path:
+        return []
+    try:
+        specifiers = desk_raw.rewrite_module(_read(path), os.path.basename(path), desk_libs.load_exports()).specifiers
+        have = desk_libs.versions(desk_libs.load_libraries())
+    except (OSError, ValueError, KeyError, desk_libs.LibraryError):
+        return []
+    # The compiled thunk always runs through DESK_LIB.react (the prologue), so react is an implicit import.
+    return sorted("%s@%s" % (s, have.get(s, "?")) for s in set(specifiers) | {"react"})
+
+
 def component_hash(comp_dir):
-    """sha256 of a component's manifest bytes, a NUL and its code bytes: what the owner approves."""
+    """sha256 of a component's manifest bytes, a NUL and its code bytes: what the owner approves. A raw page adds its
+    .jsx bytes, the transformer id and the versions of the libraries it imports, so a change to any of them is a new
+    approval."""
     folder = os.path.basename(os.path.normpath(comp_dir))
     h = hashlib.sha256()
     for name in ("component.json", folder + ".js"):
@@ -367,6 +403,13 @@ def component_hash(comp_dir):
         except OSError:
             pass
         h.update(b"\0")
+    if is_raw(_manifest(comp_dir)):
+        try:
+            with open(os.path.join(comp_dir, folder + ".jsx"), "rb") as f:
+                h.update(f.read())
+        except OSError:
+            pass
+        h.update(b"\0" + desk_raw.TRANSFORMER_ID.encode("utf-8") + b"\0" + ",".join(raw_libraries(comp_dir)).encode("utf-8") + b"\0")
     return h.hexdigest()
 
 
@@ -434,14 +477,17 @@ def custom_components(routine_dir):
     for d in _component_dirs(routine_dir):
         m = _manifest(d) or {}
         cid = m.get("id") if isinstance(m.get("id"), str) else os.path.basename(d)
+        if is_raw(m):
+            out.append(dict(m, id=cid, factory=None, path=d, source=raw_source(d)))
+            continue
         factory = m.get("factory") if isinstance(m.get("factory"), str) else factory_name(cid)
         out.append(dict(m, id=cid, factory=factory, path=d))
     return out
 
 
 def _custom_entry(c):
-    """A custom component as a registry entry (kind custom, no slot, why or path)."""
-    entry = {k: c[k] for k in ENTRY_KEYS if k in c and k != "props"}
+    """A custom component as a registry entry (kind custom, no slot, why or path; a raw page has no factory)."""
+    entry = {k: c[k] for k in ENTRY_KEYS if k in c and k != "props" and not (k == "factory" and c[k] is None)}
     entry["kind"] = "custom"
     return entry
 
@@ -481,15 +527,23 @@ def _check_custom_manifest(m, folder):
     for key in sorted(set(m) - set(CUSTOM_KEYS)):
         problems.append(f"{label}: unknown key '{key}'" if key != "props" else
                         f"{label}: a custom component has no props; the field cell slot fixes them")
+    raw = is_raw(m)
+    if "raw" in m and not isinstance(m["raw"], bool):
+        problems.append(f"{label}: raw must be true or false")
     for key in CUSTOM_REQUIRED:
-        if key not in m:
+        if key not in m and not (raw and key == "factory"):
             problems.append(f"{label}: '{key}' is required")
     if m.get("kind") != "custom":
         problems.append(f"{label}: kind must be custom")
+    if raw:
+        if "factory" in m:
+            problems.append(f"{label}: a raw page has no factory; the Desk takes its default export")
+        if m.get("slot") == "field-cell":
+            problems.append(f"{label}: a raw page cannot be a field-cell; use {', '.join(RAW_SLOTS)}")
     # Shared checks (id, factory, fallback, summary, since) run on the registry shape of the entry.
-    shared = {k: v for k, v in m.items() if k in ENTRY_KEYS and k not in ("kind", "props")}
+    shared = {k: v for k, v in m.items() if k in ENTRY_KEYS and k not in ("kind", "props") and not (raw and k == "factory")}
     problems += [p for p in _check_entry(dict(shared, kind="custom"))
-                 if "is required" not in p and "unknown key" not in p]
+                 if "is required" not in p and "unknown key" not in p and not (raw and "a custom factory is" in p)]
     cid = m.get("id")
     if isinstance(cid, str) and cid != folder:
         problems.append(f"{label}: id must equal its folder name '{folder}'")
@@ -723,6 +777,28 @@ def _check_custom_js(text, rel, factory, names, parse=True, names_apply=True):
     return problems
 
 
+def _lint_raw(comp_dir, folder, parse):
+    """Source checks for a raw page: one source file, the size cap, the compile problems (imports, default export,
+    markers, JSX) and, when node exists, node --check on the compiled thunk body. The banned-API text lint and the ctx
+    checks are for factory components and do not apply: the page is the owner's reviewed code."""
+    path = raw_source(comp_dir)
+    if not path:
+        if all(os.path.isfile(os.path.join(comp_dir, folder + ext)) for ext in (".jsx", ".js")):
+            return [f"{folder}: a raw page has both {folder}.jsx and {folder}.js; keep one"]
+        return [f"{folder}: a raw page needs {folder}.jsx or {folder}.js"]
+    rel = f"{folder}/{os.path.basename(path)}"
+    if os.path.getsize(path) > MAX_COMPONENT_BYTES:
+        return [f"{rel}: larger than {MAX_COMPONENT_BYTES // 1024} KiB; split it or use a spec page (desk.pages)"]
+    try:
+        desk_libs.load_libraries()  # the hash reads the pinned versions; an unreadable registry must not reach approval
+        compiled = desk_raw.compile_page(comp_dir)
+    except desk_libs.LibraryError as exc:
+        return [f"{rel}: {exc}"]
+    if compiled.problems:
+        return compiled.problems
+    return _parse_problems(compiled.js, rel) if parse else []
+
+
 def lint_component(comp_dir, definition=None, parse=True):
     """Problems with one custom component folder; `definition` is the routine's definition dict, when it has one.
     With `parse`, the component must also pass node --check (skipped with a note when node is not on PATH)."""
@@ -732,6 +808,8 @@ def lint_component(comp_dir, definition=None, parse=True):
         return [f"component '{folder}': component.json is missing or not a JSON object"]
     problems = _check_custom_manifest(m, folder)
     cid = m.get("id") if isinstance(m.get("id"), str) else folder
+    if is_raw(m):
+        return problems + _lint_raw(comp_dir, folder, parse)
     rel = f"{folder}/{folder}.js"
     try:
         text = _read(os.path.join(comp_dir, folder + ".js"))

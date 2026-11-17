@@ -1,8 +1,10 @@
+import "./deskLib.js";
 import "@mantine/core/styles.css";
 import "@mantine/charts/styles.css";
 import "@mantine/spotlight/styles.css";
 import "@mantine/notifications/styles.css";
 import "mantine-datatable/styles.css";
+import "@mantine/dates/styles.css";
 import { createRoot } from "react-dom/client";
 import { readConfig } from "../core/prefs.js";
 import { createStore } from "../core/store.js";

@@ -15,6 +15,7 @@ import blueprint  # noqa: E402
 import bundle_desk  # noqa: E402
 import definition  # noqa: E402
 import desk_contract  # noqa: E402
+import desk_raw  # noqa: E402
 import desk_registry  # noqa: E402
 import join_card  # noqa: E402
 import join_flow  # noqa: E402
@@ -232,6 +233,17 @@ class DeskPageError(Exception):
         self.problems = problems
 
 
+def _component_script(c):
+    """(script text, problems) for one custom component: a raw page compiles through desk_raw, a factory component is
+    read as it is."""
+    if c.get("raw"):
+        compiled = desk_raw.compile_page(c["path"])
+        if compiled.problems:
+            return None, list(compiled.problems)
+        return bundle_desk.raw_page_js(c["id"], compiled.js, c), []
+    return bundle_desk.component_js(c["id"], c["factory"], _read(os.path.join(c["path"], c["id"] + ".js")), c), []
+
+
 def desk_page(workspace_name, routine_dir=None, tour=None):
     """The built Desk (assets/desk/index.html) with its config block pointing at the artifact db and naming the
     workspace, and the plugin version filled in. A routine with a Blueprint gets the build variant that has the
@@ -252,7 +264,10 @@ def desk_page(workspace_name, routine_dir=None, tour=None):
             raise DeskPageError([f"component '{i}': not approved, or changed since it was approved; review it and run "
                                  f"`routineos permissions <dir> --approve`" for i in stale])
         for c in sorted(desk_registry.custom_components(routine_dir), key=lambda c: c["id"]):
-            comps.append(bundle_desk.component_js(c["id"], c["factory"], _read(os.path.join(c["path"], c["id"] + ".js")), c))
+            js, problems = _component_script(c)
+            if problems:
+                raise DeskPageError(problems)
+            comps.append(js)
     cfg = {"store": "db", "workspace": workspace_name}
     has_bp = bool(routine_dir) and _has_blueprint_anywhere(routine_dir)
     if has_bp:
@@ -712,8 +727,14 @@ def cmd_desk_preview(args):
         return fail(f"no demo data at {snap}; pass --snapshot FILE")
     out = args.out or os.path.join(args.routine, "desk-preview")
     try:
-        comps = [bundle_desk.component_js(c["id"], c["factory"], _read(os.path.join(c["path"], c["id"] + ".js")), c)
-                 for c in sorted(desk_registry.custom_components(args.routine), key=lambda c: c["id"])]
+        comps = []
+        for c in sorted(desk_registry.custom_components(args.routine), key=lambda c: c["id"]):
+            js, problems = _component_script(c)
+            if problems:
+                for p in problems:
+                    print(f"FAIL {p}")
+                return 1
+            comps.append(js)
         with open(DESK_HTML, encoding="utf-8") as fh:
             html = fh.read()
         page = bundle_desk.inject(html, {"store": "static", "snapshot": "snapshot.json"}, bundle_desk.plugin_version(), comps)
@@ -897,7 +918,18 @@ def cmd_permissions(args):
     for rd in routine_dirs(args.dir):
         per[rd] = desk_registry.extension_rows(rd)
         rows += per[rd]
-    sys.stdout.write(permission.render(app, registry.by_id(records), rows))
+    # The shared record types each routine declares (issue #32), for the screen's plain-words list.
+    shared_types = {}
+    for rd in routine_dirs(args.dir):
+        try:
+            defn, _ = _desk_definition(rd)
+        except (OSError, definition.DefinitionError):
+            continue
+        named = sorted(t for t, tdef in (defn.get("types") or {}).items()
+                       if isinstance(tdef, dict) and tdef.get("shared"))
+        if named:
+            shared_types[os.path.basename(rd)] = named
+    sys.stdout.write(permission.render(app, registry.by_id(records), rows, shared_types=shared_types))
     if _has_blueprint_anywhere(args.dir):
         try:
             sys.stdout.write(blueprint.terminal_safe(blueprint.redact(blueprint.permission_section(_blueprint_graph(args.dir, registry.by_id(records))))))
@@ -910,6 +942,10 @@ def cmd_permissions(args):
             if rrows:
                 desk_registry.write_approvals(rd, rrows)
         print("approved: the code shown above is recorded by hash; any later change needs a new approval.")
+        raw_ids = [os.path.basename(os.path.normpath(rd)) + "/" + r["id"]
+                   for rd, rrows in per.items() for r in rrows if r.get("raw")]
+        if raw_ids:
+            print(f"approved raw page(s): {', '.join(raw_ids)}. They run with full access to the Desk for every viewer.")
     return 0
 
 
@@ -1425,8 +1461,12 @@ def _write_worker(args, docs, run):
         raise desk_contract.ContractError(f"laneKey in --run is {run.get('laneKey')!r}, not {lk}")
     card = _join_card_of(docs)
     phases = desk_contract.plan_worker_run(card, docs, run)
+    # The lane's shared record types (issue #32): the types both the lane and the compiled
+    # definition mark shared. plan_worker_run already refused every upsert outside them.
+    defn = (docs.get("meta/definition") or {}).get("data")
+    shared = desk_contract.worker_shared_types(card, docs, defn, lk)
     for ph in phases:
-        desk_contract.guard(ph["ops"], worker=lk)
+        desk_contract.guard(ph["ops"], worker=lk, shared=shared)
     return phases
 
 

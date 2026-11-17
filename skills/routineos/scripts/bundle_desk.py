@@ -32,7 +32,7 @@ VERSION_RE = re.compile(r"[0-9A-Za-z.+-]*")
 COMPONENT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{1,31}$")
 # The inputs of the Vite build. vite.config.js computes the same hash and writes it into the page.
 HASH_DIRS = ("core", "app")
-HASH_FILES = ("package.json", "package-lock.json", "vite.config.js", "index.template.html")
+HASH_FILES = ("package.json", "package-lock.json", "vite.config.js", "index.template.html", "libraries.json")
 # The Blueprint variant also builds blueprint/ and its own template.
 BLUEPRINT_DIRS = ("core", "app", "blueprint")
 BLUEPRINT_FILES = HASH_FILES + ("blueprint.template.html",)
@@ -82,16 +82,30 @@ def component_js(cid, factory, text, meta=None):
         raise BundleError(f"component id {cid!r} is not a component id")
     if factory != "component_" + cid.replace("-", "_"):
         raise BundleError(f"component {cid}: factory must be component_{cid.replace('-', '_')}")
-    ext = ""
-    if meta and meta.get("slot") not in (None, "field-cell"):
-        keep = {k: meta[k] for k in ("slot", "types", "view", "title", "nav", "summary", "verbs", "placement", "prefs") if k in meta}
-        blob = json.dumps(keep).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-        ext = (f";(window.DESK_EXTENSIONS = window.DESK_EXTENSIONS || Object.create(null))[{json.dumps(cid)}] "
-               f"= (function (e) {{ Object.keys(e).forEach(function (k) {{ if (e[k] && typeof e[k] === 'object') Object.freeze(e[k]); }}); "
-               f"return Object.freeze(e); }})({blob});\n")
+    ext = _extension_js(cid, meta) if meta and meta.get("slot") not in (None, "field-cell") else ""
     return (f'(function () {{\n"use strict";\n/* desk/components/{cid}/{cid}.js */\n{text.rstrip()}\n'
             f";(window.DESK_COMPONENTS = window.DESK_COMPONENTS || Object.create(null))[{json.dumps(cid)}] = {factory};\n"
             f"{ext}"
+            "})();")
+
+
+def _extension_js(cid, meta):
+    """The statement that registers a component's frozen manifest keys in window.DESK_EXTENSIONS."""
+    keep = {k: meta[k] for k in ("slot", "types", "view", "title", "nav", "summary", "verbs", "placement", "prefs", "raw") if k in meta}
+    blob = json.dumps(keep).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    return (f";(window.DESK_EXTENSIONS = window.DESK_EXTENSIONS || Object.create(null))[{json.dumps(cid)}] "
+            f"= (function (e) {{ Object.keys(e).forEach(function (k) {{ if (e[k] && typeof e[k] === 'object') Object.freeze(e[k]); }}); "
+            f"return Object.freeze(e); }})({blob});\n")
+
+
+def raw_page_js(cid, body, meta):
+    """A raw React page as script text: its compiled thunk body registered in window.DESK_PAGES under the id, and its
+    manifest in window.DESK_EXTENSIONS with "raw": true. The thunk takes DESK_LIB and returns the page component."""
+    if not (isinstance(cid, str) and COMPONENT_ID_RE.match(cid)):
+        raise BundleError(f"component id {cid!r} is not a component id")
+    return (f'(function () {{"use strict"; window.DESK_PAGES = window.DESK_PAGES || {{}};\n'
+            f'window.DESK_PAGES[{json.dumps(cid)}] = function (DESK_LIB) {{"use strict"; {body}}};\n'
+            f"{_extension_js(cid, dict(meta, raw=True))}"
             "})();")
 
 

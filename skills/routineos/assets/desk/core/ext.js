@@ -6,6 +6,8 @@ import { commentPath, nextTs36, saveComment, watchComments } from "./comments.js
 import { COMPONENT_ATTRS, COMPONENT_TAGS, applyFilters, toRow } from "./pages/browse.js";
 import { viewToFilterState } from "./pages/settings.js";
 import { fullRead } from "./paging.js";
+import { readSpecRows } from "./pages/spec-read.js";
+import { aggregateTile, evalQuery, tableRows } from "./pages/spec-query.js";
 
 export var EXT_SLOTS = ["record-section", "panel", "page"];
 export var PANEL_MAX = 50;
@@ -79,7 +81,48 @@ function gate(ctx, id, decides, kind) {
 }
 
 // The only write path a component has. Each verb returns a Promise and rejects with the Desk's own wording.
-export var VERBS = ["decide", "comment", "saveField", "drop", "keep", "request"];
+export var VERBS = ["decide", "comment", "saveField", "drop", "keep", "request", "upsert"];
+
+// The entity types the booted definition marks shared (issue #32), as {type: true}: the types
+// whose entity docs a component may write through upsert. A definition with no shared types,
+// or none at all (node tests), gives an empty list and upsert refuses everything.
+export function sharedTypesOf(definition) {
+  var out = {};
+  var types = (definition || {}).types || {};
+  Object.keys(types).forEach(function (t) { if (types[t] && types[t].shared === true) out[t] = true; });
+  return out;
+}
+
+var UPSERT_ID_RE = /^[A-Za-z0-9_-]{1,120}$/;
+export var UPSERT_FIELD_MAX = 2000;
+
+// The re-read after a saved upsert (no version pin, db.d.ts): a doc whose stamps are not the
+// writer's own was overwritten between the read and the write. Returns the warning text or null.
+export function upsertStampConflict_(data, path, viewer, at) {
+  if (!data || typeof data !== "object") return null;
+  if (data.updatedBy === viewer && data.updatedAt === at) return null;
+  return "Saved, but someone else changed this record just after you: " + path +
+    " now says updatedBy " + String(data.updatedBy === undefined ? "?" : data.updatedBy) +
+    ". Re-read the record before writing it again.";
+}
+
+// A field value a person or a code page may put on a shared record: a string (cut to length),
+// a number or a boolean. Anything nested is refused: one small document per fact stays flat.
+export function upsertFields(fields) {
+  if (!fields || typeof fields !== "object" || Array.isArray(fields)) return null;
+  var out = {};
+  var keys = Object.keys(fields);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(k)) return null;
+    var v = fields[k];
+    if (typeof v === "string") v = v.slice(0, UPSERT_FIELD_MAX);
+    else if (typeof v !== "number" && typeof v !== "boolean") return null;
+    if (v !== v) return null; // NaN
+    out[k] = v;
+  }
+  return out;
+}
 
 // allowed: the verbs the component's manifest declares. Only those exist on the object it receives.
 // scope: {types} from the host. When given, the id must name an existing record, of one of those types when types is a
@@ -142,6 +185,49 @@ export function makeActions(ctx, allowed, scope) {
     keep: function (id) {
       return inScope(id, true, function () { return wrap(decide(ctx, id, "keep")); });
     },
+    // The shared-record write (issue #32). Only a type the booted definition marks shared, and
+    // only that type's own fields object: bySource, sightings, status and key stay the producers'.
+    upsert: function (type, id, fields) {
+      var w = canWrite(ctx);
+      if (!w.ok) return refuse(w.reason);
+      var shared = sharedTypesOf(ctx.definition);
+      if (shared[type] !== true) {
+        return refuse("That is not a shared record type; a component cannot write it.");
+      }
+      // scope.types is honoured like every other verb: a section or panel named types acts only on
+      // those, even shared ones. A page (no types list) may act on any shared type.
+      if (scope && Array.isArray(scope.types) && scope.types.length && scope.types.indexOf(type) === -1) {
+        return refuse("This component does not act on that kind of record.");
+      }
+      if (typeof id !== "string" || !UPSERT_ID_RE.test(id)) return refuse("That is not a record id.");
+      var clean = upsertFields(fields);
+      if (clean === null) return refuse("Fields must be plain values (text, number, true or false).");
+      var path = "entities/" + type + "--" + id;
+      var now = new Date().toISOString();
+      return wrap(ctx.store.get(path).then(function (cur) {
+        // A fresh doc is minimal: type, key, fields and stamps. No bySource, sightings or sources -
+        // the page never fabricates producer machinery (R3); a later run fills those in.
+        var doc = cur.exists ? Object.assign({}, cur.data) : { type: type, key: id, fields: {}, firstSeen: now };
+        doc.fields = Object.assign({}, doc.fields || {}, clean);
+        doc.display = Object.assign({}, doc.display || {}, clean);
+        doc.updatedBy = ctx.viewer || null;
+        doc.updatedAt = now;
+        return save(ctx.store, ctx.viewer, path, doc, shared);
+      }).then(function () {
+        // The db offers no partial update and the page write carries no version pin (db.d.ts:
+        // last-writer-wins), so the read-modify-write above can lose a concurrent write to the same
+        // doc. The re-read cannot bring a lost write back, but a doc whose stamps are not our
+        // own says another writer landed just after us; that is worth a visible warning. Keep one
+        // small document per fact and the race narrows to nothing.
+        return ctx.store.get(path).then(function (back) {
+          var msg = upsertStampConflict_(back.exists ? back.data : null, path, ctx.viewer || null, now);
+          if (msg && globalThis.console && typeof globalThis.console.warn === "function") {
+            try { globalThis.console.warn(msg); } catch (e) { /* a warned write stays saved */ }
+          }
+          return true;
+        });
+      }));
+    },
   };
   var out = {};
   (Array.isArray(allowed) ? allowed : []).forEach(function (v) {
@@ -201,9 +287,26 @@ export function makePrefs(componentId, live) {
   };
 }
 
+// A spec block query run for a raw page (spec 17): the rows of query.type read as a spec page reads them, then evaluated
+// as a spec block with that query gets them. With an aggregate the rows are evalQuery points (a tile or chart); without
+// one they are tableRows. value is the aggregateTile value for a tile query (aggregate, no groupBy), else null.
+export function runQuery(store, query) {
+  if (!query || typeof query !== "object" || typeof query.type !== "string" || !query.type) {
+    return Promise.reject(new Error("A query needs a type."));
+  }
+  return readSpecRows(store, { type: query.type }).then(function (out) {
+    var at = { now: Date.now(), range: null, filter: null };
+    if (!query.aggregate || typeof query.aggregate !== "object") return { rows: tableRows(out.rows, query, at), value: null };
+    return {
+      rows: evalQuery(out.rows, query, at).points,
+      value: query.groupBy ? null : aggregateTile(out.rows, query, at).value,
+    };
+  });
+}
+
 // What a component sees: reads, a watch whose disposer the host also keeps, and the verbs.
 // track(disposer) lets the host call every watch's disposer on unmount.
-// opts: {id, prefs, slot}. A component that did not declare prefs: true gets no pref or setPref.
+// opts: {id, prefs, slot, raw}. raw adds ctx.query. A component that did not declare prefs: true gets no pref or setPref.
 export function extCtx(base, track, verbs, scope, opts) {
   var store = base.store;
   var out = {
@@ -230,6 +333,8 @@ export function extCtx(base, track, verbs, scope, opts) {
     },
     actions: makeActions(base, verbs, scope),
   };
+  // ctx.query is for raw pages only; a factory component's ctx is unchanged (spec X3).
+  if (opts && opts.raw === true) out.query = function (query) { return runQuery(store, query); };
   if (opts && opts.prefs === true && validId(opts.id)) Object.assign(out, makePrefs(opts.id, !store.readOnly));
   return out;
 }
@@ -249,6 +354,7 @@ export function snapshotExtensions(reg) {
     if (e.view && typeof e.view.type === "string") copy.view = Object.freeze({ type: e.view.type });
     if (PLACEMENTS.indexOf(e.placement) !== -1) copy.placement = e.placement;
     if (e.prefs === true) copy.prefs = true;
+    if (e.raw === true) copy.raw = true;
     copy.verbs = Object.freeze((Array.isArray(e.verbs) ? e.verbs : []).filter(function (v) { return VERBS.indexOf(v) !== -1; }));
     snap[id] = Object.freeze(copy);
   });

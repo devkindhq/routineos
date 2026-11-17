@@ -1,0 +1,13 @@
+{
+  "id": "s5-board",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "A kanban-style board of tasks by status; a card menu moves a task to another column.",
+  "why": "No built-in page draws records in status columns with a move menu.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Task board",
+  "nav": true,
+  "verbs": ["saveField"]
+}

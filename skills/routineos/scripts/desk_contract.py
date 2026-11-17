@@ -195,7 +195,7 @@ def merge_picks(docs, eid, fields):
     return out
 
 
-def _worker_path_ok(op, lk):
+def _worker_path_ok(op, lk, shared=frozenset()):
     if op.get("op") != "set":
         return False
     coll, doc_id = op.get("collection"), op.get("doc_id")
@@ -209,6 +209,13 @@ def _worker_path_ok(op, lk):
     if coll == "pending":
         found = WORKER_GATE_ID_RE.match(doc_id)
         return bool(found) and found.group("lane") == lk
+    # A shared record type this lane may write (issue #32): exactly <type>--<id>, the type named
+    # by both the lane and the compiled definition.
+    if coll == "entities" and "--" in doc_id:
+        tname = doc_id.split("--", 1)[0]
+        # the slug must pass the same charset and length rule as the Desk's upsert verb (core/ext.js)
+        slug = doc_id.split("--", 1)[1]
+        return tname in shared and doc_id.count("--") == 1 and bool(UPSERT_ID_RE.fullmatch(slug))
     return False
 
 
@@ -350,21 +357,24 @@ def check_lock(data):
         raise ContractError("meta/lock setBy must be a person id")
 
 
-def guard(ops, worker=None):
+def guard(ops, worker=None, shared=frozenset()):
     """Refuse writes outside the caller's side of the contract.
 
     Producer mode (worker None): people's paths, changes to views and columns, a lane's worker paths
     and meta/owner are refused. Worker mode: only a `set` on this lane's own workers/, outcomes/ and
-    pending/ documents passes.
+    pending/ documents passes - plus, when the caller passes the lane's shared record types (issue
+    #32, the types both the join card's lane and the compiled definition name), a `set` on those
+    entities/<type>--<id> docs.
     """
     if worker is not None:
         if not isinstance(worker, str) or not worker_kinds.LANE_KEY_RE.match(worker):
             raise LanePathError(f"refusing to write: {worker!r} is not a lane key")
         for op in ops:
-            if not _worker_path_ok(op, worker):
+            if not _worker_path_ok(op, worker, shared):
                 path = f"{op.get('collection')}/{op.get('doc_id')}"
                 raise LanePathError(f"refusing to write {path}: the worker for lane {worker} may write only "
-                                    f"its own workers/, outcomes/ and pending/ documents")
+                                    f"its own workers/, outcomes/ and pending/ documents"
+                                    + (f" and the shared entities {', '.join(sorted(shared))}" if shared else ""))
         return
     for op in ops:
         path = f"{op['collection']}/{op['doc_id']}"
@@ -702,6 +712,7 @@ class _Plan:
             "type": tname, "key": key, "bySource": {}, "firstSeen": self.at, "seenCount": 0,
             "sources": [], "links": [], "sightings": [], "agentFields": {}, "schema": 1,
         }
+        doc.setdefault("bySource", {})
         if not old:
             outcome = "new"
         elif doc["bySource"].get(self.pid) != values or doc.get("status") != status:
@@ -729,6 +740,14 @@ class _Plan:
         doc["sightings"] = (doc.get("sightings", []) + [sighting])[-MAX_SIGHTINGS:]
         doc["display"] = combine_fields(doc["bySource"], doc["sightings"])
         doc["display"].update(merge_picks(self.docs, eid, self.type_def(tname).get("fields", {})))
+        # A shared type (issue #32) is written by people, workers and producers alike; the stamps
+        # tell them apart. Upserted values live in the doc's own fields; a producer-derived display
+        # must never wipe them (review item 1), so fields overlay display last: an upserted value
+        # wins over a value this run also produced for the same key, and a person's edit survives
+        # every collect. Non-shared types keep display producer-only, exactly as before.
+        if self.type_def(tname).get("shared"):
+            doc["display"].update({k: v for k, v in (doc.get("fields") or {}).items()
+                                   if isinstance(k, str) and bool(UPSERT_FIELD_RE.fullmatch(k))})
         doc["status"] = status
         doc["dropReason"] = person_reason(decision.get("reason")) if person_drop else reason
         cols = self.known_columns()
@@ -741,6 +760,11 @@ class _Plan:
                 print(f"{path}: {problem}", file=sys.stderr)
             if capture is not None:
                 doc["capture"] = capture
+        # A shared type (issue #32) is written by people, workers and producers alike; the
+        # stamps tell them apart. updatedAt follows the run's time so a rerun is idempotent.
+        if self.type_def(tname).get("shared"):
+            doc["updatedBy"] = self.pid
+            doc["updatedAt"] = self.at
         if _bytes(doc) > MAX_DOC_BYTES:
             raise ContractError(f"entity {eid} would be {_bytes(doc)} bytes, over the 256 KiB document limit")
         outcomes[eid] = (outcome, reason)
@@ -1093,6 +1117,21 @@ def _worker_lane(card, docs, lk):
     return w, lane, params
 
 
+def worker_shared_types(card, docs, defn, lk):
+    """The record types this lane's worker may write (issue #32): the lane's own `shared` list,
+    kept to the types the compiled definition also marks shared. Anything else writes nothing."""
+    try:
+        _, lane, _ = _worker_lane(card, docs, lk)
+    except ContractError:
+        return frozenset()
+    named = lane.get("shared")
+    if not isinstance(named, list):
+        return frozenset()
+    types = (defn or {}).get("types") or {}
+    return frozenset(t for t in named
+                     if isinstance(t, str) and isinstance(types.get(t), dict) and types[t].get("shared"))
+
+
 def _matching_entity(docs, lane, params, item):
     if not isinstance(item, str) or item.count("--") != 1 or not all(item.split("--")):
         raise ContractError(f"item {item!r} must be an entity id <type>--<slug>")
@@ -1181,6 +1220,54 @@ def plan_worker_run(card, docs, worker_input):
         if _data(docs, path) != gdoc:
             gate_ops.append(op(path, gdoc))
 
+    # Shared-record upserts (issue #32): the lane's worker may write the entity docs of the types
+    # both its lane and the compiled definition mark shared. Values stay plain, one small document
+    # per fact; producer machinery (bySource, sightings, status, key) is never touched or invented.
+    defn = (docs.get("meta/definition") or {}).get("data")
+    shared = worker_shared_types(card, docs, defn, lk)
+    upsert_ops = []
+    for u in inp.get("upserts", []):
+        if not isinstance(u, dict) or set(u) - {"id", "fields"}:
+            raise ContractError("each upsert must be {id, fields}")
+        eid = u.get("id")
+        if not isinstance(eid, str) or eid.count("--") != 1 or not all(eid.split("--")):
+            raise ContractError(f"upsert id {eid!r} must be an entity id <type>--<slug>")
+        tname, slug = eid.split("--", 1)
+        # the slug passes the same charset and length rule as the Desk's upsert verb (core/ext.js,
+        # UPSERT_ID_RE): one --, 1 to 120 characters of letters, digits, _ and - only.
+        if not UPSERT_ID_RE.fullmatch(slug):
+            raise ContractError(f"upsert id {eid!r}: the id after '{tname}--' must be 1 to 120 "
+                                f"characters of letters, digits, _ and -")
+        if tname not in shared:
+            raise ContractError(f"upsert {eid!r}: type '{tname}' is not a shared type this lane may write")
+        fields = u.get("fields")
+        if not isinstance(fields, dict) or not fields:
+            raise ContractError(f"upsert {eid!r}: fields must be a non-empty object of plain values")
+        clean = {}
+        for k, v in fields.items():
+            # the same field-name rule as the Desk's upsert verb (core/ext.js): 1 to 64 characters
+            # of letters, digits, _ and -, so fields display and filters can rely on the shape.
+            if not isinstance(k, str) or not UPSERT_FIELD_RE.fullmatch(k):
+                raise ContractError(f"upsert {eid!r}: field name {k!r} must be 1 to 64 characters "
+                                    f"of letters, digits, _ and -")
+            if isinstance(v, str):
+                if CONTROL_RE.search(v):
+                    raise ContractError(f"upsert {eid!r}: field '{k}' must not carry control characters")
+                v = v[:2000]
+            elif not isinstance(v, (int, float)) or isinstance(v, bool):
+                raise ContractError(f"upsert {eid!r}: field '{k}' must be text, a number, true or false")
+            clean[k] = v
+        path = f"entities/{eid}"
+        old = _data(docs, path) or {}
+        doc = _copy(old) if old else {"type": tname, "key": eid.split("--", 1)[1],
+                                      "fields": {}, "firstSeen": ended}
+        doc["fields"] = dict(doc.get("fields") or {}, **clean)
+        doc["display"] = dict(doc.get("display") or {}, **clean)
+        doc["updatedBy"] = f"worker:{lk}"
+        doc["updatedAt"] = ended
+        if doc != old:
+            upsert_ops.append(op(path, doc))
+
     tail = []
     if "budget" in inp:
         _check_budget(inp["budget"])
@@ -1188,10 +1275,16 @@ def plan_worker_run(card, docs, worker_input):
     health = inp.get("health") if isinstance(inp.get("health"), dict) else {}
     hdoc = {"runAt": ended, **{k: _copy(health.get(k)) for k in ("outcome", "itemsHandled", "alert", "overrides")}}
     tail.append(op(f"workers/{lk}--health", hdoc))
-    return _chunks("outcomes", outcome_ops) + _chunks("gates", gate_ops) + _chunks("health", tail)
+    return (_chunks("outcomes", outcome_ops) + _chunks("upserts", upsert_ops)
+            + _chunks("gates", gate_ops) + _chunks("health", tail))
 
 
 DAY_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+
+# The upsert id and field-name rules, shared with the Desk's upsert verb (core/ext.js): the Python
+# worker path and the page path must agree, or one side would write ids the other refuses to read.
+UPSERT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
+UPSERT_FIELD_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 def _check_budget(b):

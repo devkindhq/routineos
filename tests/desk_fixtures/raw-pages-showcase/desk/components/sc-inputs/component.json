@@ -1,0 +1,12 @@
+{
+  "id": "sc-inputs",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "Every @mantine/core input component and the Input and Combobox parts.",
+  "why": "Showcase fixture: proves every Desk registry component mounts under the error boundary.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Inputs",
+  "nav": true
+}

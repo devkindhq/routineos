@@ -49,6 +49,10 @@ The command in the stage starts `python3 lib/<script>.py`. Placeholders in upper
 - A setting that holds who to contact (its name has `recipient`, `approver`, `email`, `address`, `cc`, `bcc`, `channel` or `phone`) defaults to `[]`.
 - A setting bound by `settingFilters` must not contain a never-learnable word (`push`, `gate`, `send`, `alert`, `permission`, `budget`). Watch for words that contain one: `sender` contains `send`, which is why inbox-triage names its filter `skip_from_domains`.
 
+## Shared record types
+
+A type may set `"shared": true` when people, a joined AI worker and the routine's producers must all edit the same records (a keyword list, creator-to-project matches, outreach drafts and replies). Without it, records stay producer-written and people edit them only through the request queue. Producers of one type must agree on the flag. Every write to a shared record carries `updatedBy` (a person id, a producer id, or `worker:<laneKey>`) and `updatedAt`, and the last writer wins; keep one small document per fact and use append-only documents for events. The [write contract](write-contract.md) has the full rule.
+
 ## Connectors
 
 Declare every connector the routine touches, including built-in web search and fetch. Install connects nothing; it prints the report. Write `connect` text as plain instructions. List product names only in `alternatives`, and do not claim what a third-party product can do. Anything you have not checked is marked unverified.

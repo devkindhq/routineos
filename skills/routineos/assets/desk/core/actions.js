@@ -1,6 +1,7 @@
 // core/actions.js: every page write goes through here. A document is written by producers or by
-// people, never both (spec s7), so the page may only write the people-owned collections below.
-// Page writes are last-writer-wins: no version pin (db.d.ts, contract 0.2.92).
+// people, never both (spec s7), except a type the definition marks shared (issue #32): its
+// entity docs may be written by the page, a joined worker and producers alike, told apart by
+// updatedBy. Page writes are last-writer-wins: no version pin (db.d.ts, contract 0.2.92).
 import { hashPin, rememberLockPass, validPin } from "./lock.js";
 import { REQUEST_KINDS, REQUEST_NOTE_MAX, listedRoutines, newRequestId, waitingRequests } from "./queue.js";
 
@@ -23,25 +24,33 @@ export function viewerPath(viewer, kind, id) {
   return "data/users/" + viewer + "/state/" + kind + "/" + id;
 }
 
-export function writable(path, viewer) {
+// sharedTypes: the entity types the compiled definition marks shared (issue #32), as {type: true}.
+// An entity doc of such a type is the one producer-shaped path a viewer may write; every other
+// entities/ path stays closed to the page, exactly as before.
+export function writable(path, viewer, sharedTypes) {
   var seg = String(path).split("/");
   if (seg.some(function (s) { return !s; })) return false;
   // Comments are written only under people/<viewer>/comments (core/comments.js), the one path where the path proves
   // the author. The flat comments/ collection of an earlier Desk is read, never written.
   if (seg.length === 2 && seg[0] === "people") return !!viewer && seg[1] === String(viewer); // the marker doc that makes an author listable
-  if (seg.length === 2) return PEOPLE_COLLECTIONS.indexOf(seg[0]) !== -1;
   if (seg.length === 4 && seg[0] === "people") return !!viewer && seg[1] === String(viewer) && (seg[2] === "decisions" || seg[2] === "comments");
+  if (seg.length === 2 && seg[0] === "entities" && sharedTypes) {
+    if (!viewer) return false;
+    var dash = seg[1].indexOf("--");
+    return dash > 0 && sharedTypes[seg[1].slice(0, dash)] === true;
+  }
+  if (seg.length === 2) return PEOPLE_COLLECTIONS.indexOf(seg[0]) !== -1;
   return !!viewer && seg.length === 6 && seg[0] === "data" && seg[1] === "users" && seg[2] === String(viewer) &&
     seg[3] === "state" && VIEWER_STATE_KINDS.indexOf(seg[4]) !== -1;
 }
 
-export function save(store, viewer, path, doc) {
-  if (!writable(path, viewer)) return Promise.reject(new PathError(path));
+export function save(store, viewer, path, doc, sharedTypes) {
+  if (!writable(path, viewer, sharedTypes)) return Promise.reject(new PathError(path));
   return store.set(path, doc);
 }
 
-export function remove(store, viewer, path) {
-  if (!writable(path, viewer)) return Promise.reject(new PathError(path));
+export function remove(store, viewer, path, sharedTypes) {
+  if (!writable(path, viewer, sharedTypes)) return Promise.reject(new PathError(path));
   return store.del(path);
 }
 

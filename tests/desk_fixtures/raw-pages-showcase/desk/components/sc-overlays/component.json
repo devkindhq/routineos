@@ -1,0 +1,12 @@
+{
+  "id": "sc-overlays",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "Modal, Drawer, Popover, Menu, Tooltip, HoverCard, Dialog, Tour and other floating pieces, inline or triggerable.",
+  "why": "Showcase fixture: proves every Desk registry component mounts under the error boundary.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Overlays",
+  "nav": true
+}

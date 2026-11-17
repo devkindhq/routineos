@@ -1,16 +1,16 @@
 # Desk pages: spec pages and code pages
 
-Two kinds of custom page. Prefer the first.
+Three kinds of custom page. Prefer them in this order: spec page, code page, raw page.
 
-| | Spec page | Code page |
-|---|---|---|
-| Where | `desk.pages` in `definition.json` | `desk/components/<id>/` with slot `page` |
-| What it is | Data: tiles, charts, tables, text | Plain JavaScript on the component host |
-| Route | `#/p/<id>` | `#/x/<id>` |
-| Approval | None needed, it carries no code | Hash approval (`permissions <dir> --approve`) |
-| Check | `desk lint --routine <dir>` | `desk lint --routine <dir>` |
+| | Spec page | Code page | Raw page |
+|---|---|---|---|
+| Where | `desk.pages` in `definition.json` | `desk/components/<id>/` with slot `page` | `desk/components/<id>/` with slot `page`, `raw: true`, source `<id>.jsx` |
+| What it is | Data: tiles, charts, tables, text | Plain JavaScript on the component host | A full React page: any Mantine component, hooks, charts, dates |
+| Route | `#/p/<id>` | `#/x/<id>` | `#/x/<id>` |
+| Approval | None needed, it carries no code | Hash approval (`permissions <dir> --approve`) | Hash approval, and it runs with full access as each viewer |
+| Check | `desk lint --routine <dir>` | `desk lint --routine <dir>` | `desk lint --routine <dir>`, then `desk preview` |
 
-`desk.pages` in the definition is a spec page. `routine.toml [desk] pages = true` turns on code pages. Say "spec page" for the first.
+`desk.pages` in the definition is a spec page. `routine.toml [desk] pages = true` turns on code pages. Say "spec page" for the first. A raw page is for what a spec page and a code page cannot do; read [desk-raw-pages](desk-raw-pages.md) first.
 
 ## Authoring a spec page
 

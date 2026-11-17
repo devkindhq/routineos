@@ -1,6 +1,7 @@
 // app/App.jsx: the providers (prefs, Mantine theme and color scheme, notifications, the store) around the shell.
 import { useEffect, useMemo } from "react";
 import { MantineProvider } from "@mantine/core";
+import { DatesProvider } from "@mantine/dates";
 import { useMediaQuery } from "@mantine/hooks";
 import { Notifications } from "@mantine/notifications";
 import Approvals from "./pages/Approvals.jsx";
@@ -58,7 +59,9 @@ export function DeskProviders({ store, children }) {
   return (
     <PrefsProvider>
       <Themed>
-        <StoreProvider store={store}>{children}</StoreProvider>
+        <DatesProvider settings={{}}>
+          <StoreProvider store={store}>{children}</StoreProvider>
+        </DatesProvider>
       </Themed>
     </PrefsProvider>
   );
