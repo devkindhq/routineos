@@ -1234,3 +1234,35 @@ def compiled_shared():
     jobs["types"]["role"]["shared"] = True
     return definition.compile([
         {"id": "jobs-watch", "schedule": "0 22 * * 1", "definition": jobs, "settings": JOBS_SETTINGS}])
+
+
+class ProducerOwnershipTest(unittest.TestCase):
+    """plan_run refuses a record of a type the run's producer does not own; shared types are exempt."""
+
+    def _plan(self, defn, producer, records):
+        return dc.plan_run(defn, {}, run_input("r1", records, producer=producer))
+
+    def test_owner_may_write(self):
+        phases = self._plan(compiled(), "jobs-watch", [role("https://job/1")])
+        self.assertTrue(any(op["doc_id"].startswith("role--") for op in all_ops(phases)))
+
+    def test_non_owner_is_refused_with_owners_named(self):
+        with self.assertRaisesRegex(dc.ContractError,
+                                    r"producer 'lead-signals' does not own type 'role' \(owned by jobs-watch\)"):
+            self._plan(compiled(), "lead-signals", [role("https://job/1")])
+
+    def test_non_owner_refused_even_after_an_owned_record(self):
+        with self.assertRaisesRegex(dc.ContractError, "does not own type 'role'"):
+            self._plan(compiled(), "lead-signals", [company("acme.example"), role("https://job/1")])
+
+    def test_shared_type_is_exempt(self):
+        defn = compiled_shared()
+        defn["types"]["role"]["producers"] = ["someone-else"]
+        phases = self._plan(defn, "jobs-watch", [role("https://job/1")])
+        self.assertTrue(any(op["doc_id"].startswith("role--") for op in all_ops(phases)))
+
+    def test_type_without_producers_key_behaves_as_before(self):
+        defn = compiled()
+        del defn["types"]["role"]["producers"]
+        phases = self._plan(defn, "lead-signals", [role("https://job/1")])
+        self.assertTrue(any(op["doc_id"].startswith("role--") for op in all_ops(phases)))

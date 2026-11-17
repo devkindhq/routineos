@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13.1
+
+### Fixed
+
+- A producer can no longer write records of a type it does not own. `plan_run` refuses the run with `producer '<id>' does not own type '<type>' (owned by ...)`. Shared record types are exempt, since people, workers and producers all write them, and types compiled without a `producers` list behave as before.
+
+### Notes
+
+- Behavior change: a run that previously wrote records of a type owned by another producer is now refused before anything is written. Mark the type `shared`, or write those records from the owning producer.
+
 ## 0.13.0
 
 ### Added
