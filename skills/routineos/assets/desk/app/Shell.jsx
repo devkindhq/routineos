@@ -23,7 +23,7 @@ import { LockScreen } from "./settings/lock.jsx";
 import { OFFLINE_TEXT, StateView } from "./States.jsx";
 import { ModelProvider, PageCommandsProvider, useModel, useStore } from "./StoreContext.jsx";
 import { usePrefs } from "./usePrefs.js";
-import { useRestoreRoute, useRoute } from "./useRoute.js";
+import { useRestoreRoute, useRoute, useStartRoute } from "./useRoute.js";
 import { TourProvider, useTour } from "./Tour.jsx";
 
 var PAGE_TITLES = { today: "Today", approvals: "Approvals", history: "History", settings: "Settings", workers: "Workers",
@@ -232,6 +232,7 @@ export default function Shell({ config }) {
     ? { store: store, viewer: model.viewer, canWriteShared: model.canWriteShared } : null), [store, model]);
   useRestoreRoute(routeCtx, r.hash);
   const definition = model && !model.failed ? model.definition : null;
+  useStartRoute(definition);
   const nav = useMemo(() => {
     var built = navModel(definition, feed.views, feed.pins, model && model.join, feed.hidden, undefined,
       navPages(typeof window !== "undefined" ? window.DESK_EXTENSIONS : null));

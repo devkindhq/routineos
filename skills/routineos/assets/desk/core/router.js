@@ -108,6 +108,22 @@ export function canonicalHash(hash) {
   return fromFrameHash(hash) || hash;
 }
 
+// The built-in pages desk.start may name; it may also name x/<page component id> or p/<spec page id>.
+export var START_PAGES = ["today", "approvals", "runs", "history"];
+
+// True for an address that names no page at all: "", "#" or "#/".
+export function emptyAddress(hash) {
+  return !hash || hash === "#" || hash === "#/";
+}
+
+// The #/ address an empty address opens: the definition's desk.start when it is a valid page address, else Today.
+export function startHash(definition) {
+  var s = definition && definition.desk ? definition.desk.start : null;
+  if (typeof s !== "string") return "#/today";
+  if (START_PAGES.indexOf(s) !== -1 || /^[xp]\/[a-z][a-z0-9-]{1,31}$/.test(s)) return "#/" + s;
+  return "#/today";
+}
+
 export function route(hash) {
   var plain = fromFrameHash(hash);
   if (plain) return route(plain);
