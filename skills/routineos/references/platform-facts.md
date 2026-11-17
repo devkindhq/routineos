@@ -12,3 +12,5 @@ Tags used when speaking to the person: pilot (checked by a real run), docs (read
 Always search the live docs when a decision depends on a current limit. The registry holds only core caveats and may be stale. Do not copy registry values into other files; read the registry.
 
 Spec pages and the native comment composer have registry records (`desk-native-comment-composer`, status unverified). Do not promise the composer to a person; say it is unverified, and that no publisher in this repo declares the capability.
+
+Raw React pages run in the Desk's own realm with the viewer's capabilities (`desk-code-viewer-realm`, status unverified). The repo side is verified: no CSP or sandbox in the Desk source, same document and React tree. The claude.ai frame CSP and sandbox attributes are unverified, so do not promise what a raw page cannot reach over the network, and never call a raw page sandboxed.

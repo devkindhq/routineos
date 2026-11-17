@@ -1,6 +1,6 @@
 """Backward compatibility: routines, packs and Desks without a Blueprint behave as they did at 0.11.1.
 
-compat_baseline.json was captured from the 0.11.1 release. A failure here is a real regression:
+compat_baseline.json was captured from commit 405719c (the 0.11.1 base). A failure here is a real regression:
 fix the code, never the baseline. The Desk hash drops the desk-src-hash meta line and the plugin version string."""
 import hashlib
 import json

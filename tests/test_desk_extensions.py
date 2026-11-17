@@ -156,6 +156,18 @@ class ExtensionVerbLintTest(unittest.TestCase):
         edit_manifest(d, "review-box", lambda m: m.update(slot="field-cell"))
         self.assertIn("verbs", main("desk", "lint", "--routine", d)[1])
 
+    def test_upsert_is_a_known_verb(self):
+        # issue #32: upsert(type, id, fields) writes the entity docs of shared types. The fixture
+        # call is ctx.actions.comment(id, text); swapping comment for upsert keeps the parens balanced.
+        code, out, _ = self.lint_with("ctx.actions.comment(", "ctx.actions.upsert(",
+                                      decl=["decide", "comment", "upsert"])
+        self.assertEqual(code, 0, out)
+
+    def test_upsert_undeclared_fails_like_any_other_verb(self):
+        code, out, _ = self.lint_with("ctx.actions.comment(", "ctx.actions.upsert(")
+        self.assertEqual(code, 1)
+        self.assertIn("does not declare", out)
+
     def test_bundle_carries_the_declared_verbs(self):
         m = json.loads(read(os.path.join(EXT, "review-box", "component.json")))
         js = bundle_desk.component_js("review-box", m["factory"], read(os.path.join(EXT, "review-box", "review-box.js")), m)
@@ -415,6 +427,235 @@ class ApprovalTest(unittest.TestCase):
     def test_page_row_is_invalid_without_opt_in(self):
         rows = desk_registry.extension_rows(routine(pages=False))
         self.assertTrue([r for r in rows if r["id"] == "review-page"][0]["invalid"])
+
+
+def add_raw_page(d, name="raw-page"):
+    """A raw page (createElement .js) that imports react, @mantine/core and dayjs, beside the factory fixtures."""
+    from test_desk_components_custom import RAW_JS, RAW_MANIFEST
+    write(os.path.join(d, "desk", "components", name, "component.json"), json.dumps(dict(RAW_MANIFEST, id=name)))
+    write(os.path.join(d, "desk", "components", name, name + ".js"), RAW_JS)
+
+
+class RawExtensionRowsTest(unittest.TestCase):
+    def row(self, d, cid="raw-page"):
+        return [r for r in desk_registry.extension_rows(d) if r["id"] == cid][0]
+
+    def test_raw_row_carries_raw_and_sorted_libraries(self):
+        import desk_libs
+        d = routine()
+        add_raw_page(d)
+        row = self.row(d)
+        self.assertFalse(row["invalid"], row)
+        self.assertIs(row["raw"], True)
+        ver = desk_libs.versions(desk_libs.load_libraries())
+        want = sorted("%s@%s" % (s, ver[s]) for s in ("@mantine/core", "dayjs", "react"))
+        self.assertEqual(row["libraries"], want)
+        self.assertEqual(row["slot"], "page")
+        self.assertEqual(row["reads"], [])
+        self.assertEqual(row["hash"], desk_registry.component_hash(
+            os.path.join(d, "desk", "components", "raw-page")))
+
+    def test_factory_rows_gain_no_raw_keys(self):
+        d = routine()
+        for cid in ("review-box", "review-panel", "review-page"):
+            row = self.row(d, cid)
+            self.assertNotIn("raw", row)
+            self.assertNotIn("libraries", row)
+
+    def test_invalid_raw_page_is_an_invalid_row(self):
+        d = routine()
+        add_raw_page(d)
+        os.remove(os.path.join(d, "desk", "components", "raw-page", "raw-page.js"))
+        row = self.row(d)
+        self.assertTrue(row["invalid"])
+        self.assertTrue(any("needs raw-page.jsx or raw-page.js" in p for p in row["problems"]), row)
+
+    def test_import_free_raw_page_row_lists_react(self):
+        import desk_libs
+        d = routine()
+        add_raw_page(d)
+        write(os.path.join(d, "desk", "components", "raw-page", "raw-page.js"),
+              "export default function Page() { return null; }\n")
+        row = self.row(d)
+        self.assertFalse(row["invalid"], row)
+        self.assertEqual(row["libraries"], ["react@" + desk_libs.versions(desk_libs.load_libraries())["react"]])
+
+    def test_unreadable_libraries_json_makes_the_row_invalid(self):
+        import desk_libs
+        from unittest import mock
+        d = routine()
+        add_raw_page(d)
+        with mock.patch.object(desk_libs, "load_libraries", side_effect=desk_libs.LibraryError("cannot read libs")):
+            row = self.row(d)
+        self.assertTrue(row["invalid"])
+        self.assertTrue(any("cannot read libs" in p for p in row["problems"]), row)
+
+    def test_raw_page_needs_the_pages_opt_in(self):
+        d = routine(pages=False, only=[])
+        add_raw_page(d)
+        self.assertTrue(self.row(d)["invalid"])
+
+
+class RawApprovalTest(unittest.TestCase):
+    def test_library_bump_unapproves_the_raw_page_only(self):
+        import desk_libs
+        from unittest import mock
+        d = routine()
+        add_raw_page(d)
+        desk_registry.write_approvals(d, desk_registry.extension_rows(d))
+        self.assertEqual(desk_registry.unapproved_extensions(d), [])
+        before = {r["id"]: r["hash"] for r in desk_registry.extension_rows(d)}
+        bumped = [dict(e, version=e["version"] + ".1") if e["specifier"] == "@mantine/core" else e
+                  for e in desk_libs.load_libraries()]
+        with mock.patch.object(desk_libs, "load_libraries", return_value=bumped):
+            self.assertEqual(desk_registry.unapproved_extensions(d), ["raw-page"])
+            after = {r["id"]: r["hash"] for r in desk_registry.extension_rows(d)}
+        self.assertNotEqual(after["raw-page"], before["raw-page"])
+        for cid in ("review-box", "review-panel", "review-page"):
+            self.assertEqual(after[cid], before[cid])
+        self.assertEqual(desk_registry.unapproved_extensions(d), [])
+
+
+RAW_BLOCK = """- RAW PAGE {slot} '{id}' (code hash {h})
+  RUNS ITS OWN CODE INSIDE THE DESK WITH FULL ACCESS TO THE DESK.
+  It acts as whoever is viewing: it can read every record they can see, save
+  anything their role allows (not only the writes it declares), post comments
+  and offer downloads, without them pressing anything.
+  It can draw over any part of the Desk, including screens that look like
+  RoutineOS or Claude.
+  Nothing checks what it does after you approve it. Approve only code you have
+  read and trust. Libraries: {libs}. Declared writes
+  (advisory): {verbs}."""
+
+APP_TOML = '[app]\nid = "a"\ntitle = "A"\nstatus = "draft"\n'
+BAD_IMPORT_JS ='import x from "left-pad";\nexport default function P() { return null; }\n'
+
+
+class RawBuildGateTest(unittest.TestCase):
+    """T-B4: the build refuses an unapproved or changed raw page; the preview does not look at approval."""
+
+    def setUp(self):
+        from test_desk_components_custom import routineos
+        self.routineos = routineos
+
+    def raw_routine(self):
+        d = routine(only=[])
+        add_raw_page(d)
+        return d
+
+    def test_unapproved_raw_page_refuses_the_build_by_name(self):
+        d = self.raw_routine()
+        with self.assertRaises(self.routineos.DeskPageError) as cm:
+            self.routineos.desk_page("W", routine_dir=d)
+        self.assertIn("raw-page", str(cm.exception))
+        self.assertIn("not approved", str(cm.exception))
+
+    def test_approved_raw_page_builds_with_its_registration(self):
+        d = self.raw_routine()
+        desk_registry.write_approvals(d, desk_registry.extension_rows(d))
+        html = self.routineos.desk_page("W", routine_dir=d)
+        self.assertIn('window.DESK_PAGES["raw-page"]', html)
+        self.assertIn('"raw": true', html)
+        self.assertIn("DESK_EXTENSIONS", html)
+
+    def test_a_source_edit_after_approval_refuses_again(self):
+        d = self.raw_routine()
+        desk_registry.write_approvals(d, desk_registry.extension_rows(d))
+        p = os.path.join(d, "desk", "components", "raw-page", "raw-page.js")
+        write(p, read(p) + "\n// changed after approval\n")
+        with self.assertRaises(self.routineos.DeskPageError) as cm:
+            self.routineos.desk_page("W", routine_dir=d)
+        self.assertIn("raw-page", str(cm.exception))
+
+    def test_a_compile_problem_refuses_the_build(self):
+        d = self.raw_routine()
+        write(os.path.join(d, "desk", "components", "raw-page", "raw-page.js"), BAD_IMPORT_JS)
+        with self.assertRaises(self.routineos.DeskPageError) as cm:
+            self.routineos.desk_page("W", routine_dir=d)
+        self.assertIn("left-pad", str(cm.exception))
+
+    def test_mixed_routine_builds_factory_and_raw_together(self):
+        d = routine()
+        add_raw_page(d)
+        desk_registry.write_approvals(d, desk_registry.extension_rows(d))
+        html = self.routineos.desk_page("W", routine_dir=d)
+        self.assertIn('window.DESK_PAGES["raw-page"]', html)
+        self.assertIn("component_review_box", html)
+
+    def test_preview_builds_a_raw_page_without_approval(self):
+        d = self.raw_routine()
+        snap = os.path.join(d, "snap.json")
+        write(snap, "{}")
+        out_dir = os.path.join(d, "out")
+        code, out, _ = main("desk", "preview", "--routine", d, "--snapshot", snap, "--out", out_dir)
+        self.assertEqual(code, 0, out)
+        self.assertIn('window.DESK_PAGES["raw-page"]', read(os.path.join(out_dir, "index.html")))
+        self.assertNotIn("approv", out)
+
+    def test_preview_prints_fail_for_a_compile_problem(self):
+        d = self.raw_routine()
+        write(os.path.join(d, "desk", "components", "raw-page", "raw-page.js"), BAD_IMPORT_JS)
+        snap = os.path.join(d, "snap.json")
+        write(snap, "{}")
+        code, out, _ = main("desk", "preview", "--routine", d, "--snapshot", snap)
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL", out)
+        self.assertIn("left-pad", out)
+
+    def test_raw_page_js_shape_and_escaping(self):
+        meta = {"slot": "page", "raw": True, "verbs": ["decide"], "evil": 1}
+        js = bundle_desk.raw_page_js("raw-page", "return function P() {};\n", meta)
+        self.assertIn('window.DESK_PAGES["raw-page"] = function (DESK_LIB) {"use strict";', js)
+        self.assertIn("DESK_EXTENSIONS", js)
+        self.assertIn('"raw": true', js)
+        self.assertNotIn("evil", js)
+        with self.assertRaises(bundle_desk.BundleError):
+            bundle_desk.raw_page_js("Bad Id", "return 1;", {"slot": "page", "raw": True})
+
+
+class RawPermissionCopyTest(unittest.TestCase):
+    """T-B5: the approval screen for a raw page is the spec 8 block, raw pages first."""
+
+    def test_raw_row_is_exactly_the_spec_block(self):
+        import permission
+        d = routine()
+        add_raw_page(d)
+        row = [r for r in desk_registry.extension_rows(d) if r["id"] == "raw-page"][0]
+        want = RAW_BLOCK.format(slot="page", id="raw-page", h=row["hash"][:12], libs=", ".join(row["libraries"]), verbs="none")
+        self.assertEqual("\n".join(permission.desk_extension_lines([row])), want)
+
+    def test_declared_verbs_fill_the_block(self):
+        import permission
+        row = {"id": "p", "invalid": False, "raw": True, "slot": "page", "verbs": ["decide", "comment"],
+               "libraries": ["react@1"], "reads": [], "types": [], "hash": "a" * 64, "where": "its own page"}
+        self.assertIn("(advisory): decide, comment.", "\n".join(permission.desk_extension_lines([row])))
+
+    def test_raw_rows_come_first_in_render(self):
+        import permission
+        d = routine()
+        add_raw_page(d)
+        out = permission.render({"app": {"id": "a"}}, {}, desk_registry.extension_rows(d))
+        self.assertLess(out.index("RAW PAGE page 'raw-page'"), out.index("review-box"))
+
+    def test_render_says_as_whoever_is_viewing(self):
+        import permission
+        out = permission.render({"app": {"id": "a"}}, {}, desk_registry.extension_rows(routine()))
+        self.assertNotIn("with your rights", out)
+        self.assertIn("runs inside the Desk page as whoever is viewing.", out)
+
+    def test_approve_names_raw_pages_only_when_one_is_approved(self):
+        d = routine()
+        add_raw_page(d)
+        write(os.path.join(d, "app.toml"), APP_TOML)
+        code, out, err = main("permissions", d, "--approve")
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("approved raw page(s): %s/raw-page. They run with full access to the Desk for every viewer."
+                      % os.path.basename(d), out)
+        d2 = routine()
+        write(os.path.join(d2, "app.toml"), APP_TOML)
+        code, out, err = main("permissions", d2, "--approve")
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("approved raw page(s)", out)
 
 
 def second_section(d, **manifest):

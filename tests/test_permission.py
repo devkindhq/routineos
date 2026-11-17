@@ -297,3 +297,31 @@ class RepoLessOnceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SharedTypeLinesTests(unittest.TestCase):
+    """Issue #32: the screen names the shared record types in plain words."""
+
+    def test_render_lists_shared_types(self):
+        out = permission.render(make_app(), RECORDS, shared_types={"collect": ["keyword", "match"]})
+        self.assertIn("Shared record types", out)
+        self.assertIn("keyword, match", out)
+        self.assertIn("People, joined AI workers and the routine's producers all write", out)
+
+    def test_render_without_shared_types_stays_silent(self):
+        out = permission.render(make_app(), RECORDS)
+        self.assertNotIn("Shared record types", out)
+        out = permission.render(make_app(), RECORDS, shared_types={})
+        self.assertNotIn("Shared record types", out)
+
+    def test_desk_rows_get_the_upsert_line(self):
+        rows = [{"id": "board", "invalid": False, "slot": "page", "where": "page", "verbs": ["decide"],
+                 "reads": ["entities"], "prefs": False, "placement": None, "hash": "x" * 64, "types": []}]
+        out = permission.render(make_app(), RECORDS, desk_rows=rows, shared_types={"collect": ["keyword"]})
+        self.assertIn("upsert writes", out)
+
+    def test_desk_rows_without_shared_types_get_no_upsert_line(self):
+        rows = [{"id": "board", "invalid": False, "slot": "page", "where": "page", "verbs": ["decide"],
+                 "reads": ["entities"], "prefs": False, "placement": None, "hash": "x" * 64, "types": []}]
+        out = permission.render(make_app(), RECORDS, desk_rows=rows)
+        self.assertNotIn("upsert writes", out)

@@ -8,12 +8,21 @@ import { notifications } from "@mantine/notifications";
 import { declaredExtension, extCtx, snapshotExtensions } from "../core/ext.js";
 import { extTreeOk, renderExtension } from "./componentUi.js";
 import { SpecBlock } from "./pages/spec/blocks.jsx";
+import RawPageHost from "./RawPageHost.jsx";
 import { usePageCtx } from "./StoreContext.jsx";
 
 // Taken when the Desk loads, after every component script has registered and before any component code runs.
 snapshotExtensions(typeof window !== "undefined" ? window.DESK_EXTENSIONS : null);
 
+// A raw React page (declared raw: true) gets its own host; the branch is here, before any hook, so each host keeps its
+// own hook order.
 export default function ExtHost({ id, props, fallback }) {
+  var entry = declaredExtension(id);
+  if (entry && entry.raw === true) return <RawPageHost id={id} props={props} fallback={fallback} />;
+  return <FactoryHost id={id} props={props} fallback={fallback} />;
+}
+
+function FactoryHost({ id, props, fallback }) {
   const ref = useRef(null);
   const [failed, setFailed] = useState(false);
   const [blocks, setBlocks] = useState([]);

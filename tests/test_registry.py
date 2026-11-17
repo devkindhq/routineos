@@ -26,6 +26,8 @@ REQUIRED_IDS = {
     "user-can-data-write-commenter",
     "desk-comments-path-rule",
     "desk-native-comment-composer",
+    "desk-shared-record-types",
+    "desk-code-viewer-realm",
 }
 
 

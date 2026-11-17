@@ -1,0 +1,12 @@
+{
+  "id": "sc-data-display",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "Text, cards, tables, lists, trees, avatars, badges and other display components.",
+  "why": "Showcase fixture: proves every Desk registry component mounts under the error boundary.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Data display",
+  "nav": true
+}

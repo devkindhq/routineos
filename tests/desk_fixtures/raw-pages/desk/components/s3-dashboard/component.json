@@ -1,0 +1,12 @@
+{
+  "id": "s3-dashboard",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "A task dashboard: stat tiles, line, bar and donut charts, a reused spec tile and a date range.",
+  "why": "A spec page has no donut chart, no date range picker and no mix of its blocks with custom charts.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Task dashboard",
+  "nav": true
+}

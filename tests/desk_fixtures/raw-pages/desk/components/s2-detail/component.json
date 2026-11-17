@@ -1,0 +1,11 @@
+{
+  "id": "s2-detail",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "A task detail page with tabs, a status badge, a timeline, a fields drawer and an edit dialog.",
+  "why": "Spec pages cannot draw tabs, a timeline or overlays for one record.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Task detail"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "sc-buttons-nav",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "Buttons, links, tabs, steppers, pagination, menus, toolbars and layout shells.",
+  "why": "Showcase fixture: proves every Desk registry component mounts under the error boundary.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Buttons and navigation",
+  "nav": true
+}

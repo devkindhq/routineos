@@ -101,3 +101,17 @@ test("composer resolves the comments namespace, and null when it is missing, thr
   expect(await createStore("db", { claude: null }).composer()).toBeNull();
   expect(createStore("static", { docs: {} }).composer).toBeUndefined();
 });
+
+// Shared record types (issue #32): writable accepts entity paths of types the definition marks
+// shared, and only those. Without the sharedTypes argument nothing changes (entities stay closed).
+test("writable accepts an entity path of a shared type and refuses every other entity path", () => {
+  var shared = { "keyword": true };
+  expect(writable("entities/keyword--seo", "u1", shared)).toBe(true);
+  expect(writable("entities/company--acme", "u1", shared)).toBe(false);
+  expect(writable("entities/keyword--seo", null, shared)).toBe(false);
+  expect(writable("entities/keyword", "u1", shared)).toBe(false);
+  expect(writable("entities/keyword--seo/deep", "u1", shared)).toBe(false);
+  expect(writable("entities/keyword--seo", "u1")).toBe(false);
+  expect(writable("entities/keyword--seo", "u1", {})).toBe(false);
+  expect(writable("entities/keyword--seo", "u1", null)).toBe(false);
+});

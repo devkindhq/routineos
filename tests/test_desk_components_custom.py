@@ -17,6 +17,8 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 sys.path.insert(0, HERE)
 
 import bundle_desk  # noqa: E402
+import desk_libs  # noqa: E402
+import desk_raw  # noqa: E402
 import desk_registry  # noqa: E402
 import pack  # noqa: E402
 import routineos  # noqa: E402
@@ -577,6 +579,214 @@ class RoutineBundle(Tmp):
         self.assertEqual(code, 2)
         code, _, _ = main("bundle", "--routine", self.routine(), "--check")
         self.assertEqual(code, 2)
+
+
+RAW_JS = '''import React from "react";
+import { Text } from "@mantine/core";
+import dayjs from "dayjs";
+
+export default function Page() {
+  const win = document.title + window.name;
+  return React.createElement(Text, null, win, dayjs().format("YYYY"));
+}
+'''
+RAW_MANIFEST = {
+    "id": "my-page", "kind": "custom", "slot": "page", "raw": True,
+    "summary": "A raw React page.", "why": "No view module draws this page; it needs its own React markup.",
+    "fallback": "same", "since": "0.13.0", "title": "My page",
+}
+
+
+class RawTmp(Tmp):
+    def raw(self, manifest=None, jsx=None, js=RAW_JS, name="my-page"):
+        """A raw page folder: the default manifest patched by `manifest` (None values drop a key)."""
+        d = os.path.join(self.tmp, "raw", name)
+        shutil.rmtree(d, ignore_errors=True)
+        m = dict(RAW_MANIFEST, id=name)
+        for k, v in (manifest or {}).items():
+            if v is None:
+                m.pop(k, None)
+            else:
+                m[k] = v
+        write(os.path.join(d, "component.json"), json.dumps(m, indent=2) + "\n")
+        if js is not None:
+            write(os.path.join(d, name + ".js"), js)
+        if jsx is not None:
+            write(os.path.join(d, name + ".jsx"), jsx)
+        return d
+
+    def assertOneProblem(self, problems, needle):
+        self.assertEqual(len([p for p in problems if needle in p]), 1, problems)
+
+
+class RawManifestLint(RawTmp):
+    def test_raw_without_factory_is_clean(self):
+        self.assertEqual(desk_registry.lint_component(self.raw(), None), [])
+
+    def test_is_raw_only_for_true(self):
+        self.assertTrue(desk_registry.is_raw({"raw": True}))
+        for m in ({}, {"raw": False}, {"raw": "yes"}, {"raw": 1}):
+            self.assertFalse(desk_registry.is_raw(m))
+
+    def test_raw_with_factory_refused(self):
+        problems = desk_registry.lint_component(self.raw({"factory": "component_my_page"}), None)
+        self.assertOneProblem(problems, "factory")
+
+    def test_raw_field_cell_refused(self):
+        problems = desk_registry.lint_component(self.raw({"slot": "field-cell", "title": None}), None)
+        self.assertOneProblem(problems, "field-cell")
+
+    def test_raw_section_and_panel_slots_accepted(self):
+        self.assertEqual(desk_registry.lint_component(
+            self.raw({"slot": "record-section", "types": ["job"], "title": "T"}), None), [])
+        self.assertEqual(desk_registry.lint_component(
+            self.raw({"slot": "panel", "view": {"type": "job"}, "title": "T"}), None), [])
+
+    def test_raw_must_be_a_boolean(self):
+        problems = desk_registry.lint_component(self.raw({"raw": "yes"}), None)
+        self.assertOneProblem(problems, "raw must be true or false")
+
+    def test_kind_must_still_be_custom(self):
+        self.assertOneProblem(desk_registry.lint_component(self.raw({"kind": "core"}), None), "kind must be custom")
+
+    def test_neither_source_is_one_problem(self):
+        problems = desk_registry.lint_component(self.raw(js=None), None)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("needs my-page.jsx or my-page.js", problems[0])
+
+    def test_both_sources_is_one_problem(self):
+        problems = desk_registry.lint_component(self.raw(jsx="export default function P() { return null; }\n"), None)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("has both", problems[0])
+
+    def test_raw_page_may_name_document_and_window(self):
+        problems = desk_registry.lint_component(self.raw(), None)
+        self.assertFalse([p for p in problems if "may not use" in p], problems)
+
+    def test_raw_page_over_64_kib_refused(self):
+        big = RAW_JS + "// " + "x" * (64 * 1024) + "\n"
+        self.assertOneProblem(desk_registry.lint_component(self.raw(js=big), None), "larger than 64 KiB")
+
+    def test_compile_problems_appear_in_lint(self):
+        bad = RAW_JS.replace('"@mantine/core"', '"left-pad"')
+        problems = desk_registry.lint_component(self.raw(js=bad), None)
+        self.assertOneProblem(problems, "left-pad")
+
+    def test_js_syntax_error_is_caught_by_the_parse_check(self):
+        if not shutil.which("node"):
+            self.skipTest("node not on PATH")
+        bad = RAW_JS.replace("return React", "return (React")
+        self.assertOneProblem(desk_registry.lint_component(self.raw(js=bad), None), "does not parse")
+        self.assertEqual(desk_registry.lint_component(self.raw(js=bad), None, parse=False), [])
+
+    def test_ctx_checks_skipped_for_raw(self):
+        # A raw page has no ctx first parameter and no declared verbs; neither check applies.
+        problems = desk_registry.lint_component(self.raw(), None)
+        self.assertFalse([p for p in problems if "ctx" in p], problems)
+
+    def test_raw_component_row_fields(self):
+        routine = os.path.join(self.tmp, "r")
+        shutil.copytree(self.raw(),os.path.join(routine, "desk", "components", "my-page"))
+        (row,) = desk_registry.custom_components(routine)
+        self.assertEqual((row["id"], row["raw"], row["factory"]), ("my-page", True, None))
+        self.assertEqual(row["source"], os.path.join(routine, "desk", "components", "my-page", "my-page.js"))
+
+    def test_raw_source_picks_the_one_file(self):
+        self.assertTrue(desk_registry.raw_source(self.raw()).endswith("my-page.js"))
+        self.assertTrue(desk_registry.raw_source(self.raw(js=None, jsx="x")).endswith("my-page.jsx"))
+        self.assertIsNone(desk_registry.raw_source(self.raw(js=None)))
+        self.assertIsNone(desk_registry.raw_source(self.raw(jsx="x")))
+
+    def test_raw_entry_joins_the_registry_without_a_factory(self):
+        routine = os.path.join(self.tmp, "r")
+        shutil.copytree(self.raw(),os.path.join(routine, "desk", "components", "my-page"))
+        reg = desk_registry.load(ROOT, routine)
+        entry = [c for c in reg["components"] if c["id"] == "my-page"][0]
+        self.assertNotIn("factory", entry)
+
+
+def main_branch_hash(comp_dir):
+    """The component_hash algorithm as it was on main, before the raw extension."""
+    import hashlib
+    folder = os.path.basename(os.path.normpath(comp_dir))
+    h = hashlib.sha256()
+    for name in ("component.json", folder + ".js"):
+        try:
+            with open(os.path.join(comp_dir, name), "rb") as f:
+                h.update(f.read())
+        except OSError:
+            pass
+        h.update(b"\0")
+    return h.hexdigest()
+
+
+class RawHash(RawTmp):
+    JSX = 'import { Text } from "@mantine/core";\nexport default function Page() { return <Text>hi</Text>; }\n'
+
+    def raw_jsx(self, **kw):
+        return self.raw(jsx=self.JSX, js=None, **kw)
+
+    def libs(self, **bump):
+        return [dict(e, version=bump.get(e["specifier"], e["version"])) for e in desk_libs.load_libraries()]
+
+    def test_factory_fixtures_keep_the_main_branch_hash(self):
+        ext = os.path.join(HERE, "desk_fixtures", "ext")
+        dirs = [os.path.join(ext, n) for n in sorted(os.listdir(ext))] + [GOOD]
+        self.assertGreaterEqual(len(dirs), 4)
+        for d in dirs:
+            self.assertEqual(desk_registry.component_hash(d), main_branch_hash(d), d)
+
+    def test_hash_changes_with_the_jsx(self):
+        d = self.raw_jsx()
+        before = desk_registry.component_hash(d)
+        write(os.path.join(d, "my-page.jsx"), self.JSX + "// edit\n")
+        self.assertNotEqual(desk_registry.component_hash(d), before)
+
+    def test_hash_changes_with_the_manifest(self):
+        d = self.raw_jsx()
+        before = desk_registry.component_hash(d)
+        m = json.loads(read(os.path.join(d, "component.json")))
+        m["title"] = "Other"
+        write(os.path.join(d, "component.json"), json.dumps(m))
+        self.assertNotEqual(desk_registry.component_hash(d), before)
+
+    def test_hash_changes_with_the_transformer_id(self):
+        d = self.raw_jsx()
+        before = desk_registry.component_hash(d)
+        with mock.patch.object(desk_raw, "TRANSFORMER_ID", desk_raw.TRANSFORMER_ID + "-patch"):
+            self.assertNotEqual(desk_registry.component_hash(d), before)
+
+    def test_hash_changes_with_an_imported_library_version(self):
+        d = self.raw_jsx()
+        before = desk_registry.component_hash(d)
+        with mock.patch.object(desk_libs, "load_libraries", return_value=self.libs(**{"@mantine/core": "9.7.6"})):
+            self.assertNotEqual(desk_registry.component_hash(d), before)
+
+    def test_hash_ignores_a_library_the_page_does_not_import(self):
+        d = self.raw_jsx()
+        before = desk_registry.component_hash(d)
+        with mock.patch.object(desk_libs, "load_libraries", return_value=self.libs(dayjs="9.9.9")):
+            self.assertEqual(desk_registry.component_hash(d), before)
+
+    def test_import_free_page_hash_follows_the_react_version(self):
+        d = self.raw_jsx()
+        write(os.path.join(d, "my-page.jsx"), "export default function Page() { return <div />; }\n")
+        before = desk_registry.component_hash(d)
+        self.assertEqual(desk_registry.raw_libraries(d), ["react@" + desk_libs.versions(desk_libs.load_libraries())["react"]])
+        with mock.patch.object(desk_libs, "load_libraries", return_value=self.libs(react="0.0.1")):
+            self.assertNotEqual(desk_registry.component_hash(d), before)
+
+    def test_unreadable_libraries_json_is_a_lint_problem(self):
+        with mock.patch.object(desk_libs, "load_libraries", side_effect=desk_libs.LibraryError("cannot read x")):
+            problems = desk_registry.lint_component(self.raw(), None)
+        self.assertOneProblem(problems, "cannot read x")
+
+    def test_jsx_and_js_pages_hash_their_own_source(self):
+        # Same folder name and manifest; only the source file (.jsx with JSX versus .js) differs. raw() rebuilds the
+        # folder each time, so the hashes are taken one after the other.
+        as_jsx = desk_registry.component_hash(self.raw_jsx(name="same-page"))
+        as_js = desk_registry.component_hash(self.raw(name="same-page"))
+        self.assertNotEqual(as_jsx, as_js)
 
 
 class PackRefusal(unittest.TestCase):

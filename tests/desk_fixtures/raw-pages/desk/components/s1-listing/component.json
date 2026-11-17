@@ -1,0 +1,12 @@
+{
+  "id": "s1-listing",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "A sortable, searchable, paged task listing; a row opens the detail page.",
+  "why": "Spec pages draw a table without a search box, paging or row navigation.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Task listing",
+  "nav": true
+}

@@ -30,7 +30,7 @@ CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 DEFAULT_CAP = {"scope": "account", "maxRunsPerDay": 1}
 
 CARD_KEYS = {"version", "open", "summary", "lanes", "cap", "url"}
-LANE_KEYS = {"id", "label", "kind", "match", "params", "connectors", "schedule", "gate"}
+LANE_KEYS = {"id", "label", "kind", "match", "params", "connectors", "schedule", "gate", "shared"}
 MATCH_KEYS = {"type", "field", "equals"}
 PARAM_KEYS = {"type", "ask", "choices"}
 SCHEDULE_KEYS = {"default", "min_interval_hours"}
@@ -232,6 +232,21 @@ def _lint_lane(lane, types):
         problems.append(f"{where}: gate must be one of {', '.join(GATES)}")
     elif k is not None and (gate == "send") != k["acts_externally"]:
         problems.append(f"{where}: gate must be 'send' exactly when the kind acts externally")
+    # Issue #32: the record types this lane's worker may write. Each must be declared and marked
+    # shared by the definition, so a lane cannot widen what a producer kept people-only.
+    if "shared" in lane:
+        shared = lane["shared"]
+        if not isinstance(shared, list) or not shared or not all(isinstance(s, str) for s in shared):
+            problems.append(f"{where}: shared must be a non-empty list of record type ids")
+        elif len(set(shared)) != len(shared):
+            problems.append(f"{where}: shared lists a type more than once")
+        elif types is not None:
+            for s in shared:
+                t = types.get(s)
+                if not isinstance(t, dict):
+                    problems.append(f"{where}: shared type '{s}' is not declared")
+                elif not t.get("shared"):
+                    problems.append(f"{where}: shared type '{s}' is not marked shared by the definition")
     return problems
 
 

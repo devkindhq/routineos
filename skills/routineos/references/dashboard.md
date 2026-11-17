@@ -29,6 +29,7 @@ The dashboard is the Desk: one bundled page (`assets/desk/index.html`) shared by
 - Settings: Account (Appearance, Shortcuts, kept in this browser) and Workspace sections: Routine values with cost notes, open suggestions inline and Recent changes with Revert, Routine notifications, Members (derived from who decided, changed a setting or commented, plus the owner), Modules, Saved views, Privacy PIN (owner only: set, change or remove), Starter tour, Export, Settings history and About. Edits apply from the next run; each run snapshots what it used as `settingsUsed`.
 - Spec pages: `desk.pages` in the definition adds pages at `#/p/<id>` of tiles, charts (sparkline, line, bar, stacked bar, share bar), tables and text, with Refresh, date range and a filter. Each chart has a show-as-table toggle and an "Updated" time. Refresh re-reads the data; in a static preview it re-fetches the snapshot file. See [desk-pages](desk-pages.md).
 - Workers: the viewer's own Desk id with Copy, each lane with who serves it and Release, and the owner's join settings.
+- Raw pages: a dashboard a spec page cannot draw (area, donut, radar charts, cross-filtering, drill-down) can be a raw React page at `#/x/<id>`, owner-approved and running as each viewer. See [desk-raw-pages](desk-raw-pages.md).
 
 ## Capabilities
 

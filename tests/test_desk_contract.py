@@ -1094,3 +1094,143 @@ class WriteCliTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SharedTypeStampsTest(unittest.TestCase):
+    """Issue #32: an entity of a shared type carries updatedBy/updatedAt on every producer write."""
+
+    def _run(self, shared):
+        jobs = copy.deepcopy(JOBS)
+        if shared:
+            jobs["types"]["role"]["shared"] = True
+        store = dc.FakeStore()
+        store.set("meta/definition", definition.compile([
+            {"id": "jobs-watch", "schedule": "0 22 * * 1", "definition": jobs, "settings": JOBS_SETTINGS}]))
+        inp = run_input("r-shared-1", [role("https://job/1", company_domain="acme.com")], at="2026-11-13T10:00:00Z")
+        docs = store.snapshot()
+        ops = [op for ph in dc.plan_run(docs["meta/definition"]["data"], docs, inp) for op in ph["ops"] if op]
+        store.apply(ops)
+        return store
+
+    def test_shared_entity_carries_updated_by_and_at(self):
+        docs = self._run(True).snapshot()
+        doc = next(d["data"] for p, d in docs.items() if p.startswith("entities/role--"))
+        self.assertEqual(doc["updatedBy"], "jobs-watch")
+        self.assertEqual(doc["updatedAt"], "2026-11-13T10:00:00Z")
+
+    def test_non_shared_entity_has_no_stamps(self):
+        docs = self._run(False).snapshot()
+        doc = next(d["data"] for p, d in docs.items() if p.startswith("entities/role--"))
+        self.assertNotIn("updatedBy", doc)
+        self.assertNotIn("updatedAt", doc)
+
+
+class SharedDisplayOverlayTest(unittest.TestCase):
+    """Review item 1: a producer run never wipes a value a person or a worker upserted.
+
+    Display of a shared type = producer-derived values (bySource + sightings + merge picks)
+    overlaid with the doc's own fields; an upserted value also wins on a key the producer
+    writes for the same entity, so a person's edit survives every collect.
+    """
+
+    def _shared_run(self, store, run_id, at, title="Old title"):
+        inp = run_input(run_id, [role("https://job/1", market="AU", company_domain="acme.com",
+                                      title=title)], at=at)
+        for ph in dc.plan_run(compiled_shared(), store.snapshot(), inp):
+            store.apply(ph["ops"])
+
+    def test_page_upsert_survives_a_producer_run_over_the_same_entity(self):
+        store = dc.FakeStore()
+        store.set("meta/definition", compiled_shared())
+        self._shared_run(store, "r1", "2026-11-13T10:00:00Z")
+        path = next(p for p in store.snapshot() if p.startswith("entities/role--"))
+        eid = path[len("entities/"):]
+        # a person upserts on the same entity, including a key the producer also writes (title)
+        _overwrite(store, path, fields={"title": "Person's edit", "score": 9},
+                   display={"title": "Person's edit", "score": 9},
+                   updatedBy="u1", updatedAt="2026-11-13T11:00:00Z")
+        # the next producer run touches the same entity and writes its own title again
+        self._shared_run(store, "r2", "2026-11-13T12:00:00Z")
+        doc = store.snapshot()[path]["data"]
+        self.assertEqual(doc["fields"], {"title": "Person's edit", "score": 9})  # untouched by the run
+        self.assertEqual(doc["display"]["title"], "Person's edit")  # upsert wins over the producer's value
+        self.assertEqual(doc["display"]["score"], 9)
+        self.assertEqual(doc["display"]["market"], "AU")  # producer-only key still displayable
+        self.assertEqual(doc["updatedBy"], "jobs-watch")
+        self.assertEqual(doc["updatedAt"], "2026-11-13T12:00:00Z")
+        self.assertTrue(doc["bySource"]["jobs-watch"]["title"] == "Old title")  # producer data kept
+
+    def test_a_producer_correction_reaches_by_source_not_display_for_an_upserted_key(self):
+        store = dc.FakeStore()
+        store.set("meta/definition", compiled_shared())
+        self._shared_run(store, "r1", "2026-11-13T10:00:00Z")
+        path = next(p for p in store.snapshot() if p.startswith("entities/role--"))
+        _overwrite(store, path, fields={"title": "Person's edit"}, display={"title": "Person's edit"},
+                   updatedBy="u1", updatedAt="2026-11-13T11:00:00Z")
+        # the producer now computes a different title for the same entity
+        self._shared_run(store, "r2", "2026-11-13T12:00:00Z", title="Corrected title")
+        doc = store.snapshot()[path]["data"]
+        self.assertEqual(doc["display"]["title"], "Person's edit")
+        self.assertEqual(doc["fields"]["title"], "Person's edit")
+        self.assertEqual(doc["bySource"]["jobs-watch"]["title"], "Corrected title")
+        # handing the key back: once it is cleared from fields, the producer value shows again
+        _overwrite(store, path, fields={})
+        self._shared_run(store, "r3", "2026-11-13T13:00:00Z", title="Corrected title")
+        self.assertEqual(store.snapshot()[path]["data"]["display"]["title"], "Corrected title")
+
+    def test_worker_upsert_survives_a_producer_run_over_the_same_entity(self):
+        store = dc.FakeStore()
+        store.set("meta/definition", compiled_shared())
+        self._shared_run(store, "r1", "2026-11-13T10:00:00Z")
+        path = next(p for p in store.snapshot() if p.startswith("entities/role--"))
+        # a worker upsert mirrors the same shape: values in fields and display
+        _overwrite(store, path, fields={"status_note": "sent"}, display={"status_note": "sent"},
+                   updatedBy="worker:lane--x", updatedAt="2026-11-13T11:00:00Z")
+        self._shared_run(store, "r2", "2026-11-13T12:00:00Z")
+        doc = store.snapshot()[path]["data"]
+        self.assertEqual(doc["display"]["status_note"], "sent")
+        self.assertEqual(doc["fields"]["status_note"], "sent")
+        self.assertEqual(doc["updatedBy"], "jobs-watch")  # the run restamps, as documented
+
+    def test_a_field_name_outside_the_upsert_charset_is_not_mirrored_to_display(self):
+        store = dc.FakeStore()
+        store.set("meta/definition", compiled_shared())
+        self._shared_run(store, "r1", "2026-11-13T10:00:00Z")
+        path = next(p for p in store.snapshot() if p.startswith("entities/role--"))
+        # a legacy doc whose fields carry a key no upsert path may write (a space): the overlay
+        # skips it, so display keeps the producer-derived value for that key
+        _overwrite(store, path, fields={"odd key": "x"})
+        self._shared_run(store, "r2", "2026-11-13T12:00:00Z")
+        doc = store.snapshot()[path]["data"]
+        self.assertNotIn("odd key", doc["display"])
+        self.assertEqual(doc["display"]["title"], "Old title")
+
+    def test_producer_shared_type_updated_at_is_idempotent_on_a_rerun(self):
+        store = dc.FakeStore()
+        store.set("meta/definition", compiled_shared())
+        self._shared_run(store, "r1", "2026-11-13T10:00:00Z")
+        doc = next(d["data"] for p, d in store.snapshot().items() if p.startswith("entities/role--"))
+        first_at = doc["updatedAt"]
+        self.assertEqual(doc["updatedBy"], "jobs-watch")
+        # the same run id replanned from the stored state writes nothing new: the sighting of this
+        # run is already on the entity, so updatedAt stays the run's time (not bumped)
+        inp = run_input("r1", [role("https://job/1", market="AU", company_domain="acme.com",
+                                    title="Old title")], at="2026-11-13T10:00:00Z")
+        ops = [op for ph in dc.plan_run(compiled_shared(), store.snapshot(), inp)
+               for op in ph["ops"] if op and op["collection"] == "entities"]
+        self.assertEqual(ops, [])
+        doc2 = next(d["data"] for p, d in store.snapshot().items() if p.startswith("entities/role--"))
+        self.assertEqual(doc2["updatedAt"], first_at)
+
+
+def _overwrite(store, path, **over):
+    """Set an entity doc as another writer would (page or worker upsert), pinned to its version."""
+    cur = store.snapshot()[path]
+    store.set(path, dict(cur["data"], **over), if_version=cur["version"])
+
+
+def compiled_shared():
+    jobs = copy.deepcopy(JOBS)
+    jobs["types"]["role"]["shared"] = True
+    return definition.compile([
+        {"id": "jobs-watch", "schedule": "0 22 * * 1", "definition": jobs, "settings": JOBS_SETTINGS}])

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "label": "Raw page samples",
+  "types": {
+    "task": {
+      "label": "Task",
+      "plural": "Tasks",
+      "identity": "field:title",
+      "shared": true,
+      "fields": {
+        "title": {"label": "Title", "type": "text", "summary": true},
+        "status": {"label": "Status", "type": "choice", "choices": ["todo", "doing", "done"], "summary": true},
+        "owner": {"label": "Owner", "type": "text", "summary": true},
+        "due": {"label": "Due", "type": "date"},
+        "amount": {"label": "Amount", "type": "number"}
+      }
+    }
+  }
+}

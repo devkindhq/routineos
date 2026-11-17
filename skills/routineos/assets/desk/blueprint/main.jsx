@@ -1,9 +1,11 @@
 // blueprint/main.jsx: the Desk with the Blueprint page added (the build variant, spec 6.1). The main entry is app/main.jsx.
+import "../app/deskLib.js";
 import "@mantine/core/styles.css";
 import "@mantine/charts/styles.css";
 import "@mantine/spotlight/styles.css";
 import "@mantine/notifications/styles.css";
 import "mantine-datatable/styles.css";
+import "@mantine/dates/styles.css";
 import "@xyflow/react/dist/style.css";
 import { createRoot } from "react-dom/client";
 import { readConfig } from "../core/prefs.js";

@@ -1,0 +1,12 @@
+{
+  "id": "sc-feedback",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "Progress, loaders, alerts, skeletons, transitions and layout primitives.",
+  "why": "Showcase fixture: proves every Desk registry component mounts under the error boundary.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "Feedback and layout",
+  "nav": true
+}

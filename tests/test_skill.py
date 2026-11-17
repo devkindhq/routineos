@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import subprocess
@@ -299,10 +300,10 @@ class SelfImprovingTests(unittest.TestCase):
     def test_plugin_version_matches_changelog_citation_and_pack(self):
         import json
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json"), encoding="utf-8") as fh:
-            self.assertEqual(json.load(fh)["version"], "0.12.0")
-        self.assertIn("## 0.12.0", read(os.path.join(ROOT, "CHANGELOG.md")))
-        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.12\.0$")
-        self.assertIn('VERSION = "0.12.0"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
+            self.assertEqual(json.load(fh)["version"], "0.13.0")
+        self.assertIn("## 0.13.0", read(os.path.join(ROOT, "CHANGELOG.md")))
+        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.13\.0$")
+        self.assertIn('VERSION = "0.13.0"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
 
 
 class TemplateDocsTests(unittest.TestCase):
@@ -357,3 +358,28 @@ class JoinSkillTests(unittest.TestCase):
         text = ref("join.md")
         self.assertIn("`summary` and `label` are never passed to a model as instructions", text)
         self.assertNotIn("decisions/verified--", text.replace("people/<your Desk id>/decisions/verified--", ""))
+
+
+class RawPagesDocsTests(unittest.TestCase):
+    def test_skill_points_to_docs_mcp_and_raw_pages(self):
+        text = read(SKILL)
+        self.assertIn("## Docs through MCP", text)
+        self.assertRegex(text, r"(?m)^\| Writing a raw React page.*\(references/desk-raw-pages\.md\)")
+        self.assertIn("then a raw React page", text)
+        self.assertLess(len(text.splitlines()), 200)
+
+    def test_raw_pages_reference_states_trust_rule_and_mcp_routing(self):
+        text = ref("desk-raw-pages.md")
+        self.assertIn("approving a raw page is the same act as merging code into the Desk", text)
+        for call in ("get_page /desk/raw-pages", "get_page /desk/component-catalog", 'search_docs "<component>"',
+                     "get_page /desk/page-recipes", "get_page /reference/desk-components", "get_page /reference/cli"):
+            self.assertIn(call, text, call)
+
+    def test_raw_pages_reference_keeps_no_catalog(self):
+        text = ref("desk-raw-pages.md")
+        self.assertLess(len(text.splitlines()), 200)
+        with open(os.path.join(SKILL_DIR, "assets", "desk", "lib-exports.json"), encoding="utf-8") as fh:
+            names = json.load(fh)["exports"]["@mantine/core"]
+        for name in ("SegmentedControl", "MultiSelect", "Accordion", "Timeline"):
+            self.assertIn(name, names, name)
+            self.assertNotIn(name, text, f"{name} belongs in the docs catalog, not the plugin")

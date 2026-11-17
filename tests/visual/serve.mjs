@@ -6,7 +6,7 @@
 // (tests/desk_fixtures/make_v2_demo.py). GET /snap/slow.json never answers, so the loading state stays on screen.
 // &bundle=desk serves the page with the salary-band field cell component injected, for the `desk` snapshot;
 // &bundle=bad-components adds BAD_COMPONENTS to it. &tour=1 sets the tour config key (spec 7f).
-// There is one page: the split build, its lazy pages and the CDN mirror are gone.
+// There is one page: the split build, its lazy pages and the Web Awesome mirror are gone.
 import { createServer } from "node:http";
 import { gzipSync } from "node:zlib";
 import { execFileSync } from "node:child_process";

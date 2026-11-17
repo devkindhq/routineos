@@ -200,3 +200,27 @@ class MatchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LaneSharedLintTests(unittest.TestCase):
+    """Issue #32: a lane may name shared record types its worker may write."""
+
+    def test_shared_list_of_declared_types_lints_clean(self):
+        types = copy.deepcopy(DRAFT_TYPES)
+        types["draft"]["shared"] = True
+        self.assertEqual(join_card.lint_join(with_lane(shared=["draft"]), types), [])
+
+    def test_shared_must_be_a_list_of_known_types_without_repeats(self):
+        types = copy.deepcopy(DRAFT_TYPES)
+        types["draft"]["shared"] = True
+        problems = join_card.lint_join(with_lane(shared="draft"), types)
+        self.assertTrue(any("shared" in p for p in problems), problems)
+        self.assertTrue(any("shared" in p for p in join_card.lint_join(with_lane(shared=["ghost"]), types)))
+        self.assertTrue(any("shared" in p for p in join_card.lint_join(with_lane(shared=["draft", "draft"]), types)))
+
+    def test_shared_type_the_definition_does_not_mark_shared_is_named(self):
+        problems = join_card.lint_join(with_lane(shared=["draft"]), DRAFT_TYPES)
+        self.assertTrue(any("not marked shared" in p for p in problems), problems)
+
+    def test_lint_without_types_skips_the_shared_cross_check(self):
+        self.assertEqual(join_card.lint_join(with_lane(shared=["draft"]), None), [])

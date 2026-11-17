@@ -1,0 +1,13 @@
+{
+  "id": "s4-form",
+  "kind": "custom",
+  "slot": "page",
+  "raw": true,
+  "summary": "A new task form with validation that saves a shared task record.",
+  "why": "A spec page cannot take input, and the record page edits existing fields only.",
+  "fallback": "same",
+  "since": "0.13.0",
+  "title": "New task",
+  "nav": true,
+  "verbs": ["upsert"]
+}

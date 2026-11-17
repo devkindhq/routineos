@@ -365,7 +365,7 @@ class RequirementTests(Authored):
         base = blueprint.derive(self.mk(""))
         self.assertIsNone(base["approval"])
         h = blueprint.derive(AUTH)["hash"]
-        tail = '[approval]\nversion = 1\ndate = "2026-11-13"\nhash = "%s"\napproved_by = "A. Person"\n'
+        tail = '[approval]\nversion = 1\ndate = "2026-11-13"\nhash = "%s"\napproved_by = "Reviewer"\n'
         with open(os.path.join(AUTH, "routine.toml"), encoding="utf-8") as fh:
             body = fh.read()
         t = self.mk("", head=body + "\n" + tail % h)

@@ -64,7 +64,8 @@ Commands run as `python3 skills/routineos/scripts/routineos.py <cmd>`.
 7. **Doctor**: `doctor [dir]` checks the environment (Python 3.11 for `tomllib`) and an app folder.
 8. **Desk**: `seed <dir> --out <batch-dir>` plans the one-time setup, `write` plans a run's writes, `learn` plans its learned suggestions, `bundle` builds the Desk as one file, `dashboard/index.html`, the form to publish (`--split` is an alias that writes the same one file to `dashboard/artifact/`). Publish the page privately first.
    Before writing any Desk code run `desk components --routine <dir>` and read [desk-components](references/desk-components.md).
-   Order of preference: a default module, then a view module (`desk module add view <id> --routine <dir> --type <type>`), then a spec page (`desk.pages`, data only), then a custom field cell component, then a code page. See [desk-pages](references/desk-pages.md).
+   Order of preference: a default module, then a view module (`desk module add view <id> --routine <dir> --type <type>`), then a spec page (`desk.pages`, data only), then a custom field cell component, then a code page, then a raw React page. See [desk-pages](references/desk-pages.md) and [desk-raw-pages](references/desk-raw-pages.md).
+   A raw React page runs with full access to the Desk as the viewer; the owner must read it before approving.
    `desk lint --routine <dir>` checks the registry and the routine's modules; `lint` runs the registry check too.
 9. **Deploy and first run** as in [deploy](references/deploy.md): create the routine, run it once report-only, have the person check the output.
 
@@ -102,6 +103,10 @@ To turn an existing n8n workflow, Windmill flow or Zap into a routine, use the [
 - Minimum schedule interval is one hour.
 - Every platform claim to the user carries a tag; owner-reported items stay `unverified` until a pilot run checks them.
 
+## Docs through MCP
+
+The RoutineOS MCP (`routineos` in this plugin) serves docs.routineos.org: `get_started`, `search_docs`, `get_page`, `list_pages`. Use it for anything not in `references/`, and always for raw React pages: `get_page /desk/raw-pages`, then `/desk/component-catalog` for which component to use and `/desk/page-recipes` for a starting page. If the MCP is not connected or a page is missing, say so and use `references/desk-raw-pages.md` only.
+
 ## Read this reference when
 
 | Cue | Reference |
@@ -121,6 +126,7 @@ To turn an existing n8n workflow, Windmill flow or Zap into a routine, use the [
 | Where data lives, sheets, files, object storage | [storage-adapters](references/storage-adapters.md) |
 | Writing or reviewing `prompt.md` | [prompt-craft](references/prompt-craft.md) |
 | Building the artifact page | [dashboard](references/dashboard.md) |
+| Writing a raw React page, choosing Mantine components | [desk-raw-pages](references/desk-raw-pages.md), then the MCP pages above |
 | Desk writes, ids, versions, the run record | [write-contract](references/write-contract.md) |
 | "Join this Desk", lanes, workers, leave, release | [join](references/join.md) |
 | "Run it now", buttons, requests from a page | [live-actions](references/live-actions.md) |

@@ -55,7 +55,7 @@ A setting whose name says it holds who to contact (`recipient`, `approver`, `ema
 | Level | Keys |
 |---|---|
 | top | `version`, `label`, `inbox`, `types`, `views`, `learning`, `desk` |
-| type | `label`, `plural`, `identity`, `merge`, `fields`, `links`, `settingFilters` |
+| type | `label`, `plural`, `identity`, `merge`, `fields`, `links`, `settingFilters`, `shared` |
 | field | `label`, `type`, `summary`, `choices` |
 | setting filter | `setting`, `field` |
 | view | `id`, `type`, `name`, `filters`, `sort`, `columns`, `window`, `group` |
