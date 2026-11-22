@@ -76,7 +76,7 @@ test("static adapter fetches again after a failed load, so Try again can recover
   assert.equal(calls, 2);
 });
 
-// A fake of the platform namespace, shaped like db.d.ts and user.d.ts (contract 0.2.92).
+// A fake of the platform namespace, shaped like db.d.ts and user.d.ts (contract 0.2.93).
 function fakeClaude({ db = true, userId = "u_1" } = {}) {
   const calls = [];
   const snap = (path, body) => ({ id: path.split("/").pop(), exists: body !== undefined, data: () => body, metadata: {} });

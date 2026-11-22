@@ -104,6 +104,20 @@ class Tmp(unittest.TestCase):
         shutil.copytree(src, os.path.join(routine, "desk", "components", os.path.basename(src)))
 
 
+class WarningChannel(Tmp):
+    def test_lint_prints_warnings_and_keeps_the_exit_code(self):
+        from unittest import mock
+        d = self.routine()
+        self.add_component(d)
+        code_clean, out_clean, _ = main("lint", d)
+        self.assertEqual(code_clean, 0, out_clean)
+        with mock.patch.object(desk_registry, "component_warnings", return_value=["a note for Claude"]):
+            code, out, _ = main("lint", d)
+        self.assertEqual(code, code_clean)
+        self.assertIn("WARN a note for Claude", out)
+        self.assertNotIn("WARN", out_clean)
+
+
 class ComponentLint(Tmp):
     def assertOneProblem(self, problems, needle):
         self.assertEqual(len([p for p in problems if needle in p]), 1, problems)
@@ -207,6 +221,57 @@ class ComponentLint(Tmp):
                 js = good_js.replace("  var v = props.value || {};\n", "  var v = props.value || {};\n  " + line + "\n")
                 problems = desk_registry.lint_component(self.comp(js=js), None)
                 self.assertTrue(any(needle.strip() in p for p in problems), problems)
+
+    def with_line(self, line, count=1, crlf=False):
+        """The good component with `line` inserted `count` times from line 4, lint problems for it."""
+        good_js = read(os.path.join(GOOD, "salary-band.js"))
+        js = good_js.replace("  var v = props.value || {};\n", "  var v = props.value || {};\n" + ("  " + line + "\n") * count)
+        d = self.comp()
+        with open(os.path.join(d, "salary-band.js"), "wb") as fh:
+            fh.write((js.replace("\n", "\r\n") if crlf else js).encode("utf-8"))
+        return desk_registry.lint_component(d, None)
+
+    def test_on_word_colon_names_rule_quote_and_fix(self):
+        problems = self.with_line("// Read-only: saved")
+        self.assertEqual(problems, ['salary-band/salary-band.js:4: on* key: "Read-only:"; no event handlers in a '
+                                    'custom component; use the click hooks the slot provides, or reword; '
+                                    'comments are scanned too'])
+
+    def test_quote_carries_no_control_or_bidi_character(self):
+        """Component source is untrusted: an ESC or a bidi override in a quoted token must not reach the lint line."""
+        problems = self.with_line("// \x1b[2J\u202eRead-only: saved")
+        self.assertTrue(problems, problems)
+        for p in problems:
+            self.assertNotIn("\x1b", p)
+            self.assertNotIn("\u202e", p)
+        self.assertTrue(any("\\x1b" in p and "\\u202e" in p for p in problems), problems)
+
+    def test_computed_access_names_rule_quote_and_fix(self):
+        problems = self.with_line("var w = by[k];")
+        self.assertEqual(len(problems), 1, problems)
+        self.assertTrue(problems[0].startswith('salary-band/salary-band.js:4: computed member access: "by[k]"; '), problems)
+        self.assertTrue(problems[0].endswith("name the property directly, or use a numeric or plain string literal"))
+
+    def test_crlf_lines_match_lf(self):
+        self.assertEqual(self.with_line("var w = by[k];", crlf=True), self.with_line("var w = by[k];"))
+
+    def test_line_is_the_match_line_not_the_first_comment_line(self):
+        js = read(os.path.join(GOOD, "salary-band.js")).replace(
+            "  var v = props.value || {};\n", "  var v = props.value || {};\n  /* one\n two */\n  var w = by[k];\n")
+        self.assertIn("salary-band.js:6: computed member access", desk_registry.lint_component(self.comp(js=js), None)[0])
+
+    def test_one_rule_caps_at_five(self):
+        problems = self.with_line("var k = ui.el(\"span\", { onclick: props.x });", count=7)
+        self.assertEqual(len([p for p in problems if "on* key" in p]), 5, problems)
+        self.assertEqual(len([p for p in self.with_line("var w = by[k];", count=7) if "computed member" in p]), 5)
+
+    def test_other_rules_carry_line_and_quote_too(self):
+        problems = self.with_line("var f = fetch(props.u);")
+        self.assertEqual(len(problems), 1, problems)
+        self.assertTrue(problems[0].startswith('salary-band/salary-band.js:4: uses fetch(: "fetch(props.u)"; '), problems)
+        problems = self.with_line('var u = "https://example.com/x";')
+        self.assertEqual(problems, ['salary-band/salary-band.js:4: string URL: "https://example.com/x"; '
+                                    'URLs come from props through ui.urlOrText'])
 
     def test_plain_index_and_on_words_still_allowed(self):
         good_js = read(os.path.join(GOOD, "salary-band.js"))
@@ -428,6 +493,32 @@ class Scaffold(Tmp):
         code, out, _ = main("desk", "component", "copy", "salary-band", "--from", a, "--to", b)
         self.assertEqual(code, 1)
         self.assertIn('"band"', out)
+
+    HOSTILE = "// \x1b[2J\u202eghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8" + "-only: saved"
+
+    def hostile_routine(self, name):
+        r = self.routine(name)
+        self.add_component(r)
+        js = os.path.join(r, "desk", "components", "salary-band", "salary-band.js")
+        write(js, read(js).replace("  var v = props.value || {};\n", "  var v = props.value || {};\n  " + self.HOSTILE + "\n"))
+        return r
+
+    def assert_clean_output(self, out):
+        self.assertIn("FAIL", out)
+        for bad in ("\x1b", "\u202e", "ghp_a1B2"):
+            self.assertNotIn(bad, out)
+
+    def test_copy_fail_lines_are_terminal_safe_and_redacted(self):
+        a, b = self.hostile_routine("a"), self.routine("b")
+        code, out, err = main("desk", "component", "copy", "salary-band", "--from", a, "--to", b)
+        self.assertEqual(code, 1, out + err)
+        self.assert_clean_output(out)
+
+    def test_lint_fail_lines_are_terminal_safe_and_redacted(self):
+        a = self.hostile_routine("a")
+        code, out, err = main("lint", a)
+        self.assertEqual(code, 1, out + err)
+        self.assert_clean_output(out)
 
     def test_copy_refuses_missing_source_and_existing_target(self):
         a, b = self.routine("a"), self.routine("b")

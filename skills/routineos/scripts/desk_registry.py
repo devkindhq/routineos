@@ -14,6 +14,7 @@ import sys
 import tempfile
 import tomllib
 
+import blueprint
 import definition
 import desk_libs
 import desk_raw
@@ -589,10 +590,12 @@ def _check_custom_manifest(m, folder):
     return problems
 
 
-def _scan_js(text):
+def _scan_js(text, origins=False):
     """(code, uncommented): `text` without comments, with string, template and regex literal bodies blanked in `code`
-    and kept in `uncommented`. A light scanner, not a parser: enough to count brackets and find names."""
+    and kept in `uncommented`. A light scanner, not a parser: enough to count brackets and find names. With `origins`,
+    a third value maps each `uncommented` index to its index in `text`, so a match there reports an exact line."""
     code, keep, stack, i, n = [], [], [], 0, len(text)
+    org = []
 
     def last_token():
         tail = "".join(code[-40:]).rstrip()
@@ -601,7 +604,9 @@ def _scan_js(text):
 
     def emit(c, k=None):
         code.append(c)
-        keep.append(c if k is None else k)
+        k = c if k is None else k
+        keep.append(k)
+        org.extend(range(i, i + len(k)))
 
     def template(j):
         """Scan a template body from j; returns the index after its closing backtick or after a ${."""
@@ -653,7 +658,7 @@ def _scan_js(text):
                 stack.pop()
             emit(c)
             i += 1
-    return "".join(code), "".join(keep)
+    return ("".join(code), "".join(keep), org) if origins else ("".join(code), "".join(keep))
 
 
 def _top_level(code):
@@ -707,31 +712,67 @@ CTX_BRACKET_RE = re.compile(r"(?<![\w$.])ctx\s*\[")
 PREF_RE = re.compile(r"\bctx\s*\.\s*(pref|setPref)\b")
 
 
+MAX_PER_RULE = 5   # messages per rule per file, so a long page does not flood Claude's context
+QUOTE_MAX = 60
+
+
+def _line_at(text, pos):
+    """1-based line of offset `pos`; counts \\n only, so a CRLF file reports the line an editor shows."""
+    return text.count("\n", 0, pos) + 1
+
+
+def _quote_at(text, start, end):
+    """The whitespace-delimited token that holds text[start:end], trailing ; and , dropped, at most QUOTE_MAX long."""
+    a, b = start, max(end, start)
+    while a > 0 and not text[a - 1].isspace():
+        a -= 1
+    while b < len(text) and not text[b].isspace():
+        b += 1
+    return text[a:b].rstrip(";,")[:QUOTE_MAX]
+
+
+def _problem(rel, text, pos, rule, quote, fix):
+    """One lint problem as `{rel}:{line}: {rule}: "{quote}"; {fix}`; the line is left out when there is no position."""
+    where = f"{rel}:{_line_at(text, pos)}" if pos is not None else rel
+    quote = blueprint.terminal_safe(blueprint.redact(quote[:QUOTE_MAX]))
+    return f'{where}: {rule}: "{quote}"; {fix}'
+
+
 def _check_ctx_use(text, rel, factory, declared, prefs=False):
     """The host verbs a section, panel or page calls are the ones its manifest declares, and every use of ctx.actions
     is a direct ctx.actions.<verb>( call, so the declared list is what the code can reach."""
     problems = []
-    _, unc = _scan_js(text)
+    _, unc, org = _scan_js(text, origins=True)
     head = re.search(r"function\s+" + re.escape(factory) + r"\s*\(\s*ctx\s*,", unc)
     if not head:
         problems.append(f"{rel}: the first parameter of {factory} must be named ctx")
-    body = unc[head.end():] if head else unc
-    if CTX_BRACKET_RE.search(body):
-        problems.append(f"{rel}: ctx[...]; name the property directly")
-    if BARE_CTX_RE.search(body):
-        problems.append(f"{rel}: ctx used without a property (an alias or destructuring); use ctx.<name> directly")
-    used = set()
+    base = head.end() if head else 0
+    body = unc[base:]
+
+    def at(m, rule, fix, quote=None):
+        raw = org[base + m.start()] if base + m.start() < len(org) else len(text)
+        raw_end = org[base + m.end() - 1] + 1 if m.end() > m.start() and base + m.end() - 1 < len(org) else raw
+        return _problem(rel, text, raw, rule, quote if quote is not None else _quote_at(text, raw, raw_end), fix), raw
+
+    m = CTX_BRACKET_RE.search(body)
+    if m:
+        problems.append(at(m, "ctx[...]", "name the property directly")[0])
+    m = BARE_CTX_RE.search(body)
+    if m:
+        problems.append(at(m, "ctx used without a property", "use ctx.<name> directly; no alias or destructuring")[0])
+    used = {}
     for m in ACTIONS_RE.finditer(body):
         if not m.group(1):
-            problems.append(f"{rel}: ctx.actions must be followed by .<verb>( at once; no alias, no passing it on")
+            problems.append(at(m, "ctx.actions must be followed by .<verb>( at once", "no alias, no passing it on; call ctx.actions.<verb>( directly")[0])
         elif m.group(2) not in VERBS:
-            problems.append(f"{rel}: ctx.actions.{m.group(2)} is not a host verb ({', '.join(VERBS)})")
+            problems.append(at(m, f"ctx.actions.{m.group(2)} is not a host verb", f"use one of {', '.join(VERBS)}")[0])
         else:
-            used.add(m.group(2))
-    if not prefs and PREF_RE.search(body):
-        problems.append(f"{rel}: uses ctx.pref or ctx.setPref but the manifest does not set prefs: true")
-    for v in sorted(used - set(declared)):
-        problems.append(f"{rel}: calls ctx.actions.{v} but the manifest does not declare it in verbs")
+            used.setdefault(m.group(2), m)
+    m = PREF_RE.search(body)
+    if not prefs and m:
+        problems.append(at(m, "ctx.pref or ctx.setPref without prefs", "set prefs: true in the manifest, or drop it")[0])
+    for v in sorted(set(used) - set(declared)):
+        problems.append(at(used[v], f"calls ctx.actions.{v} but the manifest does not declare it in verbs", "add it to verbs in the manifest, or drop the call")[0])
     return problems
 
 
@@ -741,10 +782,19 @@ def _check_custom_js(text, rel, factory, names, parse=True, names_apply=True):
     if found != [factory]:
         have = ", ".join(found) or "none"
         problems.append(f"{rel}: must define exactly one top-level function, {factory} (found: {have})")
+
+    def at(pos, end, rule, quote, fix):
+        return _problem(rel, text, pos, rule, quote if quote is not None else _quote_at(text, pos, end), fix)
+
     for name, pattern in BANNED_APIS:
-        if pattern.search(text):
-            problems.append(f"{rel}: uses {name}, which a custom component may not use")
-    code, uncommented = _scan_js(text)
+        m = pattern.search(text)
+        if m:
+            problems.append(at(m.start(), m.end(), f"uses {name}", None, "a custom component may not use it"))
+    code, uncommented, org = _scan_js(text, origins=True)
+
+    def raw(i):
+        return org[i] if i < len(org) else len(text)
+
     if found == [factory]:
         top = _top_level(code)
         if top is None:
@@ -752,26 +802,49 @@ def _check_custom_js(text, rel, factory, names, parse=True, names_apply=True):
         elif not re.fullmatch(r"\s*function\s+" + re.escape(factory) + r"\s*\(\)\s*\{\}[\s;]*", top):
             problems.append(f"{rel}: top-level code other than function {factory}; keep every statement inside it")
     # Raw text too: a regex literal after ) or } reads as division to the scanner, which can hide code behind a fake comment.
-    for name in sorted(set(BANNED_IDENTIFIER_RE.findall(uncommented)) | set(BANNED_GLOBAL_RE.findall(uncommented))
-                       | set(BANNED_IDENTIFIER_RE.findall(text))):
+    first = {}
+    for m in BANNED_IDENTIFIER_RE.finditer(text):
+        first.setdefault(m.group(1), (m.start(), m.end()))
+    for rx in (BANNED_IDENTIFIER_RE, BANNED_GLOBAL_RE):
+        for m in rx.finditer(uncommented):
+            first.setdefault(m.group(1), (raw(m.start()), raw(m.end() - 1) + 1))
+    for name in sorted(first):
         if not any(f"uses {name}" in p for p in problems):
-            problems.append(f"{rel}: names {name}, which a custom component may not use")
-    for m in sorted({m.group(1) for m in STORE_USE_RE.finditer(uncommented)}):
-        if m not in ("get", "list"):
-            problems.append(f"{rel}: ctx.store.{m}; a component reads with ctx.store.get and ctx.store.list, and writes only through ctx.actions")
-    if COMPUTED_ACCESS_RE.search(uncommented) or COMPUTED_ACCESS_RE.search(text):
-        problems.append(f"{rel}: computed member access with a key that is not a number or plain string literal; "
-                        "name the property directly")
-    if ON_KEY_RE.search(text):
-        problems.append(f"{rel}: an on* key or attribute name; a custom component sets no event handlers")
-    literals = _literals(text)
-    for word in sorted({m.group(1).lower() for lit in literals for m in [RISKY_WORD_RE.match(lit)] if m}):
-        problems.append(f"{rel}: the literal {word} names a tag or attribute a custom component may not create")
-    for lit in sorted({lit for lit in literals if URL_LITERAL_RE.search(lit)}):
-        problems.append(f"{rel}: string URL \"{lit}\"; URLs come from props through ui.urlOrText")
-    for lit in sorted({lit for lit in literals if lit in names} if names_apply else set()):
-        problems.append(f"{rel}: the literal \"{lit}\" names this routine's {names[lit]}; take it from props "
-                        "so the component stays reusable")
+            problems.append(at(*first[name], f"names {name}, which a custom component may not use", None, "remove it or use the plain property"))
+    stores = {}
+    for m in STORE_USE_RE.finditer(uncommented):
+        if m.group(1) not in ("get", "list"):
+            stores.setdefault(m.group(1), (raw(m.start()), raw(m.end() - 1) + 1))
+    for name in sorted(stores):
+        problems.append(at(*stores[name], f"ctx.store.{name}", None,
+                           "a component reads with ctx.store.get and ctx.store.list, and writes only through ctx.actions"))
+    spots = {m.start(): (m.start(), m.end()) for m in COMPUTED_ACCESS_RE.finditer(text)}
+    for m in COMPUTED_ACCESS_RE.finditer(uncommented):
+        spots.setdefault(raw(m.start()), (raw(m.start()), raw(m.end() - 1) + 1))
+    for pos in sorted(spots)[:MAX_PER_RULE]:
+        problems.append(at(*spots[pos], "computed member access", None,
+                           "name the property directly, or use a numeric or plain string literal"))
+    ons = [(m.start(), m.end()) for m in ON_KEY_RE.finditer(text)]
+    for start, end in ons[:MAX_PER_RULE]:
+        problems.append(at(start, end, "on* key", None,
+                           "no event handlers in a custom component; use the click hooks the slot provides, "
+                           "or reword; comments are scanned too"))
+    lits = [(m.group(0)[1:-1], m.start()) for m in STRING_RE.finditer(text)]
+
+    def first_of(pairs):
+        out = {}
+        for key, pos in pairs:
+            out.setdefault(key, pos)
+        return out
+
+    for word, pos in sorted(first_of((m.group(1).lower(), pos) for lit, pos in lits for m in [RISKY_WORD_RE.match(lit)] if m).items()):
+        problems.append(at(pos, pos, f"the literal {word}", text[pos:].split("\n", 1)[0],
+                           "names a tag or attribute a custom component may not create"))
+    for lit, pos in sorted(first_of((lit, pos) for lit, pos in lits if URL_LITERAL_RE.search(lit)).items()):
+        problems.append(at(pos, pos, "string URL", lit, "URLs come from props through ui.urlOrText"))
+    for lit, pos in sorted(first_of((lit, pos) for lit, pos in lits if lit in names).items() if names_apply else []):
+        problems.append(at(pos, pos, f"the literal names this routine's {names[lit]}", f'{lit}',
+                           "take it from props so the component stays reusable"))
     if parse:
         problems += _parse_problems(text, rel)
     return problems
@@ -823,6 +896,20 @@ def lint_component(comp_dir, definition=None, parse=True):
         problems += _check_ctx_use(text, rel, factory_name(cid), m.get("verbs") if isinstance(m.get("verbs"), list) else [],
                                    m.get("prefs") is True)
     return problems
+
+
+def component_warnings(comp_dir, definition=None):
+    """Warnings for one component folder: findings that never fail a lint or change an exit code. Empty for now."""
+    return []
+
+
+def lint_routine_warnings(root, routine):
+    """Warnings for a routine's custom components, as warning strings the callers print as WARN; a producer must name its own component."""
+    defn = _routine_definition(routine)
+    out = []
+    for c in custom_components(routine):
+        out += component_warnings(c["path"], defn)
+    return out
 
 
 def _routine_definition(routine):

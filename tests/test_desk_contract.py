@@ -1092,9 +1092,6 @@ class WriteCliTests(unittest.TestCase):
             self.assertNotIn("Traceback", r.stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class SharedTypeStampsTest(unittest.TestCase):
     """Issue #32: an entity of a shared type carries updatedBy/updatedAt on every producer write."""
@@ -1266,3 +1263,7 @@ class ProducerOwnershipTest(unittest.TestCase):
         del defn["types"]["role"]["producers"]
         phases = self._plan(defn, "lead-signals", [role("https://job/1")])
         self.assertTrue(any(op["doc_id"].startswith("role--") for op in all_ops(phases)))
+
+
+if __name__ == "__main__":
+    unittest.main()

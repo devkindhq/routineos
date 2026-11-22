@@ -298,9 +298,6 @@ class MigrateCliTests(unittest.TestCase):
             self.assertIn(word, res.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 sys.path.insert(0, os.path.dirname(CLI))
 import routineos  # noqa: E402
@@ -358,3 +355,7 @@ class UrlShown(unittest.TestCase):
         shown = routineos._migrate_url_shown("https://example.com/a/me" + chr(64) + "example.org/f")
         self.assertNotIn("example.org", shown)
         self.assertIn("[removed]", shown)
+
+
+if __name__ == "__main__":
+    unittest.main()

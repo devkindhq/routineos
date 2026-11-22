@@ -1,21 +1,21 @@
 {
   "desk_sha256": {
-    "candidate-shortlist": "a1edd14bf5e32602f15d5e4aa6dc047a283e61b86d5c27fc0a7257c12ace97b2",
+    "candidate-shortlist": "b861ee0b13005e501aa15a2eee09ddaaf2beeaa55b5abdbb35cc3ca67b6af11a",
     "coming-soon": null,
-    "content-calendar": "d5d665accd6a83789b61e3fbbce20129cf5a3309e35a2b320a0b2db49e45ffb0",
-    "engineering-digest": "b573980ef6cbbd404e5db224090c6d7c192d008a8e617a8e5d4c995ca67931b6",
-    "inbox-triage": "c75e6160fb391904707c06ea017023498c75a850a54e6a536949a778f914a2e2",
-    "invoice-exceptions": "164fd22690b88575dc95991d6d8be56129255a9150ec9166c0523b8a70957069",
-    "jobs-watch": "18e3b3cf30e8bf2ef72334372572ddf45e200a0814a2917d5939ce3d434afea6",
-    "meeting-brief": "d24743e37dc56be2cd663b25a2ce225a07f4cef22e24969a18c5d62f91fe1862",
-    "shopify-content-qa": "3c64c00153fd56db6afd15c8b5d6f5583c780d0bcffa10fd12f78eac23d8429a",
+    "content-calendar": "525302c8ee78a5ff94c57fcdc5f682906e3e15a94fd84a8c72c53abcd9b7b26e",
+    "engineering-digest": "cbd791d3d6fab8db183f359ad0ac958139d3159c6ebadee3c71bd6af0a8ed7f1",
+    "inbox-triage": "f12f8a151b564302bee9925f93e6e8c40cb3c6b84efd0ec8f487d2eef11924f4",
+    "invoice-exceptions": "3451fb54cf6548b1960ae62b59d3c9dcd926421695054d6ad7139d5e27fef56e",
+    "jobs-watch": "585f0c154f9a84fab80b33de11ed1ea391d6cbd0a767164e9451f313ebf81a52",
+    "meeting-brief": "3b51b3b9901801a470a403c98264d2911339268aeb722e253c2185055d6ad22b",
+    "shopify-content-qa": "80fbcf062dcac3a70b57a31f24e1a99a465413f837959bc06aad4b8f9809fe33",
     "site-compliance-review": {
       "code": 1,
       "stdout": "FAIL component 'clef-card': not approved, or changed since it was approved; review it and run `routineos permissions <dir> --approve`\n"
     },
-    "support-gap-digest": "65f5b8363e224e2ee66ccf949ebac2f3a1dbf9ee00e11857d6f6aba82e0f5863",
-    "watch": "1f2a8e2426843278ce587f823ca5d7fbcb19f4481c68f9c5d72a2b93d920bc0b",
-    "weekly-marketing-report": "fdcf5622ba687fb17aa6f78fd1331b174d965ab6eef3c7da533d8d89fd3fcbc2"
+    "support-gap-digest": "0655e80c14d8b21a4aadf886de20c5841010b7bfaab31d521b4a176171f9201b",
+    "watch": "8f387abb55a6d7c564c077a39342077258460d6425e0e2b8c0fa0819a861357a",
+    "weekly-marketing-report": "dcdeb909b9beea638bd6859efd8906dc0c6d569357491e373a0fa854f59a4c06"
   },
   "lint_fixtures": {
     "action_gated": {
@@ -106,7 +106,7 @@
     },
     "site-compliance-review": {
       "code": 0,
-      "sha256": "b48ee52883b88899a513af3ff9c96b6bbce21a625845e0cdc1f471ab254e60c0"
+      "sha256": "e52d00aad07d1a6b5fdabbc1292d4be32fa849491c0ea965c65a05688d8939d2"
     },
     "support-gap-digest": {
       "code": 0,

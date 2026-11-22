@@ -166,9 +166,6 @@ class BudgetTests(unittest.TestCase):
             self.assertEqual(r.stdout, fh.read())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class DeskCapTests(unittest.TestCase):
     T = D1
@@ -255,3 +252,7 @@ class CapHeaderTests(unittest.TestCase):
         # A failed run still counts: the counter is recorded and written before any work, not with the last write.
         self.assertLess(text.index("budget.py record"), text.index("5. Work only"))
         self.assertNotIn("Last step", text)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -74,7 +74,7 @@ export function deskPages(definition) {
 // The client half of definition.lint_pages: a block the Python lint would refuse is dropped here, so a hand edited
 // definition cannot crash the page. Kinds, a declared query type, x and aggregate for a tile or chart, a window the
 // evaluator can use (the same limits as definition.py: 3660 days, 520 weeks).
-var SPEC_KINDS = ["tile", "chart", "table", "text"];
+var SPEC_KINDS = ["tile", "chart", "table", "board", "text"];
 var SPEC_AGG_OPS = ["latest", "sum", "avg", "count", "delta"];
 var SPEC_WINDOW = { days: 3660, weeks: 520 };
 
@@ -85,6 +85,16 @@ function windowOk(w) {
     Object.prototype.hasOwnProperty.call(SPEC_WINDOW, last.unit) && last.n <= SPEC_WINDOW[last.unit];
 }
 
+// A board draws lanes from block.columns [{value, title?}] or the groupBy field's choices, and each card from card.title,
+// card.text and card.badges; a shape the renderer cannot read drops the block.
+function boardOk(b) {
+  var q = b.query, card = b.card;
+  if (typeof q.groupBy !== "string" || !card || typeof card !== "object" || typeof card.title !== "string") return false;
+  if (card.text !== undefined && typeof card.text !== "string") return false;
+  if (card.badges !== undefined && !(Array.isArray(card.badges) && card.badges.every(function (f) { return typeof f === "string"; }))) return false;
+  return b.columns === undefined || (Array.isArray(b.columns) && b.columns.every(function (c) { return !!c && typeof c === "object" && typeof c.value === "string"; }));
+}
+
 function specBlockOk(b, types) {
   if (!b || typeof b !== "object" || SPEC_KINDS.indexOf(b.kind) === -1) return false;
   if (b.kind === "text") return !b.query || (typeof b.query === "object" && typeof b.query.type === "string");
@@ -93,6 +103,7 @@ function specBlockOk(b, types) {
   if (!windowOk(q.window)) return false;
   if (q.where !== undefined && !Array.isArray(q.where)) return false;
   if (b.kind === "table") return Array.isArray(b.columns);
+  if (b.kind === "board") return boardOk(b);
   if (typeof q.x !== "string") return false;
   return !!q.aggregate && typeof q.aggregate === "object" && SPEC_AGG_OPS.indexOf(q.aggregate.op) !== -1;
 }

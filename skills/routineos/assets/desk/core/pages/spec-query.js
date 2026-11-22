@@ -222,3 +222,22 @@ export function tableRows(rows, query, ctx) {
   }
   return query.limit ? out.slice(0, query.limit) : out;
 }
+
+// The lanes of a board block: [{value, title, cards}]. Lanes are block.columns ({value, title?}) when given, otherwise
+// the choices of the groupBy field (`choices`); a card whose group matches no lane goes to a last "Other" lane. The
+// rows pass through the same where, filter, window, order and limit as a table's.
+export function boardLanes(rows, block, ctx, choices) {
+  var query = block.query;
+  var cols = Array.isArray(block.columns) && block.columns.length
+    ? block.columns.map(function (c) { return { value: c.value, title: c.title || c.value }; })
+    : (Array.isArray(choices) ? choices : []).map(function (v) { return { value: v, title: v }; });
+  var lanes = cols.map(function (c) { return { value: c.value, title: c.title, cards: [] }; });
+  var byValue = new Map(lanes.map(function (l) { return [l.value, l]; }));
+  var other = { value: "", title: "Other", cards: [] };
+  tableRows(rows, query, ctx).forEach(function (r) {
+    var lane = byValue.get(browseText(fieldOf(r, query.groupBy)));
+    (lane || other).cards.push(r);
+  });
+  if (other.cards.length) lanes.push(other);
+  return lanes;
+}

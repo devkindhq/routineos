@@ -318,6 +318,69 @@ def role_defn(health=None):
     return defn
 
 
+def triage_defn(triage=None, filters=False):
+    d = company_defn()
+    if triage is not None:
+        d["types"]["company"]["triage"] = triage
+    if filters:
+        d["types"]["company"]["settingFilters"] = [{"setting": "skip", "field": "name"}]
+    return d
+
+
+SKIP = [{"name": "skip", "type": "list", "role": "exclude", "default": []}]
+
+
+class TriageTests(unittest.TestCase):
+    def test_triage_compile(self):
+        self.assertTrue(any("triage must be true or false" in p
+                            for p in definition.lint(triage_defn("yes"), [])))
+        out = definition.compile([producer("alpha", triage_defn(True))])
+        self.assertIs(out["types"]["company"]["triage"], True)
+        with self.assertRaises(definition.DefinitionError) as cm:
+            definition.compile([producer("alpha", triage_defn(True)), producer("beta", company_defn())])
+        text = str(cm.exception)
+        self.assertIn("alpha", text)
+        self.assertIn("beta", text)
+        self.assertIn("triage", text)
+        out = definition.compile([producer("alpha", triage_defn(False)), producer("beta", company_defn())])
+        self.assertNotIn("triage", out["types"]["company"])
+        plain = definition.compile([producer("alpha", company_defn())])
+        self.assertNotIn("triage", plain["types"]["company"])
+        self.assertEqual(plain["version"], definition.compile([producer("alpha", triage_defn(False))])["version"])
+        self.assertNotEqual(plain["version"], out_version_with_triage())
+
+    def test_triage_settingfilters_lint(self):
+        d = triage_defn(filters=True)
+        d["types"]["note"] = dict(company_defn()["types"]["company"], triage=True, identity="name")
+        found = definition.lint(d, SKIP)
+        self.assertTrue(any("type 'company'" in p and "settingFilters needs triage: true" in p for p in found), found)
+        d["types"]["company"]["triage"] = True
+        self.assertEqual(definition.lint(d, SKIP), [])
+        # no type declares triage: filters alone are fine (controls show everywhere, as today)
+        self.assertEqual(definition.lint(triage_defn(filters=True), SKIP), [])
+
+    def test_triage_settingfilters_across_producers_refused_in_compile(self):
+        a = triage_defn(filters=True)
+        b = {"version": 1, "label": "B", "inbox": False,
+             "types": {"note": dict(company_defn()["types"]["company"], triage=True)}}
+        with self.assertRaises(definition.DefinitionError) as cm:
+            definition.compile([producer("alpha", a, SKIP), producer("beta", b)])
+        self.assertIn("settingFilters needs triage: true", str(cm.exception))
+
+    def test_triage_separate_from_learnable(self):
+        learn = triage_defn(filters=True)
+        learn["learning"] = {"enabled": True}
+        out = definition.compile([producer("alpha", learn, SKIP)])
+        self.assertNotIn("triage", out["types"]["company"])
+        out = definition.compile([producer("alpha", triage_defn(True))])
+        self.assertIs(out["types"]["company"]["triage"], True)
+        self.assertNotIn("learning", out["producers"][0])
+
+
+def out_version_with_triage():
+    return definition.compile([producer("alpha", triage_defn(True))])["version"]
+
+
 class HealthTests(unittest.TestCase):
     """desk.health (spec 7c): a per-type mapping of one field's values to red, yellow and green."""
     ROLE = {"role": {"field": "market", "red": ["DE"], "yellow": ["GB"], "green": ["AU"]}}

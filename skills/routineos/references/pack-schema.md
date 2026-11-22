@@ -59,7 +59,7 @@ A setting whose name says it holds who to contact (`recipient`, `approver`, `ema
 | field | `label`, `type`, `summary`, `choices` |
 | setting filter | `setting`, `field` |
 | view | `id`, `type`, `name`, `filters`, `sort`, `columns`, `window`, `group` |
-| desk | `modules`, `health`, `record`, `pages` |
+| desk | `modules`, `start`, `health`, `record`, `pages` |
 | desk module | `id`, `kind`, `label`, `icon`, `view`, `fields` |
 | module view | `type`, `filters`, `window`, `sort`, `group`, `columns` |
 | desk spec page | `id`, `title`, `nav`, `controls`, `filter`, `blocks` |

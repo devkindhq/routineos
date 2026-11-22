@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { aggregateTile, evalQuery, tableRows } from "../core/pages/spec-query.js";
+import { aggregateTile, boardLanes, evalQuery, tableRows } from "../core/pages/spec-query.js";
 
 var NOW = Date.UTC(2026, 10, 10, 12, 0, 0); // 2026-11-10, a Tuesday
 var WEEKS = ["2026-10-19", "2026-10-26", "2026-11-02", "2026-11-09"];
@@ -155,4 +155,37 @@ test("x and group values named like Object.prototype members aggregate like any 
   var tile = aggregateTile(rows, Object.assign({}, q, { aggregate: { op: "latest", field: "value" } }), { now: NOW });
   expect(tile.value).toBe(41); // the last x in order is "toString": 40 + 1
   expect(tile.previous).toBe(31); // "hasOwnProperty": 30 + 1
+});
+
+function card(id, status, over) {
+  return Object.assign({ id: id, key: id, type: "draft", lastSeen: "2026-11-09", f: { title: "T " + id, status: status }, a: {} }, over || {});
+}
+
+test("board lanes follow block.columns, with titles, and strays go to Other", () => {
+  var rows = [card("a", "idea"), card("b", "ready"), card("c", "idea"), card("d", "weird"), card("e", undefined)];
+  rows[4].f = { title: "T e" };
+  var block = { query: { type: "draft", groupBy: "status" }, columns: [{ value: "idea", title: "Ideas" }, { value: "ready" }, { value: "live" }] };
+  var lanes = boardLanes(rows, block, { now: NOW }, ["ignored"]);
+  expect(lanes.map(function (l) { return [l.value, l.title, l.cards.length]; })).toEqual([["idea", "Ideas", 2], ["ready", "ready", 1], ["live", "live", 0], ["", "Other", 2]]);
+});
+
+test("board without columns uses the choices of the group field, in order", () => {
+  var rows = [card("a", "live"), card("b", "idea")];
+  var lanes = boardLanes(rows, { query: { type: "draft", groupBy: "status" } }, { now: NOW }, ["idea", "ready", "live"]);
+  expect(lanes.map(function (l) { return l.value + ":" + l.cards.length; })).toEqual(["idea:1", "ready:0", "live:1"]);
+});
+
+test("board applies where, order and limit like a table, and drops dropped records", () => {
+  var rows = [card("a", "idea", { f: { title: "b", status: "idea", n: 1 } }), card("b", "idea", { f: { title: "a", status: "idea", n: 2 } }),
+    card("c", "idea", { status: "dropped" }), card("d", "ready", { f: { title: "z", status: "ready", n: 3 } })];
+  var block = { query: { type: "draft", groupBy: "status", where: [["n", ">=", 1]], orderBy: ["title", "asc"], limit: 2 } };
+  var lanes = boardLanes(rows, block, { now: NOW }, ["idea", "ready"]);
+  expect(lanes[0].cards.map(function (r) { return r.f.title; })).toEqual(["a", "b"]);
+  expect(lanes[1].cards).toHaveLength(0);
+});
+
+test("a group value such as __proto__ is a lane like any other", () => {
+  var rows = [card("a", "__proto__")];
+  var lanes = boardLanes(rows, { query: { type: "draft", groupBy: "status" }, columns: [{ value: "__proto__" }] }, { now: NOW }, []);
+  expect(lanes[0].cards).toHaveLength(1);
 });
