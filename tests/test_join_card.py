@@ -198,9 +198,6 @@ class MatchTests(unittest.TestCase):
         self.assertNotEqual(dc.lane_key("t", {"x": "a", "y": "b"}), dc.lane_key("t", {"x": "a-b"}))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class LaneSharedLintTests(unittest.TestCase):
     """Issue #32: a lane may name shared record types its worker may write."""
@@ -224,3 +221,7 @@ class LaneSharedLintTests(unittest.TestCase):
 
     def test_lint_without_types_skips_the_shared_cross_check(self):
         self.assertEqual(join_card.lint_join(with_lane(shared=["draft"]), None), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

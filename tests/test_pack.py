@@ -35,6 +35,22 @@ class CoreTests(unittest.TestCase):
              "setting": [{"name": "q", "type": "list", "label": 'He said "hi"\\ é\n', "default": [1.5, 2, "a"]}]}
         self.assertEqual(tomllib.loads(pack.toml_dumps(r)), r)
 
+    def test_desk_table_round_trips_and_validates(self):
+        p = minimal_pack()
+        p["routine"]["desk"] = {"timezone": "Australia/Melbourne", "link": [
+            {"label": "Tracker", "url": "https://docs.google.com/spreadsheets/d/EXAMPLE/edit"},
+            {"label": "Docs", "url": "https://example.org/docs", "icon": "globe"}]}
+        text = pack.toml_dumps(p["routine"])
+        self.assertIn("[[desk.link]]", text)
+        self.assertEqual(tomllib.loads(text), p["routine"])
+        self.assertEqual(problems_of(p), [])
+        for bad in ({"pages": True}, {"link": [{"label": "x", "url": "http://example.org"}]},
+                    {"timezone": "Mars/Base"}, {"link": [{"label": "x", "url": "https://example.org", "icon": "rocket"}]},
+                    {"links": []}):
+            q = minimal_pack()
+            q["routine"]["desk"] = bad
+            self.assertTrue(problems_of(q), bad)
+
     def test_toml_refuses_nested_tables(self):
         with self.assertRaises(pack.PackError):
             pack.toml_dumps({"routine": {"name": "x", "deep": {"a": 1}}})

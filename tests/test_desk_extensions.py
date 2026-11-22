@@ -242,6 +242,39 @@ class ExtensionPreviewTest(unittest.TestCase):
         self.assertIn("read-only", out)
         self.assertTrue(os.path.isfile(os.path.join(out_dir, "snapshot.json")))
 
+    def preview(self, d):
+        snap = os.path.join(d, "snap.json")
+        write(snap, "{}")
+        out_dir = os.path.join(d, "out")
+        return main("desk", "preview", "--routine", d, "--snapshot", snap, "--out", out_dir), out_dir
+
+    def test_preview_reports_unapproved(self):
+        d = routine()
+        (code, out, _), out_dir = self.preview(d)
+        self.assertEqual(code, 0, out)
+        for cid in ("review-box", "review-panel", "review-page"):
+            self.assertIn(f"component '{cid}': not approved yet: review it and run "
+                          f"`routineos permissions {d} --approve`", out)
+        self.assertTrue(os.path.isfile(os.path.join(out_dir, "index.html")))
+
+    def test_preview_is_quiet_once_approved(self):
+        d = routine()
+        desk_registry.write_approvals(d, desk_registry.extension_rows(d))
+        (code, out, _), _ = self.preview(d)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("not approved yet", out)
+
+    def test_warnings_print_and_never_change_an_exit_code(self):
+        from unittest import mock
+        d = routine()
+        with mock.patch.object(desk_registry, "component_warnings", return_value=["a note for Claude"]):
+            (code, out, _), _ = self.preview(d)
+            self.assertEqual(code, 0, out)
+            self.assertIn("WARN a note for Claude", out)
+            code, out, _ = main("desk", "lint", "--routine", d)
+            self.assertEqual(code, 0, out)
+            self.assertIn("WARN a note for Claude", out)
+
     def test_preview_refuses_a_lint_failure(self):
         d = routine()
         edit_manifest(d, "review-box", lambda m: m.update(why=""))
@@ -307,9 +340,6 @@ class ExtensionPermissionSpoofTest(unittest.TestCase):
         self.assertEqual(len(out.split("\n")), 2)
         self.assertIn("INVALID component folder 'x?y'", out)
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class ConsentWordingTest(unittest.TestCase):
@@ -590,7 +620,7 @@ class RawBuildGateTest(unittest.TestCase):
         code, out, _ = main("desk", "preview", "--routine", d, "--snapshot", snap, "--out", out_dir)
         self.assertEqual(code, 0, out)
         self.assertIn('window.DESK_PAGES["raw-page"]', read(os.path.join(out_dir, "index.html")))
-        self.assertNotIn("approv", out)
+        self.assertIn("component 'raw-page': not approved yet", out)  # a note only: preview still builds
 
     def test_preview_prints_fail_for_a_compile_problem(self):
         d = self.raw_routine()
@@ -748,3 +778,7 @@ class DeskStartComponentTest(unittest.TestCase):
     def test_non_page_component_refused(self):
         found = desk_registry.lint_routine({}, self.started("x/review-panel"))
         self.assertTrue([p for p in found if "no page component 'review-panel'" in p], found)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -486,9 +486,6 @@ class JoinerGateSignals(unittest.TestCase):
                                                                       "status": "sent", "by": "u-b"}}}
         self.assertEqual(learn._joiner_signals(docs, LK, "u-b"), (set(), set()))
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 ADDR = "sales" + "@example.com"
 LANE = {"id": "sender", "label": "Sender for {mailbox}", "kind": "mail-send",
@@ -681,3 +678,7 @@ class WorkerHeaderLearning(unittest.TestCase):
             text = fh.read()
         self.assertIn("learn --worker {lane_key} --by {by}", text)
         self.assertIn("Never write `state/learning`", text)
+
+
+if __name__ == "__main__":
+    unittest.main()

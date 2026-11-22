@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import sys
+import tomllib
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -518,9 +519,11 @@ def cmd_lint(args):
     else:
         problems += desk_registry.lint_routine_only(SKILL_ROOT, d)
     notes = _blueprint_warnings(d, multi)
+    for rd in routine_dirs(d) if multi else [d]:
+        notes += desk_registry.lint_routine_warnings(SKILL_ROOT, rd)
     if problems:
         for p in problems:
-            print(f"FAIL {appmodel.redact(p)}")
+            print(f"FAIL {blueprint.terminal_safe(blueprint.redact(p))}")
         for w in notes:
             print(f"WARN {blueprint.terminal_safe(blueprint.redact(w))}")
         return 1
@@ -569,6 +572,25 @@ def _desk_definition(routine):
     """(definition dict, path) of a routine folder; raises DefinitionError."""
     path = os.path.join(routine, "definition.json")
     return definition.load(path), path
+
+
+def _desk_block_problems(routine):
+    """Lint of the routine's definition.json desk block and its routine.toml [desk] table."""
+    found = []
+    try:
+        defn, _ = _desk_definition(routine)
+    except definition.DefinitionError as exc:
+        return [str(exc)]
+    if "desk" in defn:
+        found += [f"definition.json: {p}" for p in definition.lint_desk(defn["desk"], defn.get("types", {}))]
+    toml = os.path.join(routine, "routine.toml")
+    if os.path.isfile(toml):
+        try:
+            with open(toml, "rb") as fh:
+                found += [f"routine.toml: {p}" for p in definition.lint_routine_desk(tomllib.load(fh).get("desk"))]
+        except (OSError, tomllib.TOMLDecodeError) as exc:
+            found.append(f"routine.toml: cannot be read ({exc})")
+    return found
 
 
 def cmd_desk_components(args):
@@ -717,11 +739,16 @@ def cmd_desk_scaffold(args):
 def cmd_desk_preview(args):
     """A static preview of the Desk with this routine's components over a demo snapshot. Reads only: the static
     store refuses every write, so a verb shows the Desk's read-only message instead of saving."""
-    problems = desk_registry.lint_routine_only(SKILL_ROOT, args.routine)
+    problems = desk_registry.lint_routine_only(SKILL_ROOT, args.routine) + _desk_block_problems(args.routine)
     if problems:
         for p in problems:
-            print(f"FAIL {p}")
+            print(f"FAIL {blueprint.terminal_safe(blueprint.redact(p))}")
         return 1
+    for w in desk_registry.lint_routine_warnings(SKILL_ROOT, args.routine):
+        print(f"WARN {blueprint.terminal_safe(blueprint.redact(w))}")
+    for i in desk_registry.unapproved_extensions(args.routine):
+        print(f"component '{i}': not approved yet: review it and run `routineos permissions {args.routine} --approve`")
+    print("preview draws the snapshot's meta/definition; lint ran on the current definition.json")
     snap = args.snapshot or os.path.join(args.routine, "demo", "desk-demo.json")
     if not os.path.isfile(snap):
         return fail(f"no demo data at {snap}; pass --snapshot FILE")
@@ -732,7 +759,7 @@ def cmd_desk_preview(args):
             js, problems = _component_script(c)
             if problems:
                 for p in problems:
-                    print(f"FAIL {p}")
+                    print(f"FAIL {blueprint.terminal_safe(blueprint.redact(p))}")
                 return 1
             comps.append(js)
         with open(DESK_HTML, encoding="utf-8") as fh:
@@ -763,7 +790,7 @@ def cmd_desk_component_copy(args):
     problems = desk_registry.lint_routine_only(SKILL_ROOT, args.to)
     if problems:
         for p in problems:
-            print(f"FAIL {p}")
+            print(f"FAIL {blueprint.terminal_safe(blueprint.redact(p))}")
         print(f"copied to {dst}; fix the problems above before bundling")
         return 1
     print(f"ok: copied {args.id} to {dst}")
@@ -774,14 +801,16 @@ def cmd_desk_lint(args):
     problems = desk_registry.lint(SKILL_ROOT, args.routine)
     if args.routine:
         try:
-            defn, _ = _desk_definition(args.routine)
+            _desk_definition(args.routine)
         except definition.DefinitionError as exc:
             return fail(str(exc))
-        if "desk" in defn:
-            problems += [f"definition.json: {p}" for p in definition.lint_desk(defn["desk"], defn.get("types", {}))]
+        problems += _desk_block_problems(args.routine)
+    warnings = desk_registry.lint_routine_warnings(SKILL_ROOT, args.routine) if args.routine else []
+    for w in warnings:
+        print(f"WARN {blueprint.terminal_safe(blueprint.redact(w))}")
     if problems:
         for p in problems:
-            print(f"FAIL {p}")
+            print(f"FAIL {blueprint.terminal_safe(blueprint.redact(p))}")
         return 1
     print("ok: no problems")
     return 0
@@ -1114,6 +1143,8 @@ def load_producers(dirs):
             "schedule": cfg["routine"]["schedule"],
             "definition": definition.load(os.path.join(pd, "definition.json")),
             "settings": cfg.get("setting", []),
+            "links": cfg["desk"].get("link", []) if isinstance(cfg.get("desk"), dict) else [],
+            "timezone": cfg["desk"].get("timezone") if isinstance(cfg.get("desk"), dict) else None,
         })
     return producers, first, problems
 

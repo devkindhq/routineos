@@ -414,9 +414,6 @@ class Fixtures(unittest.TestCase):
         self.assertEqual(pack.validate(migrate.emit(plan)[0]), [])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class SourceInputs(unittest.TestCase):
     def schema(self, props):
@@ -494,3 +491,7 @@ class TypeSwapFuzz(unittest.TestCase):
                 w.parse(flow([m]))
             except migrate.MigrateError:
                 pass
+
+
+if __name__ == "__main__":
+    unittest.main()

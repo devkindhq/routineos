@@ -477,7 +477,7 @@ tested = "2026-10-29, Hiring Signals run 2026-10-29-0438, the import failed and 
 docs = "silent"
 source = ["pilot:run-2026-10-29-0438"]
 checked = "2026-10-29"
-risk_if_wrong = "budget and other deterministic steps fall back to hand-typed JSON; give runnable commands such as python3 ${CLAUDE_SKILL_DIR}/scripts/budget.py decide"
+risk_if_wrong = "budget and other deterministic steps fall back to hand-typed JSON; give runnable commands such as python3 lib/budget.py decide"
 test = "Run the skill's documented script commands with python3 -I inside a run"
 
 [[capability]]

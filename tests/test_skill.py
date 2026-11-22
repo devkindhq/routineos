@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,8 +31,22 @@ def strip_caps(text):
     return text
 
 
-def repo_files():
-    for dirpath, dirs, files in os.walk(ROOT):
+def repo_files(root=ROOT):
+    """Tracked files with a scanned extension; os.walk when there is no git repo."""
+    if os.path.exists(os.path.join(root, ".git")):  # a file in a worktree
+        try:
+            out = subprocess.run(
+                ["git", "-C", root, "ls-files", "-z"],
+                check=True, capture_output=True,
+            ).stdout.decode("utf-8")
+            for rel in out.split("\0"):
+                path = os.path.join(root, rel)
+                if rel.endswith(SCAN_EXT) and os.path.isfile(path):
+                    yield path
+            return
+        except (OSError, subprocess.CalledProcessError, UnicodeDecodeError):
+            pass
+    for dirpath, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         for f in files:
             if f.endswith(SCAN_EXT):
@@ -44,6 +59,34 @@ def read(path):
 
 
 class SkillTests(unittest.TestCase):
+    def make_repo(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = tmp.name
+        subprocess.run(["git", "init", "-q", root], check=True)
+        addr = "a" + "@" + "b.example"
+        for name in ("tracked.md", "untracked.md"):
+            with open(os.path.join(root, name), "w", encoding="utf-8") as fh:
+                fh.write("contact " + addr + "\n")
+        subprocess.run(["git", "-C", root, "add", "tracked.md"], check=True)
+        return root, addr
+
+    def test_repo_files_uses_tracked_files_only(self):
+        root, _ = self.make_repo()
+        names = sorted(os.path.basename(p) for p in repo_files(root))
+        self.assertEqual(names, ["tracked.md"])
+
+    def test_repo_files_falls_back_to_walk_without_git(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "note.md"), "w", encoding="utf-8") as fh:
+                fh.write("hello\n")
+            self.assertEqual([os.path.basename(p) for p in repo_files(tmp)], ["note.md"])
+
+    def test_untracked_file_with_email_like_text_does_not_fail(self):
+        root, addr = self.make_repo()
+        hits = [p for p in repo_files(root) if addr in read(p)]
+        self.assertEqual([os.path.basename(p) for p in hits], ["tracked.md"])
+
     def test_frontmatter_parses(self):
         text = read(SKILL)
         m = re.match(r"---\n(.*?)\n---\n", text, re.S)
@@ -105,6 +148,35 @@ CLI = os.path.join(SKILL_DIR, "scripts", "routineos.py")
 
 def ref(name):
     return read(os.path.join(REF_DIR, name))
+
+
+class SkillDriftTests(unittest.TestCase):
+    def test_budget_path_in_reference_exists(self):
+        text = read(os.path.join(SKILL_DIR, "references", "prompt-craft.md"))
+        match = re.search(r"python3 (\S*budget\.py) decide", text)
+        self.assertIsNotNone(match, "prompt-craft.md names no budget.py command")
+        self.assertTrue(match.group(1).startswith("lib/"), match.group(1))
+        self.assertTrue(os.path.isfile(os.path.join(SKILL_DIR, "assets", match.group(1))), match.group(1))
+
+    def test_budget_path_in_registry_exists(self):
+        text = read(os.path.join(SKILL_DIR, "registry", "capabilities.toml"))
+        paths = re.findall(r"python3 (\S*budget\.py)", text)
+        self.assertTrue(paths, "capabilities.toml names no budget.py command")
+        for path in paths:
+            self.assertTrue(path.startswith("lib/"), path)
+            self.assertTrue(os.path.isfile(os.path.join(SKILL_DIR, "assets", path)), path)
+
+    def test_never_learnable_lists_match(self):
+        def words(pattern):
+            return set(pattern.split("|"))
+        py = re.search(r'NEVER_LEARNABLE_RE = re\.compile\(r"([^"]+)"\)', read(os.path.join(SKILL_DIR, "scripts", "definition.py")))
+        js = re.search(r"NEVER_LEARNABLE = /([^/]+)/", read(os.path.join(SKILL_DIR, "assets", "desk", "core", "palette.js")))
+        doc = re.search(r"must not contain a never-learnable word \(([^)]*)\)",
+                        read(os.path.join(SKILL_DIR, "references", "authoring.md")))
+        self.assertTrue(py and js and doc)
+        expected = words(py.group(1))
+        self.assertEqual(expected, words(js.group(1)))
+        self.assertEqual(expected, set(re.findall(r"`(\w+)`", doc.group(1))))
 
 
 class LifecycleReferenceTests(unittest.TestCase):
@@ -175,9 +247,6 @@ class LifecycleReferenceTests(unittest.TestCase):
         self.assertNotIn("platform refresh", " ".join(
             ref(n) for n in ("deploy.md", "operate.md", "discover.md")))
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class LifecycleSkillTests(unittest.TestCase):
@@ -300,10 +369,10 @@ class SelfImprovingTests(unittest.TestCase):
     def test_plugin_version_matches_changelog_citation_and_pack(self):
         import json
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json"), encoding="utf-8") as fh:
-            self.assertEqual(json.load(fh)["version"], "0.13.2")
-        self.assertIn("## 0.13.2", read(os.path.join(ROOT, "CHANGELOG.md")))
-        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.13\.2$")
-        self.assertIn('VERSION = "0.13.2"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
+            self.assertEqual(json.load(fh)["version"], "0.13.3")
+        self.assertIn("## 0.13.3", read(os.path.join(ROOT, "CHANGELOG.md")))
+        self.assertRegex(read(os.path.join(ROOT, "CITATION.cff")), r"(?m)^version: 0\.13\.3$")
+        self.assertIn('VERSION = "0.13.3"', read(os.path.join(ROOT, "skills", "routineos", "scripts", "pack.py")))
 
 
 class TemplateDocsTests(unittest.TestCase):
@@ -383,3 +452,7 @@ class RawPagesDocsTests(unittest.TestCase):
         for name in ("SegmentedControl", "MultiSelect", "Accordion", "Timeline"):
             self.assertIn(name, names, name)
             self.assertNotIn(name, text, f"{name} belongs in the docs catalog, not the plugin")
+
+
+if __name__ == "__main__":
+    unittest.main()

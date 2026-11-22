@@ -254,8 +254,8 @@
       "type": "watch",
       "schedule": "0 21 * * *",
       "path": "site-compliance-review.json",
-      "bytes": 99722,
-      "sha256": "b48ee52883b88899a513af3ff9c96b6bbce21a625845e0cdc1f471ab254e60c0",
+      "bytes": 99632,
+      "sha256": "e52d00aad07d1a6b5fdabbc1292d4be32fa849491c0ea965c65a05688d8939d2",
       "connectors": [
         {
           "id": "worker",

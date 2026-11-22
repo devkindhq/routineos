@@ -224,6 +224,73 @@
               }
             }
           }
+        },
+        "desk": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "link": {
+              "type": "array",
+              "maxItems": 12,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "url"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "pattern": "^https://"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "enum": [
+                      "house",
+                      "inbox",
+                      "badge-check",
+                      "history",
+                      "settings",
+                      "list",
+                      "dot",
+                      "building-2",
+                      "briefcase",
+                      "user",
+                      "users",
+                      "video",
+                      "file-text",
+                      "mail",
+                      "message-square",
+                      "calendar",
+                      "receipt",
+                      "tag",
+                      "folder",
+                      "newspaper",
+                      "git-pull-request",
+                      "chart-line",
+                      "circle-help",
+                      "rss",
+                      "file-search",
+                      "package",
+                      "globe",
+                      "link",
+                      "external-link"
+                    ]
+                  }
+                }
+              }
+            },
+            "timezone": {
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -332,7 +399,8 @@
                   "limit_pressure",
                   "connections",
                   "edit_drift",
-                  "manual_repetition"
+                  "manual_repetition",
+                  "people_drop"
                 ]
               },
               "additionalProperties": {
@@ -378,6 +446,21 @@
               "type": "array",
               "items": {
                 "type": "object"
+              }
+            },
+            "health": {
+              "type": "object"
+            },
+            "record": {
+              "type": "object"
+            },
+            "start": {
+              "type": "string"
+            },
+            "hideLists": {
+              "type": "array",
+              "items": {
+                "type": "string"
               }
             }
           }
@@ -427,7 +510,8 @@
             "file-search",
             "package",
             "globe",
-            "link"
+            "link",
+            "external-link"
           ]
         },
         "identity": {
@@ -439,6 +523,12 @@
             "merge",
             "separate"
           ]
+        },
+        "shared": {
+          "type": "boolean"
+        },
+        "triage": {
+          "type": "boolean"
         },
         "fields": {
           "type": "object",
@@ -549,7 +639,8 @@
             "file-search",
             "package",
             "globe",
-            "link"
+            "link",
+            "external-link"
           ]
         },
         "filters": {
@@ -652,7 +743,8 @@
             "file-search",
             "package",
             "globe",
-            "link"
+            "link",
+            "external-link"
           ]
         },
         "view": {

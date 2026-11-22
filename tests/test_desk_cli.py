@@ -112,6 +112,41 @@ class DeskCli(unittest.TestCase):
         self.assertIn("desk module 'x1'", out)
         self.assertIn("script", out)
 
+    def test_desk_lint_and_preview_handle_board_hide_links(self):
+        defn = json.loads(self.read_defn())
+        defn["desk"] = {"hideLists": "all"}
+        with open(self.defn_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(defn, indent=2) + "\n")
+        code, out, _ = main("desk", "lint", "--routine", self.routine)
+        self.assertEqual(code, 1)
+        self.assertIn("hideLists", out)
+        # preview lints the same desk block before it draws anything
+        snap = os.path.join(self.tmp, "snap.json")
+        with open(snap, "w", encoding="utf-8") as f:
+            f.write("{}")
+        code, out, _ = main("desk", "preview", "--routine", self.routine, "--snapshot", snap, "--out",
+                            os.path.join(self.tmp, "out"))
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL definition.json: ", out)
+        self.assertIn("hideLists", out)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "out", "index.html")))
+        # a clean definition lints and previews, and the preview says which definition it linted
+        defn.pop("desk")
+        with open(self.defn_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(defn, indent=2) + "\n")
+        code, out, _ = main("desk", "preview", "--routine", self.routine, "--snapshot", snap, "--out",
+                            os.path.join(self.tmp, "out"))
+        self.assertEqual(code, 0, out)
+        self.assertIn("preview draws the snapshot's meta/definition; lint ran on the current definition.json", out)
+
+    def test_desk_lint_reads_the_routine_toml_desk_table(self):
+        toml = os.path.join(self.routine, "routine.toml")
+        with open(toml, "a", encoding="utf-8") as f:
+            f.write('\n[desk]\nlinks = []\n')
+        code, out, _ = main("desk", "lint", "--routine", self.routine)
+        self.assertEqual(code, 1)
+        self.assertIn("routine.toml: desk: unknown key 'links'", out)
+
     def lint_from(self, cwd, *argv):
         import desk_registry
         orig, here = desk_registry.lint, os.getcwd()

@@ -1,9 +1,10 @@
-// app/pages/spec/blocks.jsx: the four spec blocks by kind, shared by a spec page and by a code page's ui.block.
+// app/pages/spec/blocks.jsx: the five spec blocks by kind, shared by a spec page and by a code page's ui.block.
 // SpecBlock draws one block from a spec and already-read records. The spec comes from a code page, so an unknown kind
 // or a spec that makes a block throw draws nothing rather than taking the page down.
 import { Component } from "react";
 import { toRow } from "../../../core/pages/browse.js";
 import { evalQuery } from "../../../core/pages/spec-query.js";
+import Board from "./Board.jsx";
 import ChartBlock from "./ChartBlock.jsx";
 import DataTable from "./DataTable.jsx";
 import TextBlock from "./TextBlock.jsx";
@@ -14,7 +15,7 @@ function Chart({ block, rows, ctx }) {
   return <ChartBlock spec={block} points={out.points} skipped={out.skipped} />;
 }
 
-export var BLOCKS = { tile: Tile, chart: Chart, table: DataTable, text: TextBlock };
+export var BLOCKS = { tile: Tile, chart: Chart, table: DataTable, board: Board, text: TextBlock };
 
 class Quiet extends Component {
   constructor(props) { super(props); this.state = { failed: false }; }

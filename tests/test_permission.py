@@ -295,9 +295,6 @@ class RepoLessOnceTests(unittest.TestCase):
         self.assertEqual(out.count("- repo-less-routine:"), 1)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class SharedTypeLinesTests(unittest.TestCase):
     """Issue #32: the screen names the shared record types in plain words."""
@@ -325,3 +322,7 @@ class SharedTypeLinesTests(unittest.TestCase):
                  "reads": ["entities"], "prefs": False, "placement": None, "hash": "x" * 64, "types": []}]
         out = permission.render(make_app(), RECORDS, desk_rows=rows)
         self.assertNotIn("upsert writes", out)
+
+
+if __name__ == "__main__":
+    unittest.main()

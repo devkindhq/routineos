@@ -137,7 +137,7 @@ The optional Clef card adds a section after the page's fields: each asked rule w
 
 ## Decisions
 
-- The pack format carries no Worker code and no custom Desk components, so the Worker lives in `worker/` and the Clef card in `desk/components/clef-card/` in the repository, as in `shopify-content-qa`; the pack's Desk uses core views and capture notes only. The definition sets no `desk` block (health chips or record strip): the pack schema in `catalog/schema/pack.v1.schema.json` allows only `desk.modules` there, so health chips fall back to each type's first choice field.
+- The pack format carries no Worker code and no custom Desk components, so the Worker lives in `worker/` and the Clef card in `desk/components/clef-card/` in the repository, as in `shopify-content-qa`; the pack's Desk uses core views and capture notes only. The definition sets no `desk` block (health chips or record strip), so health chips fall back to each type's first choice field.
 - The pack format has no run budget block, so the budget is a setting (`max_runs_per_day`) checked by `lib/budget_check.py` against the Desk's run documents.
 - Clef is the main verdict engine and the phrase and pattern rules are its evidence: a rule hit gives the quote and the box, a Clef score says whether the page makes the claim. A rule hit Clef scores low stays a flag, marked needs review, so nothing the rules catch is hidden by the model.
 - Clef scores in the Worker, at capture time, so each page is one model call no matter how many runs read it. The matchers stay in the routine, so a matcher change needs no redeploy; a rule added or a `question` changed does.

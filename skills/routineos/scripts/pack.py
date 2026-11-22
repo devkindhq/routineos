@@ -22,7 +22,7 @@ import schema
 
 FORMAT = "routineos.pack.v1"
 CATALOG_FORMAT = "routineos.catalog.v1"
-VERSION = "0.13.2"
+VERSION = "0.13.3"
 USER_AGENT = f"routineos-pack/{VERSION}"
 MAX_PACK_BYTES = 512 * 1024
 MAX_INDEX_BYTES = 1024 * 1024
@@ -49,10 +49,11 @@ ROUTINE_TABLES = {
     "setting": ("name", "type", "label", "example", "role", "default", "min", "max", "choices", "cost_note", "format"),
     "gate": ("enabled", "transport", "timeout_hours"),
     "action": ("name", "kind"),
+    "desk": ("link", "timezone"),
 }
 ARRAY_TABLES = ("setting", "action")
 DEFINITION_KEYS = ("version", "label", "inbox", "types", "views", "learning", "desk")
-TYPE_KEYS = ("label", "plural", "icon", "identity", "merge", "fields", "links", "settingFilters")
+TYPE_KEYS = ("label", "plural", "icon", "identity", "merge", "shared", "triage", "fields", "links", "settingFilters")
 FIELD_KEYS = ("label", "type", "summary", "choices")
 FILTER_KEYS = ("setting", "field")
 VIEW_KEYS = ("id", "type", "name", "icon", "filters", "sort", "columns", "window", "group")
@@ -811,12 +812,23 @@ def toml_dumps(routine):
         if not isinstance(rows, list) or not all(isinstance(x, dict) for x in rows):
             raise PackError(f"routine.{table} must be a table or a list of tables")
         for row in rows:
-            lines = [header]
+            lines, nested = [header], []
             for k, v in row.items():
                 if isinstance(v, dict):
                     raise PackError(f"routine.{table}.{k}: nested tables are not allowed")
+                if isinstance(v, list) and v and all(isinstance(x, dict) for x in v):
+                    nested.append((k, v))  # a list of tables, as [[table.key]] blocks after the table's own keys
+                    continue
                 lines.append(f"{_toml_key(k)} = {_toml_value(v, f'routine.{table}.{k}')}")
             blocks.append("\n".join(lines))
+            for k, items in nested:
+                for item in items:
+                    sub = [f"[[{_toml_key(table)}.{_toml_key(k)}]]"]
+                    for ik, iv in item.items():
+                        if isinstance(iv, dict) or (isinstance(iv, list) and any(isinstance(x, dict) for x in iv)):
+                            raise PackError(f"routine.{table}.{k}.{ik}: nested tables are not allowed")
+                        sub.append(f"{_toml_key(ik)} = {_toml_value(iv, f'routine.{table}.{k}.{ik}')}")
+                    blocks.append("\n".join(sub))
     return "\n\n".join(blocks) + "\n"
 
 

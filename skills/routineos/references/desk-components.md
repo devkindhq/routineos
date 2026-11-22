@@ -833,6 +833,13 @@ Each verb returns a Promise and rejects with the Desk's own message when the vis
 viewer, the id is not a record id, or the write path is not on the Desk's write list. Every write goes through
 `actions.save` and the same path allowlist as the rest of the Desk. `request` (calling out to the network) is not offered.
 
+### What a lint problem looks like
+
+Each problem reads `{file}:{line}: {rule}: "{quote}"; {fix}`: the rule it broke, the text that broke it and how to fix
+it, with the line as an editor counts it. A file-level problem (not exactly one top-level function, size, brackets)
+has no line and keeps a plain sentence. The `on*` and computed-access rules show at most 5 places per file; the other rules show one problem per distinct name or value. A `// comment` is scanned
+for `on*` keys too, so `// Read-only: it declares` is quoted as `Read-only:`; reword it.
+
 ### What the lint checks
 
 The lint keeps the code to the declared verbs: every use of `ctx.actions` must be `ctx.actions.<verb>(` with the verb
@@ -855,7 +862,7 @@ empty `why` (the lint fails until you write one, 40 or more characters) and a st
 ### desk preview
 
 `routineos desk preview --routine <dir> [--snapshot FILE] [--out DIR]` lints, then writes a static copy of the Desk
-with the routine's components over demo data (default `<dir>/demo/desk-demo.json`). It is read-only: a verb shows
+with the routine's components over demo data (default `<dir>/demo/desk-demo.json`). Lint problems stop it. Lint warnings print as `WARN` lines and never stop it, and a line `component '<id>': not approved yet: review it and run `routineos permissions <dir> --approve`` names each interactive component that is not approved (the preview still builds). It is read-only: a verb shows
 the Desk's read-only message and saves nothing, and it shows the demo snapshot, not live data. Serve the folder with
 `python3 -m http.server --directory <out>`.
 

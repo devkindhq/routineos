@@ -191,3 +191,52 @@ test("a chart block is drawn as a figure from the page's rows", async () => {
   var fig = await screen.findByRole("figure", { name: "Trend" });
   expect(within(fig).getByText("Trend: 150 to 180 over 2 points, up 20%")).toBeTruthy();
 });
+
+
+var BOARD_DEFINITION = {
+  types: { draft: { plural: "Drafts", fields: { title: { type: "text" }, status: { type: "choice", choices: ["idea", "ready", "live"] },
+    channel: { type: "text" }, tag: { type: "text" }, extra: { type: "text" }, more: { type: "text" }, summary: { type: "text" } } } },
+  producers: [{ id: "weekly", label: "Weekly", types: ["draft"], schedule: "0 21 * * 0" }],
+  desk: { pages: [{ id: "drafts", title: "Drafts", blocks: [
+    { id: "board", kind: "board", title: "Drafts by status", link: true,
+      query: { type: "draft", groupBy: "status", orderBy: ["title", "asc"], limit: 10 },
+      columns: [{ value: "idea", title: "Ideas" }, { value: "ready" }],
+      card: { title: "title", text: "summary", badges: ["channel", "tag", "extra", "more"] } },
+    { id: "bychoice", kind: "board", title: "By choices", query: { type: "draft", groupBy: "status" }, card: { title: "title" } },
+  ] }] },
+};
+
+function draft(i, status, title, extra) {
+  return { data: { type: "draft", key: "d" + i, status: "active", lastSeen: "2026-11-09", firstSeen: "2026-11-09", seenCount: 1, sources: ["weekly"],
+    display: Object.assign({ title: title, status: status, channel: "blog", summary: "<b>sum</b>" }, extra || {}) } };
+}
+
+test("a board draws lanes, cards, three badges at most, and its text as text", async () => {
+  var d = { "meta/definition": { data: BOARD_DEFINITION }, "meta/workspace": { data: { name: "Test workspace" } } };
+  d["entities/draft--d1"] = draft(1, "idea", "Alpha", { tag: "t1", extra: "t2", more: "t3" });
+  d["entities/draft--d2"] = draft(2, "ready", "Beta");
+  d["entities/draft--d3"] = draft(3, "live", "Gamma");
+  window.history.replaceState(null, "", "#/p/drafts");
+  render(<App store={createStore("static", { docs: d })} config={{ store: "static", workspace: "Test workspace" }} />);
+  var b = await waitFor(() => { var el = screen.getByText("Drafts by status").closest("[data-block]"); expect(within(el).getByText("Alpha")).toBeTruthy(); return el; });
+  expect(within(b).getByText("Ideas")).toBeTruthy();
+  var other = b.querySelector('[data-lane=""]'); // "live" is not in block.columns, so its card lands in the Other lane
+  expect(within(other).getByText("Gamma")).toBeTruthy();
+  expect(within(other).getByText("Other")).toBeTruthy();
+  var alpha = b.querySelector("[data-card]");
+  expect(within(alpha).getByText("t2")).toBeTruthy();
+  expect(within(alpha).queryByText("t3")).toBeNull(); // the fourth badge is not drawn
+  expect(within(alpha).getByText("<b>sum</b>")).toBeTruthy();
+  expect(alpha.querySelector("b")).toBeNull();
+  expect(within(alpha).getByText("Alpha").closest("a").getAttribute("href")).toBe("#/entity/draft/d1");
+  expect(b.querySelectorAll("button, input, textarea").length).toBe(0); // read only
+});
+
+test("a board without columns takes its lanes from the choices", async () => {
+  var d = { "meta/definition": { data: BOARD_DEFINITION }, "meta/workspace": { data: { name: "Test workspace" } } };
+  d["entities/draft--d3"] = draft(3, "live", "Gamma");
+  window.history.replaceState(null, "", "#/p/drafts");
+  render(<App store={createStore("static", { docs: d })} config={{ store: "static", workspace: "Test workspace" }} />);
+  var b = await waitFor(() => { var el = screen.getByText("By choices").closest("[data-block]"); expect(within(el).getByText("Gamma")).toBeTruthy(); return el; });
+  ["idea", "ready", "live"].forEach((c) => expect(b.querySelector('[data-lane="' + c + '"]')).toBeTruthy());
+});

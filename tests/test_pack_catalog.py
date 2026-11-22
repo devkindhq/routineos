@@ -226,6 +226,86 @@ class SchemaTests(unittest.TestCase):
                                                     self.catalog_schema), [])
 
 
+    def _pack(self, mutate):
+        p = minimal_pack()
+        mutate(p["definition"])
+        return p
+
+    def _schema_errors(self, p):
+        return jsonschema_subset.validate(p, self.pack_schema)
+
+    def test_schema_type_accepts_shared(self):
+        p = self._pack(lambda d: d["types"]["item"].update(shared=True))
+        self.assertEqual(self._schema_errors(p), [])
+
+    def test_schema_type_and_desk_accept_triage_and_hide_lists(self):
+        p = self._pack(lambda d: (d["types"]["item"].update(triage=True), d.update(desk={"hideLists": ["item"]})))
+        self.assertEqual(self._schema_errors(p), [])
+        self.assertEqual(pack.validate(p), [])
+        bad = self._pack(lambda d: d["types"]["item"].update(triage="yes"))
+        self.assertTrue(self._schema_errors(bad))
+        self.assertTrue(pack.validate(bad))
+        bad = self._pack(lambda d: d.update(desk={"hideLists": ["nope"]}))
+        self.assertTrue(pack.validate(bad))
+
+    def test_schema_accepts_a_routine_desk_table(self):
+        good = {"timezone": "Australia/Melbourne", "link": [{"label": "Tracker", "url": "https://example.org/a", "icon": "globe"}]}
+        p = self._pack(lambda d: None)
+        p["routine"]["desk"] = good
+        self.assertEqual(self._schema_errors(p), [])
+        for bad in ({"pages": True}, {"link": [{"label": "x", "url": "http://example.org"}]},
+                    {"link": [{"label": "x", "url": "https://example.org", "icon": "rocket"}]}):
+            q = self._pack(lambda d: None)
+            q["routine"]["desk"] = bad
+            self.assertTrue(self._schema_errors(q), bad)
+
+    def test_schema_type_rejects_unknown_key(self):
+        p = self._pack(lambda d: d["types"]["item"].update(bogus=True))
+        self.assertTrue(self._schema_errors(p))
+        self.assertTrue(pack.validate(p))
+
+    def test_pack_export_accepts_shared_type(self):
+        p = self._pack(lambda d: d["types"]["item"].update(shared=True))
+        self.assertEqual(pack.validate(p), [])
+
+    def test_schema_signals_include_people_drop(self):
+        p = self._pack(lambda d: d["learning"].update(signals={"people_drop": False}))
+        self.assertEqual(self._schema_errors(p), [])
+
+    def test_schema_desk_accepts_health_record_start(self):
+        for desk in ({"health": {"item": {"field": "url", "green": ["ok"]}}},
+                     {"record": {"strip": {"item": [{"chip": "state"}]}}},
+                     {"start": "today"}):
+            p = self._pack(lambda d: d.update(desk=desk))
+            self.assertEqual(self._schema_errors(p), [], desk)
+
+    def test_schema_desk_rejects_unknown_key(self):
+        p = self._pack(lambda d: d.update(desk={"bogus": 1}))
+        self.assertTrue(self._schema_errors(p))
+        self.assertTrue(pack.validate(p))
+
+    def test_schema_and_pack_validate_agree(self):
+        cases = {
+            "shared type": lambda d: d["types"]["item"].update(shared=True),
+            "unknown type key": lambda d: d["types"]["item"].update(bogus=True),
+            "people_drop": lambda d: d["learning"].update(signals={"people_drop": False}),
+            "unknown signal": lambda d: d["learning"].update(signals={"bogus": False}),
+            "desk health": lambda d: d.update(desk={"health": {"item": {"field": "url", "green": ["ok"]}}}),
+            "desk record": lambda d: d.update(desk={"record": {"strip": {"item": [{"chip": "state"}]}}}),
+            "desk start": lambda d: d.update(desk={"start": "today"}),
+            "desk unknown key": lambda d: d.update(desk={"bogus": 1}),
+            "triage type": lambda d: d["types"]["item"].update(triage=True),
+            "triage not a bool": lambda d: d["types"]["item"].update(triage="yes"),
+            "desk hideLists": lambda d: d.update(desk={"hideLists": ["item"]}),
+            "desk hideLists not a list": lambda d: d.update(desk={"hideLists": "item"}),
+        }
+        for name, mutate in cases.items():
+            p = self._pack(mutate)
+            cli_ok = pack.validate(p) == []
+            schema_ok = self._schema_errors(p) == []
+            self.assertEqual(cli_ok, schema_ok, f"{name}: pack validate {cli_ok}, schema {schema_ok}")
+
+
 class CommittedCatalogTests(unittest.TestCase):
     """The catalog in catalog/ is generated, current, and valid."""
 

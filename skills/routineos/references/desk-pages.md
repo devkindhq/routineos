@@ -27,6 +27,7 @@ Three kinds of custom page. Prefer them in this order: spec page, code page, raw
 | tile | `id`, `kind`, `span`, `label`, `query`, `format`, `sparkline` |
 | chart | `id`, `kind`, `span`, `type` (`sparkline`, `line`, `bar`, `stackedBar`, `shareBar`), `title`, `query`, `format`, `xLabel`, `yLabel`, `target` |
 | table | `id`, `kind`, `span`, `title`, `query`, `columns`, `link` |
+| board | `id`, `kind`, `span`, `title`, `query`, `columns`, `card`, `link` |
 | text | `id`, `kind`, `span`, `heading`, `text` |
 | query | `type`, `where`, `window`, `groupBy`, `x`, `aggregate`, `orderBy`, `limit` |
 
@@ -34,7 +35,8 @@ Three kinds of custom page. Prefer them in this order: spec page, code page, raw
 - `format` is `number`, `percent` or `currency`. `currency` is a plain `$` prefix, it does not follow a currency field.
 - `where` is a list of `[field, operator, value]`. Operators: `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not-in`, `array-contains`.
 - `window` is `"range"` (the date range control, so the page needs the `dateRange` control) or `{last: {n, unit}}` with unit `days` or `weeks`. `n` is at most 3660 days or 520 weeks; the lint refuses more and the Desk drops a block that has more. A table with a window needs `query.x`.
-- `where` with `in` or `not-in` needs a list value. `query.x` must be a date field (or `lastSeen`, `firstSeen`). `columns` may not repeat a field, `sparkline` and `link` are true or false, `target` is a finite number, and `limit` is for a table only. A page filter field must be declared on a type one of its blocks queries.
+- `where` with `in` or `not-in` needs a list value. `query.x` must be a date field (or `lastSeen`, `firstSeen`). `columns` may not repeat a field, `sparkline` and `link` are true or false, `target` is a finite number, and `limit` is for a table or board. A page filter field must be declared on a type one of its blocks queries.
+- A board is read-only lanes of cards. `query.groupBy` names the field the lanes come from; `columns` is a list of `{value, title?}` (the lanes, in order), or leave it out for a choice field and the lanes are its choices. `card` is `{title, text?, badges?}`: the field shown as the heading, an optional line of text, and up to 3 badge fields. A card whose value matches no lane goes to a last Other lane. `query.limit`, `where` and `orderBy` work as on a table.
 - `target` and `format` on a chart are accepted by the lint but not drawn yet; `format` applies to tiles only.
 - `aggregate` is `{op, field}`. `op` is `latest`, `sum`, `avg`, `count` or `delta`. Any op but `count` needs a number field.
 - A tile and a chart need `query.x` (the date field they plot by) and `query.aggregate`. A tile has no `groupBy`.

@@ -207,6 +207,9 @@ def lint(cfg, prompt_text):
     for setting in cfg.get("setting", []):
         problems += _lint_setting(setting if isinstance(setting, dict) else {})
 
+    import definition
+    problems += definition.lint_routine_desk(cfg.get("desk"))
+
     gate = cfg.get("gate", {})
     gated = isinstance(gate, dict) and gate.get("enabled") is True
     for action in cfg.get("action", []):

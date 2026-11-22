@@ -110,11 +110,11 @@ The record header also shows "N of M in <list>" with Previous and Next when the 
 
 ## Per-viewer state
 
-- Documents sit at even segment counts and collections at odd ones. `data/users/<viewer>/read/<inboxId>` is five segments, a collection, so the path carries a `state` segment: `data/users/<viewer>/state/read/<inboxId>` is six. [docs, runtime contract 0.2.92]
-- `data/users/<id>/` is private to that viewer, even from the owner. The page gets `<id>` from `await user.id()` after declaring `capabilities {"db": {}, "user": {}}`. [docs, 0.2.92]
-- A null id means per-viewer state is off for that view: read, done and seen show as unavailable. Nothing moves to a shared path or to localStorage; localStorage holds the theme only. [decided, 0.2.92]
-- Page writes (the page's `db`) carry no version check, so they are last write wins. Only run writes use `if_version`. [docs, 0.2.92]
-- Contract 0.2.92, checked against the 0.2.91 and 0.2.92 type definitions. [docs]
+- Documents sit at even segment counts and collections at odd ones. `data/users/<viewer>/read/<inboxId>` is five segments, a collection, so the path carries a `state` segment: `data/users/<viewer>/state/read/<inboxId>` is six. [docs, runtime contract 0.2.93]
+- `data/users/<id>/` is private to that viewer, even from the owner. The page gets `<id>` from `await user.id()` after declaring `capabilities {"db": {}, "user": {}}`. [docs, 0.2.93]
+- A null id means per-viewer state is off for that view: read, done and seen show as unavailable. Nothing moves to a shared path or to localStorage; localStorage holds the theme only. [decided, 0.2.93]
+- Page writes (the page's `db`) carry no version check, so they are last write wins. Only run writes use `if_version`. [docs, 0.2.93]
+- Contract 0.2.93. [docs]
 
 ## Entity ids
 
@@ -130,7 +130,7 @@ The record header also shows "N of M in <list>" with Previous and Next when the 
 - Batch size: at most 50 writes and 1 MiB per ArtifactData `batch`, each doc at most once per batch, `if_version` required on an existing doc. [docs in the tool schema; acceptance not yet measured against a live artifact]
 - The planner keeps each batch to 50 writes and about 900 KiB, so a batch has headroom.
 - A doc's version goes up by one on each write; the planner pins later writes in the same run to that. [unverified, matches the FakeStore; not yet checked live]
-- A page-side `db.set` on contract 0.2.92 takes no version pin: page writes are last-writer-wins. Only the ArtifactData tool side has `if_version`. The one-writer-per-document rule above is what keeps people and runs apart. [docs, 0.2.92]
+- A page-side `db.set` on contract 0.2.93 takes no version pin: page writes are last-writer-wins. Only the ArtifactData tool side has `if_version`. The one-writer-per-document rule above is what keeps people and runs apart. [docs, 0.2.93]
 
 ## CLI
 

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.13.3
+
+### Added
+
+- Board block: a Desk spec page can draw a `board`, a read-only set of lanes with cards. Each card shows a title, up to three badges, optional text and an optional link to the record. Cards that match no lane fall into an Other lane. Board definitions are checked by lint, including `hideLists`, `links` and `timezone`.
+- Lint warnings channel: lint can report a warning without failing. Warnings are printed as `WARN` lines and do not change the exit code.
+- `desk preview` states when a component is not approved yet.
+
+### Changed
+
+- Lint messages carry the position of the problem, and quoted values are made safe for the terminal: control and bidirectional characters are neutralised and secret-shaped values are redacted. This applies to the lint output and to `desk component copy`.
+- Pack manifests use one contract version everywhere, and the pack schema matches the pack code.
+
+### Fixed
+
+- Skill reference drift: documented behavior now matches the code.
+- Tracked-file scans no longer miss files in the working tree.
+
 ## 0.13.2
 
 ### Added

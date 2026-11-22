@@ -47,7 +47,7 @@ The command in the stage starts `python3 lib/<script>.py`. Placeholders in upper
 - Give each setting a `label` and a `cost_note`.
 - Use `role = "include"` or `role = "exclude"` for lists a setting filter binds to.
 - A setting that holds who to contact (its name has `recipient`, `approver`, `email`, `address`, `cc`, `bcc`, `channel` or `phone`) defaults to `[]`.
-- A setting bound by `settingFilters` must not contain a never-learnable word (`push`, `gate`, `send`, `alert`, `permission`, `budget`). Watch for words that contain one: `sender` contains `send`, which is why inbox-triage names its filter `skip_from_domains`.
+- A setting bound by `settingFilters` must not contain a never-learnable word (`push`, `gate`, `send`, `alert`, `permission`, `budget`, `maxruns`, `capoverride`). Watch for words that contain one: `sender` contains `send`, which is why inbox-triage names its filter `skip_from_domains`.
 
 ## Shared record types
 
